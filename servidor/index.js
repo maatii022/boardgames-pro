@@ -77,12 +77,79 @@ const emitirSalaActualizada = (sala) => {
 io.on('connection', (socket) => {
   console.log(`🔌 Conectado: ${socket.id}`);
 
-  // Unirse como pantalla de tablero (TV)
+  // Unirse como pantalla de tablero (TV) — sin ser jugador
   socket.on('unirse-tablero', ({ codigo }) => {
     const sala = obtenerSala(codigo?.toUpperCase());
     if (!sala) return socket.emit(EVENTOS.ERROR, { mensaje: 'Sala no encontrada' });
+    socket.join(sala.codigo);           // también al room general para recibir sala-actualizada
     socket.join(`tablero-${sala.codigo}`);
+    socketSala.set(socket.id, sala.codigo); // registrar para que pueda emitir comandos
     socket.emit('tablero-conectado', { sala: vistaSalaParaCliente(sala) });
+    // Emitir estado actual si hay partida en curso
+    if (sala.estado) {
+      socket.emit('estado-actualizado', vistaEstadoParaJugador(sala, sala.hostId));
+    }
+  });
+
+  // Comandos de tablero — sin verificar hostId, el tablero siempre puede controlar
+  socket.on('tablero-iniciar', () => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    try {
+      // Usar el hostId real de la sala para iniciar
+      const salaActualizada = iniciarPartida(codigo, sala.hostId);
+      emitirSalaActualizada(salaActualizada);
+      io.to(sala.codigo).emit(EVENTOS.FASE_CAMBIADA, { fase: FASES.FASE_0 });
+    } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
+  });
+
+  socket.on('tablero-avanzar', () => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    try {
+      const salaActualizada = avanzarFase(codigo, sala.hostId);
+      emitirSalaActualizada(salaActualizada);
+      io.to(sala.codigo).emit(EVENTOS.FASE_CAMBIADA, { fase: salaActualizada.fase });
+    } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
+  });
+
+  socket.on('tablero-retroceder', () => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    try {
+      const salaActualizada = retrocederFase(codigo, sala.hostId);
+      emitirSalaActualizada(salaActualizada);
+      io.to(sala.codigo).emit(EVENTOS.FASE_CAMBIADA, { fase: salaActualizada.fase });
+    } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
+  });
+
+  socket.on('tablero-reiniciar', () => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    try {
+      const salaActualizada = reiniciarPartida(codigo, sala.hostId);
+      emitirSalaActualizada(salaActualizada);
+      io.to(sala.codigo).emit(EVENTOS.FASE_CAMBIADA, { fase: FASES.LOBBY });
+    } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
+  });
+
+  socket.on('tablero-cambiar-host', ({ nuevoHostId }) => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    try {
+      const salaActualizada = seleccionarHost(codigo, sala.hostId, nuevoHostId);
+      emitirSalaActualizada(salaActualizada);
+    } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
   });
 
   socket.on(EVENTOS.CREAR_SALA, ({ nombre, esSoloTablero }) => {

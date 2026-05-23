@@ -172,6 +172,7 @@ export default function SalaJugador() {
             </div>
           )}
         </div>
+        {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div>
     );
   }
@@ -188,6 +189,7 @@ export default function SalaJugador() {
             {[0,1,2].map(i => <div key={i} style={{ width:'9px', height:'9px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.5s ease-in-out ${i*0.3}s infinite` }} />)}
           </div>
         </div>
+        {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div>
     );
   }
@@ -216,6 +218,7 @@ export default function SalaJugador() {
               <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'15px' }}>Esperando al Capitán...</p>
             </div>
           )}
+          {soyHost && <PanelHost fase={fase} emitir={emitir} />}
         </div>
       </div>
     );
@@ -250,6 +253,7 @@ export default function SalaJugador() {
             {esMiTurno ? '🔔 ¡Es tu turno! El cofre llega a ti...' : 'El cofre está pasando entre el equipo...'}
           </p>
         </div>
+        {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div>
     );
   }
@@ -341,5 +345,62 @@ function VotacionMotin({ pistolas, umbral, confirmados, total, emitir }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Panel flotante para el Host ─────────────────────────────
+function PanelHost({ fase, emitir }) {
+  const [abierto, setAbierto] = useState(false);
+
+  // No mostrar en lobby (tiene su propio panel) ni en victoria
+  if (fase === 'lobby' || fase === 'victoria') return null;
+
+  return (
+    <>
+      {/* Botón flotante */}
+      <button
+        onClick={() => setAbierto(a => !a)}
+        style={{
+          position: 'fixed', bottom: '24px', right: '20px', zIndex: 100,
+          width: '52px', height: '52px', borderRadius: '50%',
+          background: 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))',
+          border: 'none', fontSize: '20px', cursor: 'pointer',
+          boxShadow: '0 4px 20px rgba(201,168,76,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'transform 0.2s',
+          transform: abierto ? 'rotate(45deg)' : 'none',
+        }}
+      >
+        {abierto ? '✕' : '⚓'}
+      </button>
+
+      {/* Panel desplegable */}
+      {abierto && (
+        <div style={{
+          position: 'fixed', bottom: '88px', right: '20px', zIndex: 99,
+          background: 'rgba(13,27,46,0.97)',
+          border: '1px solid rgba(201,168,76,0.3)',
+          borderRadius: '12px', padding: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+          minWidth: '200px',
+          animation: 'aparecer 0.2s ease',
+        }}>
+          <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'var(--oro-dorado)', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '12px', textAlign: 'center' }}>
+            Panel Host
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button onClick={() => { emitir('host-avanzar-fase'); setAbierto(false); }} style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', color: 'var(--oro-dorado)', borderRadius: '8px', padding: '10px 14px', fontFamily: 'var(--fuente-subtitulo)', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', textAlign: 'left' }}>
+              ▶ Avanzar fase
+            </button>
+            <button onClick={() => { emitir('host-retroceder-fase'); setAbierto(false); }} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(245,230,200,0.5)', borderRadius: '8px', padding: '10px 14px', fontFamily: 'var(--fuente-subtitulo)', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', textAlign: 'left' }}>
+              ◀ Retroceder fase
+            </button>
+            <button onClick={() => { if (window.confirm('¿Reiniciar la partida?')) { emitir('host-reiniciar'); setAbierto(false); } }} style={{ background: 'rgba(192,57,43,0.1)', border: '1px solid rgba(192,57,43,0.25)', color: '#ff8a8a', borderRadius: '8px', padding: '10px 14px', fontFamily: 'var(--fuente-subtitulo)', fontSize: '12px', letterSpacing: '1px', cursor: 'pointer', textAlign: 'left' }}>
+              ↺ Reiniciar partida
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

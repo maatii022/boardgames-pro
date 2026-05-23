@@ -39,11 +39,11 @@ export default function Tablero() {
   }, [codigo, emitir, escuchar]);
 
   // Acciones del host
-  const iniciarPartida = () => emitir('host-iniciar-partida');
-  const avanzarFase    = () => emitir('host-avanzar-fase');
-  const retrocederFase = () => emitir('host-retroceder-fase');
-  const reiniciar      = () => { if (window.confirm('¿Reiniciar la partida?')) emitir('host-reiniciar'); };
-  const cambiarHost    = (id) => emitir('seleccionar-host', { nuevoHostId: id });
+  const iniciarPartida = () => emitir('tablero-iniciar');
+  const avanzarFase    = () => emitir('tablero-avanzar');
+  const retrocederFase = () => emitir('tablero-retroceder');
+  const reiniciar      = () => { if (window.confirm('¿Reiniciar la partida?')) emitir('tablero-reiniciar'); };
+  const cambiarHost    = (id) => emitir('tablero-cambiar-host', { nuevoHostId: id });
 
   const jugadores   = tablero?.jugadores || sala?.jugadores || [];
   const numJugadores = sala?.numJugadores || jugadores.length || 0;
