@@ -90,6 +90,17 @@ const actualizarSocketIdEnEstado = (estado, oldId, newId) => {
   if (estado.cultista.jugadorId === oldId) estado.cultista.jugadorId = newId;
   estado.cultista.adeptos = estado.cultista.adeptos.map(id => id === oldId ? newId : id);
   estado.cultista.jugadoresVistos = estado.cultista.jugadoresVistos.map(id => id === oldId ? newId : id);
+  // Votos del Kraken menor
+  if (estado.accionFase4?.kraken) {
+    const kraken = estado.accionFase4.kraken;
+    if (kraken.votos[oldId] !== undefined) {
+      kraken.votos[newId] = kraken.votos[oldId];
+      delete kraken.votos[oldId];
+    }
+    const kIdx = kraken.confirmados.indexOf(oldId);
+    if (kIdx !== -1) kraken.confirmados[kIdx] = newId;
+    if (kraken.objetivo === oldId) kraken.objetivo = newId;
+  }
 };
 
 const seleccionarHost = (codigo, socketId, nuevoHostId) => {

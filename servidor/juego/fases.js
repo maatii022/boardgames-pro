@@ -42,7 +42,7 @@ const elegirEquipo = (estado, tenienteId, naveganteId) => {
     tenienteIdx: tIdx,
     naveganteIdx: nIdx,
     fase: FASES.FASE_2,
-    motin: { ...estado.motin, votos: {}, confirmados: [], activo: false },
+    motin: { ...estado.motin, votos: {}, confirmados: [], activo: false, totalPistolas: undefined, exitoso: undefined },
   };
 };
 

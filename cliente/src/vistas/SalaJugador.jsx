@@ -263,7 +263,7 @@ export default function SalaJugador() {
   // ── FASE 1 ───────────────────────────────────────────────
   if (fase === 'fase_1') {
     return (
-      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 1</p>
@@ -284,6 +284,7 @@ export default function SalaJugador() {
               <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'15px' }}>Esperando al Capitán...</p>
             </div>
           )}
+          <BotonRol miJugador={miJugador} />
           {soyHost && <PanelHost fase={fase} emitir={emitir} />}
         </div>
       </div></>
@@ -293,12 +294,14 @@ export default function SalaJugador() {
   // ── FASE 2 ───────────────────────────────────────────────
   if (fase === 'fase_2') {
     return (
-      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto', textAlign:'center' }}>
           <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 2</p>
           <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'#ff8a8a', fontSize:'20px', letterSpacing:'2px', marginBottom:'24px' }}>💀 Votación de Motín</h2>
           <VotacionMotin pistolas={miJugador?.pistolas ?? 3} umbral={estado?.motin?.umbral} confirmados={estado?.motin?.confirmados} total={jugadores.length} emitir={emitir} />
         </div>
+        <BotonRol miJugador={miJugador} />
+        {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div></>
     );
   }
@@ -313,7 +316,7 @@ export default function SalaJugador() {
                         (etapa === 'navegante' && soyNavegante);
 
     return (
-      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
+      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
         <div style={{ width:'100%', maxWidth:'380px' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 3</p>
@@ -369,6 +372,7 @@ export default function SalaJugador() {
             </div>
           )}
         </div>
+        <BotonRol miJugador={miJugador} />
         {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div></>
     );
@@ -430,6 +434,7 @@ export default function SalaJugador() {
             )}
 
           </div>
+          <BotonRol miJugador={miJugador} />
           {soyHost && <PanelHost fase={fase} emitir={emitir} />}
         </div>
       </>
@@ -725,6 +730,66 @@ function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
         🌊 Sacrificar
       </button>
     </div>
+  );
+}
+
+// ── Botón de rol (abajo-izquierda) para todos los jugadores ─
+function BotonRol({ miJugador }) {
+  const [visible, setVisible] = useState(false);
+  if (!miJugador?.rol) return null;
+  const cfg = ROL_CONFIG[miJugador.rol];
+  if (!cfg) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setVisible(v => !v)}
+        style={{
+          position: 'fixed', bottom: '24px', left: '20px', zIndex: 100,
+          width: '52px', height: '52px', borderRadius: '50%',
+          background: cfg.bg, border: `2px solid ${cfg.borde}`,
+          fontSize: '22px', cursor: 'pointer',
+          boxShadow: `0 4px 20px ${cfg.color}40`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'transform 0.2s',
+          transform: visible ? 'scale(1.1)' : 'none',
+        }}
+      >
+        {cfg.emoji}
+      </button>
+
+      {visible && (
+        <div
+          onClick={() => setVisible(false)}
+          style={{
+            position: 'fixed', bottom: '88px', left: '20px', zIndex: 99,
+            background: cfg.bg, border: `2px solid ${cfg.borde}`,
+            borderRadius: '16px', padding: '20px 18px',
+            boxShadow: `0 8px 32px ${cfg.color}40`,
+            maxWidth: '260px', animation: 'aparecer 0.2s ease', cursor: 'pointer',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '28px' }}>{cfg.emoji}</span>
+            <p style={{ fontFamily: 'var(--fuente-titulo)', color: cfg.color, fontSize: '18px', letterSpacing: '2px' }}>
+              {cfg.nombre.toUpperCase()}
+            </p>
+          </div>
+          {miJugador.personaje && (<>
+            <div className="divisor-oro" style={{ margin: '8px 0' }}><span>⚔️</span></div>
+            <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'var(--oro-dorado)', fontSize: '13px', letterSpacing: '1px', marginBottom: '6px' }}>
+              {miJugador.personaje.nombre}
+            </p>
+            <p style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'rgba(245,230,200,0.65)', fontSize: '12px', lineHeight: '1.5' }}>
+              {miJugador.personaje.habilidad}
+            </p>
+          </>)}
+          <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.3)', fontSize: '10px', letterSpacing: '1px', marginTop: '10px', textAlign: 'center' }}>
+            Toca para cerrar
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 
