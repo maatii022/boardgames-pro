@@ -212,6 +212,40 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Jugador pide estado actual al montar la vista (por si perdió eventos al navegar)
+  socket.on('pedir-estado', () => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return;
+    socket.emit(EVENTOS.SALA_ACTUALIZADA, vistaSalaParaCliente(sala));
+    if (sala.estado) {
+      const vista = vistaEstadoParaJugador(sala, socket.id);
+      socket.emit('estado-actualizado', vista);
+    }
+  });
+
+  // Kick de jugador (solo el host puede)
+  socket.on('kick-jugador', ({ jugadorId }) => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala) return socket.emit(EVENTOS.ERROR, { mensaje: 'Sala no encontrada' });
+    if (sala.hostId !== socket.id) return socket.emit(EVENTOS.ERROR, { mensaje: 'Solo el host puede expulsar jugadores' });
+    if (jugadorId === socket.id) return socket.emit(EVENTOS.ERROR, { mensaje: 'No puedes expulsarte a ti mismo' });
+
+    sala.jugadores = sala.jugadores.filter(j => j.id !== jugadorId);
+    if (sala.estado) sala.estado.jugadores = sala.estado.jugadores.filter(j => j.id !== jugadorId);
+    sala.numJugadores = sala.jugadores.length;
+
+    // Notificar al jugador expulsado
+    io.to(jugadorId).emit('expulsado', { mensaje: 'Has sido expulsado de la sala' });
+    socketSala.delete(jugadorId);
+
+    emitirSalaActualizada(sala);
+    console.log(`🚫 ${jugadorId} expulsado de sala ${codigo}`);
+  });
+
   socket.on('disconnect', () => {
     const codigo = socketSala.get(socket.id);
     if (codigo) {
