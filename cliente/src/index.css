@@ -1,0 +1,215 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Paleta náutica oscura */
+  --negro-abismo: #08070f;
+  --azul-profundo: #0d1b2e;
+  --azul-mar: #112240;
+  --azul-ola: #1a3a5c;
+  --turquesa-kraken: #0a9396;
+  --oro-dorado: #c9a84c;
+  --oro-claro: #e8c97a;
+  --rojo-pirata: #8b1a1a;
+  --rojo-sangre: #c0392b;
+  --crema-pergamino: #f5e6c8;
+  --crema-oscuro: #d4b896;
+  --verde-cultista: #2d6a4f;
+  --amarillo-culto: #e9c46a;
+  --blanco-niebla: rgba(245, 230, 200, 0.85);
+
+  /* Tipografía */
+  --fuente-titulo: 'Cinzel Decorative', serif;
+  --fuente-subtitulo: 'Cinzel', serif;
+  --fuente-cuerpo: 'Crimson Text', serif;
+
+  /* Sombras */
+  --sombra-oro: 0 0 20px rgba(201, 168, 76, 0.3);
+  --sombra-kraken: 0 0 40px rgba(10, 147, 150, 0.4);
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--negro-abismo);
+  color: var(--crema-pergamino);
+  font-family: var(--fuente-cuerpo);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollable en móvil */
+.movil-scroll {
+  overflow-y: auto;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--fuente-subtitulo);
+  border: none;
+  outline: none;
+}
+
+/* Fondo con textura de agua */
+.fondo-mar {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(26, 58, 92, 0.4) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(10, 147, 150, 0.15) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 80%, rgba(13, 27, 46, 0.8) 0%, transparent 60%),
+    linear-gradient(180deg, #08070f 0%, #0d1b2e 40%, #08070f 100%);
+}
+
+/* Animaciones base */
+@keyframes flotar {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulsar-oro {
+  0%, 100% { box-shadow: 0 0 10px rgba(201, 168, 76, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(201, 168, 76, 0.7); }
+}
+
+@keyframes pulsar-kraken {
+  0%, 100% { box-shadow: 0 0 15px rgba(10, 147, 150, 0.3); }
+  50% { box-shadow: 0 0 45px rgba(10, 147, 150, 0.8); }
+}
+
+@keyframes ondas {
+  0% { transform: translateX(0) translateY(0); }
+  33% { transform: translateX(-10px) translateY(5px); }
+  66% { transform: translateX(10px) translateY(-5px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes destello {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.3; }
+}
+
+.aparecer { animation: aparecer 0.5s ease forwards; }
+
+/* Divisor ornamental */
+.divisor-oro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.divisor-oro::before, .divisor-oro::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--oro-dorado), transparent);
+}
+.divisor-oro span {
+  color: var(--oro-dorado);
+  font-size: 18px;
+}
+
+/* Borde ornamental */
+.borde-oro {
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  box-shadow: inset 0 0 20px rgba(201, 168, 76, 0.05), var(--sombra-oro);
+}
+
+/* Botón primario */
+.btn-primario {
+  background: linear-gradient(135deg, var(--oro-dorado), var(--oro-claro));
+  color: var(--negro-abismo);
+  padding: 14px 32px;
+  font-family: var(--fuente-subtitulo);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(201, 168, 76, 0.3);
+}
+.btn-primario:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(201, 168, 76, 0.5);
+}
+.btn-primario:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secundario {
+  background: transparent;
+  color: var(--oro-dorado);
+  padding: 12px 28px;
+  font-family: var(--fuente-subtitulo);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+.btn-secundario:hover:not(:disabled) {
+  border-color: var(--oro-dorado);
+  background: rgba(201, 168, 76, 0.1);
+}
+
+.btn-peligro {
+  background: linear-gradient(135deg, var(--rojo-pirata), var(--rojo-sangre));
+  color: white;
+  padding: 12px 28px;
+  font-family: var(--fuente-subtitulo);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Input */
+.input-tema {
+  background: rgba(13, 27, 46, 0.8);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  color: var(--crema-pergamino);
+  padding: 12px 16px;
+  font-family: var(--fuente-cuerpo);
+  font-size: 16px;
+  border-radius: 4px;
+  width: 100%;
+  transition: border-color 0.3s;
+}
+.input-tema:focus {
+  outline: none;
+  border-color: var(--oro-dorado);
+  box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.15);
+}
+.input-tema::placeholder { color: rgba(245, 230, 200, 0.3); }
+
+/* Tags de rol */
+.tag-rol {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: var(--fuente-subtitulo);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.tag-rol.marinero { background: rgba(26, 58, 92, 0.8); border: 1px solid #4a9bc7; color: #7ec8e3; }
+.tag-rol.pirata { background: rgba(139, 26, 26, 0.8); border: 1px solid #c0392b; color: #ff8a8a; }
+.tag-rol.cultista { background: rgba(45, 106, 79, 0.8); border: 1px solid #4caf50; color: #98e4a5; }

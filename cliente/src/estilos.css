@@ -1,0 +1,233 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Variables de tema ──────────────────────────────────── */
+:root {
+  /* Colores principales */
+  --color-fondo:        #0a0612;
+  --color-fondo-2:      #130d22;
+  --color-superficie:   #1e1535;
+  --color-borde:        #3d2b5e;
+  --color-borde-oro:    #c9a84c;
+
+  /* Facciones */
+  --color-marinero:     #3B82F6;
+  --color-marinero-osc: #1e3a8a;
+  --color-pirata:       #EF4444;
+  --color-pirata-osc:   #7f1d1d;
+  --color-cultista:     #EAB308;
+  --color-cultista-osc: #713f12;
+  --color-adepto:       #a855f7;
+
+  /* Textos */
+  --color-texto:        #f5e6d3;
+  --color-texto-dim:    #a89070;
+  --color-oro:          #c9a84c;
+  --color-oro-claro:    #f0d080;
+
+  /* UI */
+  --color-exito:        #22c55e;
+  --color-error:        #ef4444;
+  --color-advertencia:  #f59e0b;
+
+  /* Tipografía */
+  --fuente-titulo:      'Cinzel Decorative', serif;
+  --fuente-ui:          'Cinzel', serif;
+  --fuente-cuerpo:      'Crimson Text', serif;
+
+  /* Espaciado */
+  --radio:              8px;
+  --radio-lg:           16px;
+  --radio-xl:           24px;
+  --sombra:             0 4px 24px rgba(0,0,0,0.6);
+  --sombra-oro:         0 0 20px rgba(201,168,76,0.3);
+}
+
+/* ─── Reset ──────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-cuerpo);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar temática ─────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-fondo); }
+::-webkit-scrollbar-thumb { background: var(--color-borde-oro); border-radius: 3px; }
+
+/* ─── Botones base ───────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radio);
+  font-family: var(--fuente-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primario {
+  background: linear-gradient(135deg, var(--color-oro), #a07030);
+  color: #0a0612;
+  box-shadow: var(--sombra-oro);
+}
+
+.btn-primario:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(201,168,76,0.5);
+}
+
+.btn-secundario {
+  background: transparent;
+  color: var(--color-oro);
+  border: 1px solid var(--color-borde-oro);
+}
+
+.btn-secundario:hover:not(:disabled) {
+  background: rgba(201,168,76,0.1);
+}
+
+.btn-marinero {
+  background: linear-gradient(135deg, var(--color-marinero), var(--color-marinero-osc));
+  color: white;
+}
+
+.btn-pirata {
+  background: linear-gradient(135deg, var(--color-pirata), var(--color-pirata-osc));
+  color: white;
+}
+
+.btn-cultista {
+  background: linear-gradient(135deg, var(--color-cultista), var(--color-cultista-osc));
+  color: #0a0612;
+}
+
+/* ─── Tarjetas ───────────────────────────────────────────── */
+.tarjeta {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio-lg);
+  padding: 24px;
+  box-shadow: var(--sombra);
+}
+
+.tarjeta-oro {
+  border-color: var(--color-borde-oro);
+  box-shadow: var(--sombra), var(--sombra-oro);
+}
+
+/* ─── Inputs ─────────────────────────────────────────────── */
+input[type="text"] {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  color: var(--color-texto);
+  font-family: var(--fuente-ui);
+  font-size: 16px;
+  padding: 14px 18px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  letter-spacing: 0.05em;
+}
+
+input[type="text"]:focus {
+  border-color: var(--color-borde-oro);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.2);
+}
+
+input[type="text"]::placeholder {
+  color: var(--color-texto-dim);
+}
+
+/* ─── Fondo animado de partículas ────────────────────────── */
+.fondo-animado {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(61,43,94,0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(30,21,53,0.6) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(10,6,18,0.8) 0%, transparent 70%),
+    var(--color-fondo);
+  z-index: 0;
+}
+
+/* Decoración de bordes de pergamino */
+.borde-pergamino {
+  position: relative;
+}
+
+.borde-pergamino::before,
+.borde-pergamino::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: var(--color-borde-oro);
+  border-style: solid;
+  opacity: 0.6;
+}
+
+.borde-pergamino::before {
+  top: 8px; left: 8px;
+  border-width: 2px 0 0 2px;
+}
+
+.borde-pergamino::after {
+  bottom: 8px; right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+/* ─── Texto oro ──────────────────────────────────────────── */
+.texto-oro {
+  color: var(--color-oro);
+  text-shadow: 0 0 20px rgba(201,168,76,0.5);
+}
+
+/* ─── Animaciones ────────────────────────────────────────── */
+@keyframes pulso-suave {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes brillo-oro {
+  0%, 100% { box-shadow: var(--sombra-oro); }
+  50% { box-shadow: 0 0 40px rgba(201,168,76,0.6); }
+}
+
+.animar-flotar { animation: flotar 3s ease-in-out infinite; }
+.animar-pulso { animation: pulso-suave 2s ease-in-out infinite; }
+.animar-brillo { animation: brillo-oro 2s ease-in-out infinite; }
