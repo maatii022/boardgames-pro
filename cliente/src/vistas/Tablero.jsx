@@ -370,6 +370,27 @@ export default function Tablero() {
             </div>
           )}
 
+          {tablero?.ultimaCarta && (
+            <div style={{ background: `rgba(${
+              tablero.ultimaCarta.color === 'azul' ? '74,155,199' :
+              tablero.ultimaCarta.color === 'rojo' ? '192,57,43' : '201,168,76'
+            },0.08)`, border: `1px solid ${
+              tablero.ultimaCarta.color === 'azul' ? 'rgba(74,155,199,0.3)' :
+              tablero.ultimaCarta.color === 'rojo' ? 'rgba(192,57,43,0.3)' : 'rgba(201,168,76,0.3)'
+            }`, borderRadius: '8px', padding: '10px 12px' }}>
+              <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.35)', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>Última carta</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '18px' }}>
+                  {tablero.ultimaCarta.color === 'azul' ? '🔵' : tablero.ultimaCarta.color === 'rojo' ? '🔴' : '🟡'}
+                </span>
+                <div>
+                  <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'var(--crema-pergamino)', fontSize: '12px' }}>{tablero.ultimaCarta.nombre}</p>
+                  <p style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'rgba(245,230,200,0.4)', fontSize: '10px', marginTop: '2px' }}>{tablero.ultimaCarta.descripcion}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {fase === 'fase_2' && tablero?.motin && (
             <div style={{ background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)', borderRadius: '8px', padding: '10px 12px' }}>
               <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: '#ff8a8a', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>Motín</p>

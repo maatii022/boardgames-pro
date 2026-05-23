@@ -70,6 +70,7 @@ const emitirSalaActualizada = (sala) => {
       cofre: { etapa: sala.estado.cofre.etapa },
       cartasRitualesReveladas: sala.estado.cartasRitualesReveladas,
       accionEspecial: sala.estado.accionEspecial,
+      ultimaCarta: sala.estado.ultimaCarta || null,
       mazoDisponibleCount: sala.estado.mazoDisponible.length,
     });
   }

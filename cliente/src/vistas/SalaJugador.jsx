@@ -269,18 +269,23 @@ export default function SalaJugador() {
             </div>
           )}
 
-          {/* Etapa revelar: capitán abre el cofre, resto espera */}
+          {/* Etapa revelar: solo el capitán ve la carta y puede abrirla */}
           {etapa === 'revelar' && (
             <div>
-              <CartaNavegacion carta={cofre.cartaNavegante} />
               {soyCapitan ? (
-                <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
-                  ⚓ Abrir el cofre y mover el barco
-                </button>
+                <>
+                  <CartaNavegacion carta={cofre.cartaNavegante} />
+                  <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
+                    🃏 Enseñar carta y mover el barco
+                  </button>
+                </>
               ) : (
-                <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px', textAlign:'center', marginTop:'16px' }}>
-                  El Capitán va a abrir el cofre...
-                </p>
+                <div style={{ textAlign:'center', padding:'40px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
+                  <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>🔒</div>
+                  <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
+                    El Capitán va a abrir el cofre...
+                  </p>
+                </div>
               )}
             </div>
           )}

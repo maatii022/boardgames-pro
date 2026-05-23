@@ -211,6 +211,9 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
     }
     case 'abrir-cofre': {
       sala.estado = aplicarCartaNavegacion(sala.estado);
+      if (sala.estado.fase === FASES.FASE_5) {
+        sala.estado = ejecutarFase5(sala.estado);
+      }
       break;
     }
     case 'fase-5': {
