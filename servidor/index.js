@@ -104,8 +104,9 @@ io.on('connection', (socket) => {
       const sala = unirseASala(codigo?.toUpperCase(), socket.id, nombre || 'Jugador');
       socketSala.set(socket.id, sala.codigo);
       socket.join(sala.codigo);
-      if (esSoloTablero) socket.join(`tablero-${sala.codigo}`);
       emitirSalaActualizada(sala);
+      // Confirmar al jugador que entró correctamente
+      socket.emit('unido-a-sala', { sala: vistaSalaParaCliente(sala), socketId: socket.id });
       console.log(`👤 ${nombre} se unió a sala ${sala.codigo}`);
     } catch (e) {
       socket.emit(EVENTOS.ERROR, { mensaje: e.message });

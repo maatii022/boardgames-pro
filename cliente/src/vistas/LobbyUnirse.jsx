@@ -12,16 +12,23 @@ export default function LobbyUnirse() {
   const [cargando, setCargando] = useState(false);
 
   useEffect(() => {
-    const cleanupSala = escuchar('sala-actualizada', (sala) => {
+    const c1 = escuchar('unido-a-sala', ({ sala }) => {
       setCargando(false);
       navigate('/sala', { state: { sala } });
     });
-    const cleanupError = escuchar('error', ({ mensaje }) => {
+    // Fallback por si llega sala-actualizada antes que unido-a-sala
+    const c2 = escuchar('sala-actualizada', (sala) => {
+      if (cargando) {
+        setCargando(false);
+        navigate('/sala', { state: { sala } });
+      }
+    });
+    const c3 = escuchar('error', ({ mensaje }) => {
       setError(mensaje);
       setCargando(false);
     });
-    return () => { cleanupSala(); cleanupError(); };
-  }, [escuchar, navigate]);
+    return () => { c1(); c2(); c3(); };
+  }, [escuchar, navigate, cargando]);
 
   const unirse = () => {
     if (!nombre.trim()) return setError('Introduce tu nombre');
