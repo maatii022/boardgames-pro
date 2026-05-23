@@ -6,7 +6,7 @@ import { useSocket } from '../hooks/useSocket';
 export default function LobbyCrear() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { emitir, escuchar, conectado, socketId } = useSocket();
+  const { emitir, escuchar, conectado, socketId, jugadorId } = useSocket();
   const [nombre, setNombre] = useState('');
   const [sala, setSala] = useState(null);
   const [paso, setPaso] = useState('nombre'); // 'nombre' | 'sala'
@@ -37,7 +37,7 @@ export default function LobbyCrear() {
     if (!nombre.trim()) return setError('Introduce tu nombre');
     if (!conectado) return setError('Conectando al servidor...');
     setError('');
-    emitir('crear-sala', { nombre: nombre.trim() });
+    emitir('crear-sala', { nombre: nombre.trim(), jugadorId });
   };
 
   const iniciarPartida = () => {

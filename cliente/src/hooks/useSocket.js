@@ -3,6 +3,17 @@ import { io } from 'socket.io-client';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
+// ID estable por dispositivo — persiste aunque cambie el socket
+const getOrCreateJugadorId = () => {
+  let id = localStorage.getItem('ftk_jugador_id');
+  if (!id) {
+    id = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('ftk_jugador_id', id);
+  }
+  return id;
+};
+export const jugadorIdEstable = getOrCreateJugadorId();
+
 // Socket singleton global — persiste entre navegaciones
 let socket = null;
 
@@ -58,5 +69,6 @@ export const useSocket = () => {
     conectado,
     emitir,
     escuchar,
+    jugadorId: jugadorIdEstable,
   };
 };

@@ -5,18 +5,20 @@ const SalaCtx = createContext(null);
 export const useSala = () => useContext(SalaCtx);
 
 export function SalaProvider({ children }) {
-  const { emitir, escuchar, socketId, conectado } = useSocket();
+  const { emitir, escuchar, socketId, conectado, jugadorId } = useSocket();
   const [sala,   setSala]   = useState(null);
   const [estado, setEstado] = useState(null);
   const [fase,   setFase]   = useState('lobby');
 
-  // Reconexión automática
+  // Reconexión automática — pasa jugadorId para que el servidor
+  // identifique al jugador existente en lugar de crear un duplicado
   useEffect(() => {
     if (!conectado) return;
     const codigo = sessionStorage.getItem('sala_codigo');
     const nombre = sessionStorage.getItem('sala_nombre');
-    if (codigo && nombre && !sala) {
-      emitir('unirse-sala', { codigo, nombre });
+    if (codigo && !sala) {
+      // Reconectar: el servidor buscará por jugadorId y actualizará el socketId
+      emitir('unirse-sala', { codigo, nombre: nombre || '', jugadorId });
     } else if (sala) {
       emitir('pedir-estado');
     }
@@ -52,7 +54,7 @@ export function SalaProvider({ children }) {
   }, []);
 
   return (
-    <SalaCtx.Provider value={{ sala, estado, fase, socketId, conectado, emitir, escuchar, entrarEnSala, salirDeSala }}>
+    <SalaCtx.Provider value={{ sala, estado, fase, socketId, conectado, emitir, escuchar, entrarEnSala, salirDeSala, jugadorId }}>
       {children}
     </SalaCtx.Provider>
   );

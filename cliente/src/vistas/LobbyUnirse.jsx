@@ -5,7 +5,7 @@ import { useSala } from '../contextos/SalaContexto';
 export default function LobbyUnirse() {
   const navigate = useNavigate();
   const { codigo: codigoUrl } = useParams();
-  const { emitir, escuchar, conectado, entrarEnSala } = useSala();
+  const { emitir, escuchar, conectado, entrarEnSala, jugadorId } = useSala();
 
   const [nombre,   setNombre]   = useState('');
   const [codigo,   setCodigo]   = useState(codigoUrl || '');
@@ -31,7 +31,7 @@ export default function LobbyUnirse() {
     setError('');
     setCargando(true);
     sessionStorage.setItem('sala_nombre', nombre.trim());
-    emitir('unirse-sala', { codigo: codigo.trim().toUpperCase(), nombre: nombre.trim() });
+    emitir('unirse-sala', { codigo: codigo.trim().toUpperCase(), nombre: nombre.trim(), jugadorId });
   };
 
   return (

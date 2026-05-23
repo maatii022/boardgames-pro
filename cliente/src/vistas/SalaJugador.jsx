@@ -239,19 +239,64 @@ export default function SalaJugador() {
 
   // ── FASE 3 ───────────────────────────────────────────────
   if (fase === 'fase_3') {
-    const esMiTurno = (estado?.cofre?.etapa === 'capitan'  && soyCapitan)  ||
-                      (estado?.cofre?.etapa === 'teniente' && soyTeniente) ||
-                      (estado?.cofre?.etapa === 'navegante'&& soyNavegante)||
-                      (estado?.cofre?.etapa === 'revelar'  && soyCapitan);
+    const cofre       = estado?.cofre || {};
+    const etapa       = cofre.etapa;
+    const cartas      = cofre.cartasDisponibles || [];
+    const esTurnoMio  = (etapa === 'capitan'   && soyCapitan)  ||
+                        (etapa === 'teniente'  && soyTeniente) ||
+                        (etapa === 'navegante' && soyNavegante);
+
     return (
-      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-        <div style={{ textAlign:'center', maxWidth:'380px' }}>
-          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'10px' }}>Fase 3</p>
-          <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'20px', letterSpacing:'2px', marginBottom:'24px' }}>📦 El Cofre</h2>
-          <div style={{ fontSize:'64px', marginBottom:'20px', animation: esMiTurno ? 'pulsar-oro 1s ease-in-out infinite' : 'flotar 2s ease-in-out infinite' }}>📦</div>
-          <p style={{ fontFamily:'var(--fuente-cuerpo)', color: esMiTurno ? '#98e4a5' : 'rgba(245,230,200,0.4)', fontSize:'15px' }}>
-            {esMiTurno ? '🔔 ¡Es tu turno! El cofre llega a ti...' : 'El cofre está pasando entre el equipo...'}
-          </p>
+      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
+        <div style={{ width:'100%', maxWidth:'380px' }}>
+          <div style={{ textAlign:'center', marginBottom:'24px' }}>
+            <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 3</p>
+            <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'20px', letterSpacing:'2px' }}>📦 El Cofre</h2>
+          </div>
+
+          {/* Turno activo: elegir carta */}
+          {esTurnoMio && cartas.length > 0 && (
+            <SeleccionCarta cartas={cartas} etapa={etapa} emitir={emitir} />
+          )}
+
+          {/* Turno activo pero aún sin cartas (esperando servidor) */}
+          {esTurnoMio && cartas.length === 0 && (
+            <div style={{ textAlign:'center', padding:'32px 20px' }}>
+              <div style={{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'12px' }}>
+                {[0,1,2].map(i => <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+              </div>
+              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'14px' }}>Recibiendo cartas...</p>
+            </div>
+          )}
+
+          {/* Etapa revelar: capitán abre el cofre, resto espera */}
+          {etapa === 'revelar' && (
+            <div>
+              <CartaNavegacion carta={cofre.cartaNavegante} />
+              {soyCapitan ? (
+                <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
+                  ⚓ Abrir el cofre y mover el barco
+                </button>
+              ) : (
+                <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px', textAlign:'center', marginTop:'16px' }}>
+                  El Capitán va a abrir el cofre...
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Espera: no es tu turno */}
+          {!esTurnoMio && etapa !== 'revelar' && (
+            <div style={{ textAlign:'center', padding:'32px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
+              <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>📦</div>
+              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
+                {etapa === 'capitan'  ? 'El Capitán está eligiendo una carta...'   :
+                 etapa === 'teniente' ? 'El Teniente está eligiendo una carta...'  :
+                 etapa === 'navegante'? 'El Navegante está eligiendo la carta final...' :
+                 'El cofre está preparándose...'}
+              </p>
+            </div>
+          )}
         </div>
         {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div>
@@ -344,6 +389,94 @@ function VotacionMotin({ pistolas, umbral, confirmados, total, emitir }) {
           <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'13px' }}>Esperando: {confirmados||0}/{total||0}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Selección de carta del cofre ────────────────────────────
+function SeleccionCarta({ cartas, etapa, emitir }) {
+  const [elegida, setElegida] = useState(null);
+
+  const confirmar = () => {
+    if (!elegida) return;
+    emitir('elegir-carta-cofre', { cartaId: elegida });
+  };
+
+  const colorStyle = (carta) => {
+    const mapa = { azul: ['74,155,199', '#4a9bc7'], rojo: ['192,57,43', '#c0392b'], amarillo: ['201,168,76', '#c9a84c'] };
+    return mapa[carta?.color] || mapa.azul;
+  };
+
+  return (
+    <div>
+      <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.5)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'16px', textAlign:'center' }}>
+        {etapa === 'navegante' ? 'Elige la carta que irá al barco:' : 'Elige una carta para el cofre:'}
+      </p>
+      <div style={{ display:'flex', flexDirection:'column', gap:'12px', marginBottom:'20px' }}>
+        {cartas.map(carta => {
+          const [rgb, hex] = colorStyle(carta);
+          const activa = elegida === carta.id;
+          return (
+            <button
+              key={carta.id}
+              onClick={() => setElegida(carta.id)}
+              style={{
+                padding:'16px', border:`2px solid ${activa ? hex : 'rgba(201,168,76,0.15)'}`,
+                borderRadius:'12px',
+                background: activa ? `rgba(${rgb},0.15)` : 'rgba(13,27,46,0.7)',
+                cursor:'pointer', textAlign:'left', transition:'all 0.2s',
+                boxShadow: activa ? `0 0 20px rgba(${rgb},0.3)` : 'none',
+              }}
+            >
+              <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
+                <div style={{
+                  width:'36px', height:'36px', borderRadius:'8px', flexShrink:0,
+                  background:`rgba(${rgb},0.25)`, border:`1px solid ${hex}`,
+                  display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px',
+                }}>
+                  {carta.color === 'azul' ? '🔵' : carta.color === 'rojo' ? '🔴' : '🟡'}
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'14px', color: activa ? hex : 'var(--crema-pergamino)', marginBottom:'4px' }}>
+                    {activa ? '✓ ' : ''}{carta.nombre}
+                  </p>
+                  <p style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'12px', color:'rgba(245,230,200,0.45)', lineHeight:'1.5' }}>
+                    {carta.descripcion}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <button className="btn-primario" onClick={confirmar} disabled={!elegida} style={{ width:'100%', padding:'16px' }}>
+        ✓ Confirmar elección
+      </button>
+    </div>
+  );
+}
+
+// ── Carta de navegación para la etapa revelar ───────────────
+function CartaNavegacion({ carta }) {
+  if (!carta) return (
+    <div style={{ padding:'24px', textAlign:'center', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
+      <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>Preparando carta...</p>
+    </div>
+  );
+  const mapa = { azul: ['74,155,199', '#4a9bc7'], rojo: ['192,57,43', '#c0392b'], amarillo: ['201,168,76', '#c9a84c'] };
+  const [rgb, hex] = mapa[carta.color] || mapa.azul;
+  return (
+    <div style={{
+      padding:'20px', borderRadius:'12px',
+      background:`rgba(${rgb},0.1)`, border:`1px solid ${hex}`,
+    }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px' }}>
+        <div style={{ width:'40px', height:'40px', borderRadius:'8px', background:`rgba(${rgb},0.25)`, border:`1px solid ${hex}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px' }}>
+          {carta.color === 'azul' ? '🔵' : carta.color === 'rojo' ? '🔴' : '🟡'}
+        </div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'16px', color:hex }}>{carta.nombre}</p>
+      </div>
+      <p style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'13px', color:'rgba(245,230,200,0.6)', lineHeight:'1.5' }}>{carta.descripcion}</p>
     </div>
   );
 }
