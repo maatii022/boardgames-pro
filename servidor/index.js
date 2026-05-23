@@ -7,7 +7,7 @@ const {
   crearSala, unirseASala, seleccionarHost, iniciarPartida,
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
-  vistaSalaParaCliente, vistaEstadoParaJugador,
+  vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
 } = require('./sala');
 
 const app = express();
@@ -218,10 +218,12 @@ io.on('connection', (socket) => {
     if (!codigo) return;
     const sala = obtenerSala(codigo);
     if (!sala) return;
+    // Marcar jugador como conectado
+    reintegrarJugador(codigo, socket.id);
     socket.emit(EVENTOS.SALA_ACTUALIZADA, vistaSalaParaCliente(sala));
+    socket.emit('fase-cambiada', { fase: sala.fase });
     if (sala.estado) {
-      const vista = vistaEstadoParaJugador(sala, socket.id);
-      socket.emit('estado-actualizado', vista);
+      socket.emit('estado-actualizado', vistaEstadoParaJugador(sala, socket.id));
     }
   });
 

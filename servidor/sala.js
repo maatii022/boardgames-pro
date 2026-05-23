@@ -264,9 +264,25 @@ const vistaEstadoParaJugador = (sala, socketId) => {
   };
 };
 
+const reintegrarJugador = (codigo, socketId) => {
+  const sala = salas.get(codigo);
+  if (!sala) return null;
+  // Actualizar el socketId del jugador si ya existía con ese nombre
+  const jugador = sala.jugadores.find(j => j.id === socketId);
+  if (jugador) {
+    jugador.conectado = true;
+    if (sala.estado) {
+      sala.estado.jugadores = sala.estado.jugadores.map(j =>
+        j.id === socketId ? { ...j, conectado: true } : j
+      );
+    }
+  }
+  return sala;
+};
+
 module.exports = {
   crearSala, unirseASala, seleccionarHost, iniciarPartida,
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
-  vistaSalaParaCliente, vistaEstadoParaJugador,
+  vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
 };
