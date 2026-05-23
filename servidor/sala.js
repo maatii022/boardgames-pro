@@ -20,19 +20,21 @@ const generarCodigo = () => {
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
-const crearSala = (socketId, nombreHost) => {
+const crearSala = (socketId, nombreHost, esSoloTablero = false) => {
   let codigo;
   do { codigo = generarCodigo(); } while (salas.has(codigo));
 
   const sala = {
     codigo,
     hostId: socketId,
-    jugadores: [{
+    // Si es solo tablero, no añadimos al socket como jugador
+    jugadores: esSoloTablero ? [] : [{
       id: socketId,
       nombre: nombreHost,
       esHost: true,
       conectado: true,
     }],
+    tableroSocketId: esSoloTablero ? socketId : null,
     estado: null,
     fase: FASES.LOBBY,
     tablero: 'principal',

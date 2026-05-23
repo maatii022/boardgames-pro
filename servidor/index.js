@@ -85,13 +85,15 @@ io.on('connection', (socket) => {
     socket.emit('tablero-conectado', { sala: vistaSalaParaCliente(sala) });
   });
 
-  socket.on(EVENTOS.CREAR_SALA, ({ nombre }) => {
+  socket.on(EVENTOS.CREAR_SALA, ({ nombre, esSoloTablero }) => {
     try {
-      const sala = crearSala(socket.id, nombre || 'Host');
+      const sala = crearSala(socket.id, nombre || 'Host', esSoloTablero || false);
       socketSala.set(socket.id, sala.codigo);
       socket.join(sala.codigo);
+      if (esSoloTablero) socket.join(`tablero-${sala.codigo}`);
       socket.emit('sala-creada', { sala: vistaSalaParaCliente(sala) });
-      console.log(`🏠 Sala creada: ${sala.codigo} por ${nombre}`);
+      if (esSoloTablero) socket.emit('tablero-conectado', { sala: vistaSalaParaCliente(sala) });
+      console.log(`🏠 Sala creada: ${sala.codigo}${esSoloTablero ? ' (tablero)' : ` por ${nombre}`}`);
     } catch (e) {
       socket.emit(EVENTOS.ERROR, { mensaje: e.message });
     }
@@ -102,6 +104,7 @@ io.on('connection', (socket) => {
       const sala = unirseASala(codigo?.toUpperCase(), socket.id, nombre || 'Jugador');
       socketSala.set(socket.id, sala.codigo);
       socket.join(sala.codigo);
+      if (esSoloTablero) socket.join(`tablero-${sala.codigo}`);
       emitirSalaActualizada(sala);
       console.log(`👤 ${nombre} se unió a sala ${sala.codigo}`);
     } catch (e) {
