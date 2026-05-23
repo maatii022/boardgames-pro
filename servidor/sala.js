@@ -330,6 +330,12 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       esCapitan: jugadorActual.esCapitan,
       esTeniente: jugadorActual.esTeniente,
       esNavegante: jugadorActual.esNavegante,
+      // Durante DURMIENDO, los piratas ven a sus compañeros piratas
+      aliados: (sala.estado.fase === 'durmiendo' && jugadorActual.rol === 'pirata')
+        ? sala.estado.jugadores
+            .filter(j => j.rol === 'pirata' && j.id !== socketId)
+            .map(j => ({ id: j.id, nombre: j.nombre }))
+        : null,
     } : null,
     victoria: sala.estado.victoria,
     accionEspecial: sala.estado.accionEspecial,

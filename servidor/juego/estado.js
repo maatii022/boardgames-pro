@@ -12,6 +12,7 @@ const crearEstadoInicial = (jugadores, tablero = 'principal') => {
   const roles = [
     ...Array(config.piratas).fill(ROLES.PIRATA),
     ...Array(config.cultistas).fill(ROLES.CULTISTA),
+    ...Array(config.adeptos || 0).fill(ROLES.ADEPTO),
     ...Array(config.marineros).fill(ROLES.MARINERO),
   ];
   // Barajar roles

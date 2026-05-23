@@ -245,16 +245,58 @@ export default function SalaJugador() {
 
   // ── DURMIENDO ────────────────────────────────────────────
   if (fase === 'durmiendo') {
+    const aliados = miJugador?.aliados || [];
+    const esPirata = miJugador?.rol === 'pirata';
+
     return (
-      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:'64px', marginBottom:'20px', animation:'flotar 4s ease-in-out infinite' }}>🌙</div>
-          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--crema-pergamino)', fontSize:'22px', letterSpacing:'3px', marginBottom:'10px' }}>Cierra los ojos</h2>
-          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'15px', marginBottom:'28px' }}>Los piratas se están reconociendo...</p>
-          <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
-            {[0,1,2].map(i => <div key={i} style={{ width:'9px', height:'9px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.5s ease-in-out ${i*0.3}s infinite` }} />)}
-          </div>
+      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
+        <div style={{ width:'100%', maxWidth:'360px', textAlign:'center' }}>
+
+          {esPirata ? (
+            // ── Vista Pirata: ve a sus compañeros ──
+            <>
+              <div style={{ fontSize:'56px', marginBottom:'16px' }}>💀</div>
+              <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#c0392b', fontSize:'20px', letterSpacing:'3px', marginBottom:'8px' }}>
+                Sois piratas
+              </h2>
+              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'13px', marginBottom:'24px' }}>
+                Estos son tus compañeros de tripulación:
+              </p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'28px' }}>
+                {aliados.map(a => (
+                  <div key={a.id} style={{ padding:'12px 16px', background:'rgba(139,26,26,0.15)', border:'1px solid rgba(192,57,43,0.3)', borderRadius:'10px', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <span style={{ fontSize:'20px' }}>💀</span>
+                    <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--crema-pergamino)', fontSize:'15px' }}>{a.nombre}</span>
+                  </div>
+                ))}
+                {aliados.length === 0 && (
+                  <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.3)', fontSize:'13px' }}>
+                    Eres el único pirata
+                  </p>
+                )}
+              </div>
+              <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.3)', fontSize:'11px', letterSpacing:'2px' }}>
+                Memoriza bien a tus aliados
+              </p>
+            </>
+          ) : (
+            // ── Vista Marinero / Cultista / Adepto: ojos cerrados ──
+            <>
+              <div style={{ fontSize:'64px', marginBottom:'20px', animation:'flotar 4s ease-in-out infinite' }}>🌙</div>
+              <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--crema-pergamino)', fontSize:'22px', letterSpacing:'3px', marginBottom:'10px' }}>
+                Cierra los ojos
+              </h2>
+              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'15px', marginBottom:'28px' }}>
+                Los piratas se están reconociendo...
+              </p>
+              <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
+                {[0,1,2].map(i => <div key={i} style={{ width:'9px', height:'9px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.5s ease-in-out ${i*0.3}s infinite` }} />)}
+              </div>
+            </>
+          )}
+
         </div>
+        <BotonRol miJugador={miJugador} />
         {soyHost && <PanelHost fase={fase} emitir={emitir} />}
       </div>
     );
@@ -755,7 +797,7 @@ function BotonRol({ miJugador }) {
           transform: visible ? 'scale(1.1)' : 'none',
         }}
       >
-        {cfg.emoji}
+        🃏
       </button>
 
       {visible && (
