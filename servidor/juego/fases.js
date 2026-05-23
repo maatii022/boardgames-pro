@@ -178,7 +178,7 @@ const aplicarCartaNavegacion = (estado) => {
     ultimaCarta: carta,
     jugadores: estado.jugadores.map(j => ({
       ...j,
-      curriculos: (j.esCapitan || j.esTeniente || j.esNavegante) ? j.curriculos + 1 : j.curriculos,
+      curriculos: j.esCapitan ? j.curriculos + 1 : j.curriculos,
     })),
   };
 

@@ -306,20 +306,40 @@ export default function Tablero() {
           )}
 
           {/* Overlay victoria */}
-          {fase === 'victoria' && (
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,7,15,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ textAlign: 'center', animation: 'aparecer 0.8s ease' }}>
-                <div style={{ fontSize: 'clamp(60px,12vw,120px)', marginBottom: '24px', animation: 'flotar 2s ease-in-out infinite' }}>
-                  {tablero?.victoria === 'piratas' ? '💀' : tablero?.victoria === 'marineros' ? '⚓' : '🐙'}
+          {fase === 'victoria' && (() => {
+            const ganador = tablero?.victoria;
+            const ROL_EQUIPO = { piratas: ['pirata'], marineros: ['marinero'], cultistas: ['cultista','adepto'] };
+            const ROL_LABEL  = { pirata:'💀 Pirata', marinero:'⚓ Marinero', cultista:'🐙 Cultista', adepto:'👁️ Adepto' };
+            const rolesEquipo = ROL_EQUIPO[ganador] || [];
+            const equipoGanador = jugadores.filter(j => rolesEquipo.includes(j.rol));
+            return (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,7,15,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '60px' }}>
+                <div style={{ textAlign: 'center', animation: 'aparecer 0.8s ease' }}>
+                  <div style={{ fontSize: 'clamp(60px,10vw,100px)', marginBottom: '20px', animation: 'flotar 2s ease-in-out infinite' }}>
+                    {ganador === 'piratas' ? '💀' : ganador === 'marineros' ? '⚓' : '🐙'}
+                  </div>
+                  <h1 style={{ fontFamily: 'var(--fuente-titulo)', fontSize: 'clamp(24px,5vw,64px)', color: 'var(--oro-dorado)', letterSpacing: '6px', textShadow: '0 0 60px rgba(201,168,76,0.8)' }}>
+                    {ganador === 'piratas' ? 'VICTORIA PIRATA' : ganador === 'marineros' ? 'VICTORIA MARINERA' : '¡EL KRAKEN HA SIDO INVOCADO!'}
+                  </h1>
                 </div>
-                <h1 style={{ fontFamily: 'var(--fuente-titulo)', fontSize: 'clamp(28px,6vw,72px)', color: 'var(--oro-dorado)', letterSpacing: '6px', textShadow: '0 0 60px rgba(201,168,76,0.8)' }}>
-                  {tablero?.victoria === 'piratas' ? 'VICTORIA PIRATA' :
-                   tablero?.victoria === 'marineros' ? 'VICTORIA MARINERA' :
-                   '¡EL KRAKEN HA SIDO INVOCADO!'}
-                </h1>
+                {equipoGanador.length > 0 && (
+                  <div style={{ animation: 'aparecer 1.2s ease', minWidth: '220px' }}>
+                    <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'var(--oro-dorado)', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '16px', textAlign: 'center' }}>
+                      Equipo ganador
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {equipoGanador.map(j => (
+                        <div key={j.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '10px 16px', background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '8px' }}>
+                          <span style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'var(--crema-pergamino)', fontSize: '16px' }}>{j.nombre}</span>
+                          <span style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.45)', fontSize: '12px' }}>{ROL_LABEL[j.rol] || j.rol}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Panel lateral */}

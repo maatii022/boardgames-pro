@@ -58,6 +58,7 @@ const emitirSalaActualizada = (sala) => {
         esNavegante: j.esNavegante,
         rolConfirmado: j.rolConfirmado,
         conectado: j.conectado,
+        rol: sala.estado.victoria ? j.rol : undefined,
       })),
       capitanIdx: sala.estado.capitanIdx,
       victoria: sala.estado.victoria,

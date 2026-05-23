@@ -313,12 +313,39 @@ export default function SalaJugador() {
     const ganador = estado?.victoria;
     const miRol   = miJugador?.rol;
     const gane    = (ganador==='piratas' && miRol==='pirata') || (ganador==='marineros' && miRol==='marinero') || (ganador==='cultistas' && (miRol==='cultista'||miRol==='adepto'));
+
+    const ROL_EQUIPO = { piratas: ['pirata'], marineros: ['marinero'], cultistas: ['cultista','adepto'] };
+    const rolesEquipo = ROL_EQUIPO[ganador] || [];
+    const equipoGanador = (estado?.jugadores || []).filter(j => rolesEquipo.includes(j.rol));
+
+    const ROL_LABEL = { pirata:'💀 Pirata', marinero:'⚓ Marinero', cultista:'🐙 Cultista', adepto:'👁️ Adepto' };
+
     return (
-      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-        <div style={{ textAlign:'center', animation:'aparecer 1s ease' }}>
-          <div style={{ fontSize:'80px', marginBottom:'20px', animation:'flotar 2s ease-in-out infinite' }}>{ganador==='piratas'?'💀':ganador==='marineros'?'⚓':'🐙'}</div>
-          <h1 style={{ fontFamily:'var(--fuente-titulo)', fontSize:'26px', color: gane?'var(--oro-dorado)':'rgba(245,230,200,0.5)', letterSpacing:'3px', textShadow: gane?'0 0 40px rgba(201,168,76,0.6)':'none', marginBottom:'12px' }}>{gane?'¡Has ganado!':'Has perdido'}</h1>
-          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'13px', letterSpacing:'2px' }}>{ganador==='piratas'?'Victoria Pirata':ganador==='marineros'?'Victoria Marinera':'El Kraken ha sido invocado'}</p>
+      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
+        <div style={{ textAlign:'center', animation:'aparecer 1s ease', maxWidth:'380px', width:'100%' }}>
+          <div style={{ fontSize:'72px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>{ganador==='piratas'?'💀':ganador==='marineros'?'⚓':'🐙'}</div>
+          <h1 style={{ fontFamily:'var(--fuente-titulo)', fontSize:'26px', color: gane?'var(--oro-dorado)':'rgba(245,230,200,0.5)', letterSpacing:'3px', textShadow: gane?'0 0 40px rgba(201,168,76,0.6)':'none', marginBottom:'8px' }}>
+            {gane ? '¡Has ganado!' : 'Has perdido'}
+          </h1>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'13px', letterSpacing:'2px', marginBottom:'28px' }}>
+            {ganador==='piratas'?'Victoria Pirata':ganador==='marineros'?'Victoria Marinera':'El Kraken ha sido invocado'}
+          </p>
+
+          {equipoGanador.length > 0 && (
+            <div style={{ background:'rgba(13,27,46,0.8)', border:'1px solid rgba(201,168,76,0.25)', borderRadius:'12px', padding:'20px' }}>
+              <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'14px' }}>
+                Equipo ganador
+              </p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                {equipoGanador.map(j => (
+                  <div key={j.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'8px' }}>
+                    <span style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'15px' }}>{j.nombre}</span>
+                    <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.45)', fontSize:'11px', letterSpacing:'1px' }}>{ROL_LABEL[j.rol] || j.rol}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

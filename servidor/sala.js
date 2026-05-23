@@ -304,6 +304,7 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       esNavegante: j.esNavegante,
       rolConfirmado: j.rolConfirmado,
       conectado: j.conectado,
+      rol: sala.estado.victoria ? j.rol : undefined,
     })),
     miJugador: jugadorActual ? {
       rol: jugadorActual.rol,
