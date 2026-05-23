@@ -5,15 +5,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { useSocket } from '../SocketContext';
-import { EVENTOS, ACCIONES_HOST } from '../../../compartido/constantes';
+import { useSocket, guardarSesion } from '../SocketContext';
+import { EVENTOS } from '../../../compartido/constantes';
 
 const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || 'http://localhost:5173';
 
 export default function Lobby() {
   const { juegoId } = useParams();
   const navigate = useNavigate();
-  const { socket } = useSocket();
+  const { socket, jugadorId } = useSocket();
 
   const [pantalla, setPantalla] = useState('nombre'); // 'nombre' | 'sala' | 'tablero_espera'
   const [nombre, setNombre] = useState('');
@@ -33,31 +33,43 @@ export default function Lobby() {
       if (pantalla === 'nombre') setPantalla('sala');
     };
 
-    const onSalaCreada = ({ codigo, esTablero }) => {
-      setSala(prev => ({ ...prev, codigo }));
-      setModoTablero(!!esTablero);
+    const onUnidoASala = ({ sala: salaData, reconectado }) => {
+      setSala(salaData);
+      setPantalla('sala');
+      if (reconectado) console.log('🔄 Reconectado a sala existente');
     };
 
-    const onEstadoJuego = (estado) => {
-      // La partida ha comenzado — navegar a la vista correcta
-      if (modoTablero) {
-        navigate(`/tablero/${sala?.codigo}`, { state: { estado } });
-      } else {
-        navigate(`/juego/${sala?.codigo}`, { state: { estado } });
+    const onSalaCreada = ({ sala: salaData }) => {
+      setSala(salaData);
+      setPantalla('sala');
+      guardarSesion(salaData.codigo, nombre);
+    };
+
+    const onEstadoJuego = ({ fase }) => {
+      if (!sala?.codigo) return;
+      // Navegar cuando la partida comienza (sale del lobby)
+      if (fase && fase !== 'lobby') {
+        if (modoTablero) {
+          navigate(`/tablero/${sala.codigo}`);
+        } else {
+          navigate(`/juego/${sala.codigo}`);
+        }
       }
     };
 
     const onError = ({ mensaje }) => setError(mensaje);
 
     socket.on(EVENTOS.SALA_ACTUALIZADA, onSalaActualizada);
-    socket.on('sala_creada', onSalaCreada);
-    socket.on(EVENTOS.ESTADO_JUEGO, onEstadoJuego);
+    socket.on('sala-creada', onSalaCreada);
+    socket.on('unido-a-sala', onUnidoASala);
+    socket.on(EVENTOS.FASE_CAMBIADA, onEstadoJuego);
     socket.on(EVENTOS.ERROR, onError);
 
     return () => {
       socket.off(EVENTOS.SALA_ACTUALIZADA, onSalaActualizada);
-      socket.off('sala_creada', onSalaCreada);
-      socket.off(EVENTOS.ESTADO_JUEGO, onEstadoJuego);
+      socket.off('sala-creada', onSalaCreada);
+      socket.off('unido-a-sala', onUnidoASala);
+      socket.off(EVENTOS.FASE_CAMBIADA, onEstadoJuego);
       socket.off(EVENTOS.ERROR, onError);
     };
   }, [socket, pantalla, modoTablero, sala, navigate]);
@@ -66,34 +78,29 @@ export default function Lobby() {
   const crearSala = () => {
     if (!nombre.trim()) return setError('Introduce tu nombre');
     setError('');
-    socket.emit(EVENTOS.CREAR_SALA, { nombre: nombre.trim() });
-    setPantalla('sala');
+    socket.emit(EVENTOS.CREAR_SALA, { nombre: nombre.trim(), jugadorId });
   };
 
   const unirseASala = () => {
     if (!nombre.trim()) return setError('Introduce tu nombre');
     if (!codigoManual.trim()) return setError('Introduce el código de sala');
     setError('');
+    guardarSesion(codigoManual.trim().toUpperCase(), nombre.trim());
     socket.emit(EVENTOS.UNIRSE_SALA, {
       codigo: codigoManual.trim().toUpperCase(),
       nombre: nombre.trim(),
+      jugadorId,
     });
   };
 
   const unirseComoTablero = () => {
     if (!codigoManual.trim()) return setError('Introduce el código de sala');
-    socket.emit(EVENTOS.UNIRSE_SALA, {
-      codigo: codigoManual.trim().toUpperCase(),
-      nombre: 'Tablero',
-      esTablero: true,
-    });
+    socket.emit('unirse-tablero', { codigo: codigoManual.trim().toUpperCase() });
+    setModoTablero(true);
   };
 
   const iniciarPartida = () => {
-    socket.emit(EVENTOS.HOST_ACCION, {
-      codigo: sala.codigo,
-      accion: ACCIONES_HOST.INICIAR_PARTIDA,
-    });
+    socket.emit(EVENTOS.HOST_INICIAR_PARTIDA);
   };
 
   const seleccionarHost = (nuevoHostId) => {

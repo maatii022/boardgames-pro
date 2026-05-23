@@ -20,6 +20,7 @@ const FASES = {
 const EVENTOS = {
   UNIRSE_SALA: 'unirse-sala',
   CREAR_SALA: 'crear-sala',
+  RECONECTAR_SALA: 'reconectar-sala',
   CONFIRMAR_ROL: 'confirmar-rol',
   ELEGIR_EQUIPO: 'elegir-equipo',
   VOTAR_MOTIN: 'votar-motin',
@@ -36,6 +37,7 @@ const EVENTOS = {
   ACCION_TELESCOPIO: 'accion-telescopio',
   SALA_ACTUALIZADA: 'sala-actualizada',
   FASE_CAMBIADA: 'fase-cambiada',
+  ESTADO_JUEGO: 'estado-juego',
   ERROR: 'error',
   MOTIN_RESULTADO: 'motin-resultado',
   BARCO_MOVIDO: 'barco-movido',

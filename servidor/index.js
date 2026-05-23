@@ -8,6 +8,7 @@ const {
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
   vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
+  reconectarPorJugadorId,
 } = require('./sala');
 
 const app = express();
@@ -152,9 +153,9 @@ io.on('connection', (socket) => {
     } catch (e) { socket.emit(EVENTOS.ERROR, { mensaje: e.message }); }
   });
 
-  socket.on(EVENTOS.CREAR_SALA, ({ nombre, esSoloTablero }) => {
+  socket.on(EVENTOS.CREAR_SALA, ({ nombre, esSoloTablero, jugadorId }) => {
     try {
-      const sala = crearSala(socket.id, nombre || 'Host', esSoloTablero || false);
+      const sala = crearSala(socket.id, jugadorId || socket.id, nombre || 'Host', esSoloTablero || false);
       socketSala.set(socket.id, sala.codigo);
       socket.join(sala.codigo);
       if (esSoloTablero) socket.join(`tablero-${sala.codigo}`);
@@ -166,15 +167,38 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on(EVENTOS.UNIRSE_SALA, ({ codigo, nombre }) => {
+  socket.on(EVENTOS.UNIRSE_SALA, ({ codigo, nombre, jugadorId }) => {
     try {
-      const sala = unirseASala(codigo?.toUpperCase(), socket.id, nombre || 'Jugador');
+      const sala = unirseASala(codigo?.toUpperCase(), socket.id, jugadorId || null, nombre || 'Jugador');
       socketSala.set(socket.id, sala.codigo);
       socket.join(sala.codigo);
       emitirSalaActualizada(sala);
-      // Confirmar al jugador que entró correctamente
       socket.emit('unido-a-sala', { sala: vistaSalaParaCliente(sala), socketId: socket.id });
       console.log(`👤 ${nombre} se unió a sala ${sala.codigo}`);
+    } catch (e) {
+      socket.emit(EVENTOS.ERROR, { mensaje: e.message });
+    }
+  });
+
+  // Reconexión: el jugador vuelve con nuevo socket pero mismo jugadorId
+  socket.on(EVENTOS.RECONECTAR_SALA, ({ codigo, jugadorId }) => {
+    if (!codigo || !jugadorId) return;
+    try {
+      const sala = reconectarPorJugadorId(codigo.toUpperCase(), jugadorId, socket.id);
+      if (!sala) {
+        // Sala o jugador no encontrado — sesión expirada
+        socket.emit('sesion-expirada');
+        return;
+      }
+      socketSala.set(socket.id, sala.codigo);
+      socket.join(sala.codigo);
+      emitirSalaActualizada(sala);
+      socket.emit('unido-a-sala', { sala: vistaSalaParaCliente(sala), socketId: socket.id, reconectado: true });
+      if (sala.estado) {
+        socket.emit('estado-actualizado', vistaEstadoParaJugador(sala, socket.id));
+        socket.emit(EVENTOS.FASE_CAMBIADA, { fase: sala.estado.fase });
+      }
+      console.log(`🔄 Reconectado: ${jugadorId} en sala ${sala.codigo}`);
     } catch (e) {
       socket.emit(EVENTOS.ERROR, { mensaje: e.message });
     }

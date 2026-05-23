@@ -7,6 +7,7 @@ const {
   elegirCartaCofre,
   aplicarCartaNavegacion,
   ejecutarFase5,
+  inicializarCofre,
 } = require('./juego/fases');
 
 // ============================================================
@@ -20,16 +21,16 @@ const generarCodigo = () => {
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 };
 
-const crearSala = (socketId, nombreHost, esSoloTablero = false) => {
+const crearSala = (socketId, jugadorId, nombreHost, esSoloTablero = false) => {
   let codigo;
   do { codigo = generarCodigo(); } while (salas.has(codigo));
 
   const sala = {
     codigo,
     hostId: socketId,
-    // Si es solo tablero, no añadimos al socket como jugador
     jugadores: esSoloTablero ? [] : [{
       id: socketId,
+      jugadorId: jugadorId || socketId,
       nombre: nombreHost,
       esHost: true,
       conectado: true,
@@ -44,20 +45,50 @@ const crearSala = (socketId, nombreHost, esSoloTablero = false) => {
   return sala;
 };
 
-const unirseASala = (codigo, socketId, nombre) => {
+const unirseASala = (codigo, socketId, jugadorId, nombre) => {
   const sala = salas.get(codigo);
   if (!sala) throw new Error('Sala no encontrada');
+
+  // Reconexión: el jugadorId ya existe en la sala
+  const jugadorExistente = jugadorId && sala.jugadores.find(j => j.jugadorId === jugadorId);
+  if (jugadorExistente) {
+    const oldSocketId = jugadorExistente.id;
+    jugadorExistente.id = socketId;
+    jugadorExistente.conectado = true;
+    if (sala.estado) actualizarSocketIdEnEstado(sala.estado, oldSocketId, socketId);
+    if (sala.hostId === oldSocketId) sala.hostId = socketId;
+    return sala;
+  }
+
   if (sala.fase !== FASES.LOBBY) throw new Error('La partida ya ha comenzado');
   if (sala.jugadores.length >= 11) throw new Error('Sala llena (máximo 11 jugadores)');
-  if (sala.jugadores.find(j => j.id === socketId)) throw new Error('Ya estás en esta sala');
 
   sala.jugadores.push({
     id: socketId,
+    jugadorId: jugadorId || socketId,
     nombre,
     esHost: false,
     conectado: true,
   });
   return sala;
+};
+
+// Actualiza todas las referencias a un socketId viejo tras reconexión
+const actualizarSocketIdEnEstado = (estado, oldId, newId) => {
+  estado.jugadores = estado.jugadores.map(j =>
+    j.id === oldId ? { ...j, id: newId } : j
+  );
+  // Votos del motín
+  if (estado.motin.votos[oldId] !== undefined) {
+    estado.motin.votos[newId] = estado.motin.votos[oldId];
+    delete estado.motin.votos[oldId];
+  }
+  const confIdx = estado.motin.confirmados.indexOf(oldId);
+  if (confIdx !== -1) estado.motin.confirmados[confIdx] = newId;
+  // Cultista
+  if (estado.cultista.jugadorId === oldId) estado.cultista.jugadorId = newId;
+  estado.cultista.adeptos = estado.cultista.adeptos.map(id => id === oldId ? newId : id);
+  estado.cultista.jugadoresVistos = estado.cultista.jugadoresVistos.map(id => id === oldId ? newId : id);
 };
 
 const seleccionarHost = (codigo, socketId, nuevoHostId) => {
@@ -117,9 +148,15 @@ const avanzarFase = (codigo, socketId) => {
     sala.fase = nuevaFase;
     if (sala.estado) sala.estado.fase = nuevaFase;
 
-    // Lógica al entrar a Fase 1 por primera vez
-    if (nuevaFase === FASES.FASE_1 && !sala.estado?.capitanIdx && sala.estado?.capitanIdx !== 0) {
-      sala.estado = elegirCapitanAleatorio(sala.estado);
+    if (sala.estado) {
+      // Elegir capitán al entrar en Fase 1 si aún no hay uno
+      if (nuevaFase === FASES.FASE_1 && !sala.estado.capitanIdx && sala.estado.capitanIdx !== 0) {
+        sala.estado = elegirCapitanAleatorio(sala.estado);
+      }
+      // Inicializar cofre al entrar en Fase 3 manualmente (si no viene de votarMotin)
+      if (nuevaFase === FASES.FASE_3) {
+        sala.estado = inicializarCofre(sala.estado);
+      }
     }
   }
   return sala;
@@ -223,6 +260,21 @@ const vistaSalaParaCliente = (sala) => ({
 const vistaEstadoParaJugador = (sala, socketId) => {
   if (!sala.estado) return null;
   const jugadorActual = sala.estado.jugadores.find(j => j.id === socketId);
+  const cofre = sala.estado.cofre;
+
+  // Solo enviar las cartas al jugador que debe elegir en este turno
+  let cartasCofreParaJugador = null;
+  if (jugadorActual && cofre.etapa) {
+    const { etapa, cartasDisponibles } = cofre;
+    if (etapa === 'capitan' && jugadorActual.esCapitan) {
+      cartasCofreParaJugador = cartasDisponibles;
+    } else if (etapa === 'teniente' && jugadorActual.esTeniente) {
+      cartasCofreParaJugador = cartasDisponibles;
+    } else if (etapa === 'navegante' && jugadorActual.esNavegante) {
+      cartasCofreParaJugador = cartasDisponibles;
+    }
+  }
+
   return {
     fase: sala.estado.fase,
     turno: sala.estado.turno,
@@ -232,13 +284,15 @@ const vistaEstadoParaJugador = (sala, socketId) => {
     naveganteIdx: sala.estado.naveganteIdx,
     motin: sala.estado.motin,
     cofre: {
-      etapa: sala.estado.cofre.etapa,
-      // Solo mostrar las cartas al jugador correspondiente
+      etapa: cofre.etapa,
+      cartasDisponibles: cartasCofreParaJugador,
+      // Carta final visible para todos cuando está lista para revelar
+      cartaNavegante: cofre.etapa === 'revelar' ? cofre.cartaNavegante : null,
     },
     jugadores: sala.estado.jugadores.map(j => ({
       id: j.id,
       nombre: j.nombre,
-      pistolas: j.id === socketId ? j.pistolas : undefined, // Solo el propio
+      pistolas: j.id === socketId ? j.pistolas : undefined,
       curriculos: j.curriculos,
       fueraDeServicio: j.fueraDeServicio,
       esCapitan: j.esCapitan,
@@ -247,7 +301,6 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       rolConfirmado: j.rolConfirmado,
       conectado: j.conectado,
     })),
-    // Info privada solo para este jugador
     miJugador: jugadorActual ? {
       rol: jugadorActual.rol,
       personaje: jugadorActual.personaje,
@@ -267,7 +320,6 @@ const vistaEstadoParaJugador = (sala, socketId) => {
 const reintegrarJugador = (codigo, socketId) => {
   const sala = salas.get(codigo);
   if (!sala) return null;
-  // Actualizar el socketId del jugador si ya existía con ese nombre
   const jugador = sala.jugadores.find(j => j.id === socketId);
   if (jugador) {
     jugador.conectado = true;
@@ -280,9 +332,39 @@ const reintegrarJugador = (codigo, socketId) => {
   return sala;
 };
 
+// Reconectar un jugador que vuelve con nuevo socket.id pero mismo jugadorId
+const reconectarPorJugadorId = (codigo, jugadorId, nuevoSocketId) => {
+  const sala = salas.get(codigo);
+  if (!sala) return null;
+
+  const jugador = sala.jugadores.find(j => j.jugadorId === jugadorId);
+  if (!jugador) return null; // jugador no encontrado en esta sala
+
+  const oldSocketId = jugador.id;
+  if (oldSocketId === nuevoSocketId) {
+    // Misma conexión, solo marcar como conectado
+    jugador.conectado = true;
+    if (sala.estado) {
+      sala.estado.jugadores = sala.estado.jugadores.map(j =>
+        j.id === oldSocketId ? { ...j, conectado: true } : j
+      );
+    }
+    return sala;
+  }
+
+  // Actualizar socketId en sala y en el estado de juego
+  jugador.id = nuevoSocketId;
+  jugador.conectado = true;
+  if (sala.estado) actualizarSocketIdEnEstado(sala.estado, oldSocketId, nuevoSocketId);
+  if (sala.hostId === oldSocketId) sala.hostId = nuevoSocketId;
+
+  return sala;
+};
+
 module.exports = {
   crearSala, unirseASala, seleccionarHost, iniciarPartida,
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
   vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
+  reconectarPorJugadorId,
 };

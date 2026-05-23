@@ -83,17 +83,23 @@ const votarMotin = (estado, jugadorId, pistolas) => {
       motin: { ...estado.motin, votos: nuevosVotos, confirmados, exitoso: true, totalPistolas },
     };
   } else {
-    // Sin motín, avanzar al cofre
+    // Sin motín, avanzar al cofre — pre-dibujar 2 cartas para el capitán
     const jugadoresActualizados = estado.jugadores.map(j => ({
       ...j,
       pistolas: nuevosVotos[j.id] !== undefined ? j.pistolas - nuevosVotos[j.id] : j.pistolas,
     }));
+    const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(estado.mazoDisponible, 2);
     return {
       ...estado,
       jugadores: jugadoresActualizados,
+      mazoDisponible: nuevoMazo,
       fase: FASES.FASE_3,
       motin: { ...estado.motin, votos: nuevosVotos, confirmados, exitoso: false, totalPistolas },
-      cofre: { cartaCapitan: null, cartaTeniente: null, cartaNavegante: null, etapa: 'capitan' },
+      cofre: {
+        cartaCapitan: null, cartaTeniente: null, cartaNavegante: null,
+        etapa: 'capitan',
+        cartasDisponibles: cartasCapitan,
+      },
     };
   }
 };
@@ -116,42 +122,47 @@ const robarCartasMazo = (mazo, cantidad) => {
 
 const elegirCartaCofre = (estado, jugadorId, cartaElegidaId) => {
   const { cofre, mazoDisponible, mazoDescarte } = estado;
+  const cartas = cofre.cartasDisponibles || [];
 
   if (cofre.etapa === 'capitan') {
-    const { cartas, nuevoMazo } = robarCartasMazo(mazoDisponible, 2);
     const cartaElegida = cartas.find(c => c.id === cartaElegidaId);
-    const cartaDescartada = cartas.find(c => c.id !== cartaElegidaId);
     if (!cartaElegida) throw new Error('Carta no válida');
+    const cartaDescartada = cartas.find(c => c.id !== cartaElegidaId);
+    // Pre-dibujar 2 cartas para el teniente
+    const { cartas: cartasTeniente, nuevoMazo } = robarCartasMazo(mazoDisponible, 2);
     return {
       ...estado,
       mazoDisponible: nuevoMazo,
       mazoDescarte: cartaDescartada ? [...mazoDescarte, cartaDescartada] : mazoDescarte,
-      cofre: { ...cofre, cartaCapitan: cartaElegida, etapa: 'teniente', cartasParaCapitan: cartas },
+      cofre: { ...cofre, cartaCapitan: cartaElegida, etapa: 'teniente', cartasDisponibles: cartasTeniente },
     };
   }
 
   if (cofre.etapa === 'teniente') {
-    const { cartas, nuevoMazo } = robarCartasMazo(mazoDisponible, 2);
     const cartaElegida = cartas.find(c => c.id === cartaElegidaId);
-    const cartaDescartada = cartas.find(c => c.id !== cartaElegidaId);
     if (!cartaElegida) throw new Error('Carta no válida');
+    const cartaDescartada = cartas.find(c => c.id !== cartaElegidaId);
+    // El navegante elige entre la carta del capitán y la del teniente
     return {
       ...estado,
-      mazoDisponible: nuevoMazo,
       mazoDescarte: cartaDescartada ? [...mazoDescarte, cartaDescartada] : mazoDescarte,
-      cofre: { ...cofre, cartaTeniente: cartaElegida, etapa: 'navegante', cartasParaTeniente: cartas },
+      cofre: {
+        ...cofre,
+        cartaTeniente: cartaElegida,
+        etapa: 'navegante',
+        cartasDisponibles: [cofre.cartaCapitan, cartaElegida],
+      },
     };
   }
 
   if (cofre.etapa === 'navegante') {
-    const opcionesNavegante = [cofre.cartaCapitan, cofre.cartaTeniente];
-    const cartaElegida = opcionesNavegante.find(c => c?.id === cartaElegidaId);
-    const cartaDescartada = opcionesNavegante.find(c => c?.id !== cartaElegidaId);
+    const cartaElegida = cartas.find(c => c?.id === cartaElegidaId);
     if (!cartaElegida) throw new Error('Carta no válida');
+    const cartaDescartada = cartas.find(c => c?.id !== cartaElegidaId);
     return {
       ...estado,
       mazoDescarte: cartaDescartada ? [...mazoDescarte, cartaDescartada] : mazoDescarte,
-      cofre: { ...cofre, cartaNavegante: cartaElegida, etapa: 'revelar' },
+      cofre: { ...cofre, cartaNavegante: cartaElegida, etapa: 'revelar', cartasDisponibles: null },
     };
   }
 
@@ -260,6 +271,21 @@ const ejecutarFase5 = (estado) => {
   };
 };
 
+// Inicializa el cofre cuando se entra a fase_3 manualmente (sin pasar por votarMotin)
+const inicializarCofre = (estado) => {
+  if (estado.cofre?.etapa) return estado; // ya inicializado
+  const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(estado.mazoDisponible, 2);
+  return {
+    ...estado,
+    mazoDisponible: nuevoMazo,
+    cofre: {
+      cartaCapitan: null, cartaTeniente: null, cartaNavegante: null,
+      etapa: 'capitan',
+      cartasDisponibles: cartasCapitan,
+    },
+  };
+};
+
 module.exports = {
   elegirCapitanAleatorio,
   elegirEquipo,
@@ -268,4 +294,5 @@ module.exports = {
   aplicarCartaNavegacion,
   ejecutarFase5,
   robarCartasMazo,
+  inicializarCofre,
 };

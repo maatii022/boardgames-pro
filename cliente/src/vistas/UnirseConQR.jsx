@@ -4,13 +4,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useSocket } from '../SocketContext';
+import { useSocket, guardarSesion } from '../SocketContext';
 import { EVENTOS } from '../../../compartido/constantes';
 
 export default function UnirseConQR() {
   const { codigo } = useParams();
   const navigate = useNavigate();
-  const { socket } = useSocket();
+  const { socket, jugadorId } = useSocket();
 
   const [nombre, setNombre] = useState('');
   const [error, setError] = useState('');
@@ -33,23 +33,25 @@ export default function UnirseConQR() {
   useEffect(() => {
     if (!socket) return;
 
-    const onSalaActualizada = (data) => {
-      navigate(`/lobby/feed-the-kraken`, { state: { sala: data, unido: true } });
+    const onUnidoASala = ({ sala: salaData }) => {
+      navigate(`/lobby/feed-the-kraken`, { state: { sala: salaData, unido: true } });
     };
 
-    const onEstadoJuego = (estado) => {
-      navigate(`/juego/${codigo}`, { state: { estado } });
+    const onFaseCambiada = ({ fase }) => {
+      if (fase && fase !== 'lobby') {
+        navigate(`/juego/${codigo}`);
+      }
     };
 
     const onError = ({ mensaje }) => { setError(mensaje); };
 
-    socket.on(EVENTOS.SALA_ACTUALIZADA, onSalaActualizada);
-    socket.on(EVENTOS.ESTADO_JUEGO, onEstadoJuego);
+    socket.on('unido-a-sala', onUnidoASala);
+    socket.on(EVENTOS.FASE_CAMBIADA, onFaseCambiada);
     socket.on(EVENTOS.ERROR, onError);
 
     return () => {
-      socket.off(EVENTOS.SALA_ACTUALIZADA, onSalaActualizada);
-      socket.off(EVENTOS.ESTADO_JUEGO, onEstadoJuego);
+      socket.off('unido-a-sala', onUnidoASala);
+      socket.off(EVENTOS.FASE_CAMBIADA, onFaseCambiada);
       socket.off(EVENTOS.ERROR, onError);
     };
   }, [socket, codigo, navigate]);
@@ -57,9 +59,11 @@ export default function UnirseConQR() {
   const unirse = () => {
     if (!nombre.trim()) return setError('Introduce tu nombre');
     setError('');
+    guardarSesion(codigo, nombre.trim());
     socket.emit(EVENTOS.UNIRSE_SALA, {
       codigo,
       nombre: nombre.trim(),
+      jugadorId,
     });
   };
 
