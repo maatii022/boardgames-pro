@@ -47,7 +47,7 @@ const crearEstadoInicial = (jugadores, tablero = 'principal') => {
     capitanIdx: idxCapitan >= 0 ? idxCapitan : null, // null = aún no elegido
     tenienteIdx: null,
     naveganteIdx: null,
-    mazoDisponible: crearMazoNavegacion(),
+    mazoDisponible: crearMazoNavegacion(tablero),
     mazoDescarte: [],
     mazoRitual: crearMazoRitual(),
     cartasRitualesReveladas: [],

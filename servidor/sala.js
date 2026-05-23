@@ -9,6 +9,9 @@ const {
   ejecutarFase5,
   votarKraken,
   inicializarCofre,
+  iniciarAccionEspecialPendiente,
+  elegirJugadorAccionEspecial,
+  confirmarAccionEspecial,
 } = require('./juego/fases');
 
 // ============================================================
@@ -222,11 +225,27 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
       break;
     }
     case 'abrir-cofre': {
-      sala.estado = aplicarCartaNavegacion(sala.estado);
+      const tipoCarta = sala.estado.cofre?.cartaNavegante?.tipo;
+      if (tipoCarta === 'sirena' || tipoCarta === 'telescopio') {
+        // No mover barco aún: esperar que el capitán elija un jugador
+        sala.estado = iniciarAccionEspecialPendiente(sala.estado);
+      } else {
+        sala.estado = aplicarCartaNavegacion(sala.estado);
+        if (sala.estado.fase === FASES.FASE_5) {
+          sala.estado = ejecutarFase5(sala.estado);
+        }
+      }
+      break;
+    }
+    case 'accion-especial-elegir-jugador': {
+      sala.estado = elegirJugadorAccionEspecial(sala.estado, datos.jugadorId);
+      break;
+    }
+    case 'accion-especial-confirmar': {
+      sala.estado = confirmarAccionEspecial(sala.estado, datos.decision);
       if (sala.estado.fase === FASES.FASE_5) {
         sala.estado = ejecutarFase5(sala.estado);
       }
-      // FASE_4 (casilla especial) queda activa para que el navegante investigue
       break;
     }
     case 'fase-5': {
@@ -330,6 +349,7 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       esCapitan: jugadorActual.esCapitan,
       esTeniente: jugadorActual.esTeniente,
       esNavegante: jugadorActual.esNavegante,
+      sacrificado: jugadorActual.sacrificado || false,
       // Durante DURMIENDO, los piratas ven a sus compañeros piratas
       aliados: (sala.estado.fase === 'durmiendo' && jugadorActual.rol === 'pirata')
         ? sala.estado.jugadores
@@ -338,7 +358,19 @@ const vistaEstadoParaJugador = (sala, socketId) => {
         : null,
     } : null,
     victoria: sala.estado.victoria,
-    accionEspecial: sala.estado.accionEspecial,
+    accionEspecial: (() => {
+      const ae = sala.estado.accionEspecial;
+      if (!ae) return null;
+      const soyElegido = ae.jugadorElegido === socketId;
+      return {
+        tipo: ae.tipo,
+        etapa: ae.etapa,
+        jugadorElegido: ae.jugadorElegido,
+        // Solo el jugador elegido recibe las cartas específicas
+        cartasSirena: (ae.tipo === 'sirena' && soyElegido) ? ae.cartasSirena : null,
+        cartaTelescopio: (ae.tipo === 'telescopio' && soyElegido) ? ae.cartaTelescopio : null,
+      };
+    })(),
     accionFase4: sala.estado.accionFase4 ? {
       tipo: sala.estado.accionFase4.tipo,
       kraken: sala.estado.accionFase4.kraken ? {

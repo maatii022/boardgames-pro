@@ -326,9 +326,10 @@ const votarKraken = (estado, socketId, objetivoId) => {
 // Inicializa el cofre cuando se entra a fase_3 manualmente (sin pasar por votarMotin)
 const inicializarCofre = (estado) => {
   if (estado.cofre?.etapa) return estado; // ya inicializado
-  const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(estado.mazoDisponible, 2);
+  let nuevoEstado = refrescarMazoSiNecesario(estado);
+  const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(nuevoEstado.mazoDisponible, 2);
   return {
-    ...estado,
+    ...nuevoEstado,
     mazoDisponible: nuevoMazo,
     cofre: {
       cartaCapitan: null, cartaTeniente: null, cartaNavegante: null,
@@ -336,6 +337,75 @@ const inicializarCofre = (estado) => {
       cartasDisponibles: cartasCapitan,
     },
   };
+};
+
+// Rebaraja el mazo cuando quedan ≤ 3 cartas disponibles
+const refrescarMazoSiNecesario = (estado) => {
+  if (estado.mazoDisponible.length <= 3 && estado.mazoDescarte.length > 0) {
+    const todas = barajar([...estado.mazoDisponible, ...estado.mazoDescarte]);
+    return { ...estado, mazoDisponible: todas, mazoDescarte: [] };
+  }
+  return estado;
+};
+
+// ── Acciones especiales (SIRENA / TELESCOPIO) ─────────────────
+
+// Inicia la acción especial pendiente antes de mover el barco
+const iniciarAccionEspecialPendiente = (estado) => {
+  const carta = estado.cofre?.cartaNavegante;
+  if (!carta) throw new Error('No hay carta de navegación');
+  return {
+    ...estado,
+    accionEspecial: { tipo: carta.tipo, etapa: 'capitan-elige', jugadorElegido: null },
+  };
+};
+
+// El capitán elige qué jugador realiza la acción especial
+const elegirJugadorAccionEspecial = (estado, jugadorId) => {
+  const { accionEspecial, mazoDescarte, mazoDisponible } = estado;
+  if (!accionEspecial || accionEspecial.etapa !== 'capitan-elige') throw new Error('No hay acción especial en curso');
+
+  let nuevoAccion = { ...accionEspecial, jugadorElegido: jugadorId, etapa: 'jugador-actua' };
+  let nuevoEstado = estado;
+
+  if (accionEspecial.tipo === 'sirena') {
+    // Últimas 3 cartas del descarte, barajadas para que no se sepa quién descartó cuál
+    nuevoAccion.cartasSirena = barajar(mazoDescarte.slice(-3));
+  } else if (accionEspecial.tipo === 'telescopio') {
+    if (mazoDisponible.length === 0) throw new Error('No quedan cartas disponibles');
+    const [cartaTelescopio, ...restoMazo] = mazoDisponible;
+    nuevoAccion.cartaTelescopio = cartaTelescopio;
+    nuevoEstado = { ...nuevoEstado, mazoDisponible: restoMazo };
+  }
+
+  return { ...nuevoEstado, accionEspecial: nuevoAccion };
+};
+
+// El jugador elegido confirma (SIRENA) o decide qué hacer con la carta (TELESCOPIO)
+const confirmarAccionEspecial = (estado, decision) => {
+  const { accionEspecial } = estado;
+  if (!accionEspecial || accionEspecial.etapa !== 'jugador-actua') throw new Error('No hay acción especial en curso');
+
+  let nuevoEstado = estado;
+
+  if (accionEspecial.tipo === 'telescopio') {
+    if (decision === 'descartar') {
+      nuevoEstado = {
+        ...nuevoEstado,
+        mazoDescarte: [...nuevoEstado.mazoDescarte, accionEspecial.cartaTelescopio],
+      };
+    } else { // 'devolver' — vuelve arriba del mazo disponible
+      nuevoEstado = {
+        ...nuevoEstado,
+        mazoDisponible: [accionEspecial.cartaTelescopio, ...nuevoEstado.mazoDisponible],
+      };
+    }
+    nuevoEstado = refrescarMazoSiNecesario(nuevoEstado);
+  }
+
+  // Limpiar accionEspecial y aplicar la carta de navegación (mover el barco)
+  nuevoEstado = { ...nuevoEstado, accionEspecial: null };
+  return aplicarCartaNavegacion(nuevoEstado);
 };
 
 module.exports = {
@@ -348,4 +418,8 @@ module.exports = {
   votarKraken,
   robarCartasMazo,
   inicializarCofre,
+  refrescarMazoSiNecesario,
+  iniciarAccionEspecialPendiente,
+  elegirJugadorAccionEspecial,
+  confirmarAccionEspecial,
 };

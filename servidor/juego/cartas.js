@@ -125,7 +125,12 @@ const barajar = (arr) => {
   return copia;
 };
 
-const crearMazoNavegacion = () => barajar([...CARTAS_NAVEGACION]);
+const crearMazoNavegacion = (tablero = 'principal') => {
+  const cartas = tablero === 'long_journey'
+    ? [...CARTAS_NAVEGACION]
+    : CARTAS_NAVEGACION.filter(c => c.tipo !== 'armado');
+  return barajar(cartas);
+};
 const crearMazoRitual = () => barajar([...CARTAS_RITUAL]);
 
 module.exports = { CARTAS_NAVEGACION, CARTAS_RITUAL, crearMazoNavegacion, crearMazoRitual, barajar };

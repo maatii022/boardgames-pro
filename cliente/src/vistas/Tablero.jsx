@@ -304,12 +304,16 @@ export default function Tablero() {
                 <div style={{ fontSize:'clamp(60px,10vw,100px)', marginBottom:'16px', animation:'flotar 2.5s ease-in-out infinite' }}>🌊</div>
                 <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'clamp(11px,1.5vw,16px)', letterSpacing:'4px', textTransform:'uppercase', marginBottom:'16px' }}>Sacrificio al Kraken</p>
                 <h2 style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(24px,4vw,52px)', color:'var(--crema-pergamino)', letterSpacing:'3px', marginBottom:'10px' }}>{kraken.nombre}</h2>
-                <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(18px,3vw,36px)', color: kraken.rol === 'cultista' ? '#4caf50' : '#ff8a8a', letterSpacing:'2px', marginBottom:'16px' }}>
-                  {kraken.rol === 'marinero' ? '⚓ MARINERO' : kraken.rol === 'pirata' ? '💀 PIRATA' : kraken.rol === 'cultista' ? '🐙 ¡CULTISTA!' : '👁️ ADEPTO'}
-                </p>
-                {kraken.victoriaCultistas && (
+                {kraken.victoriaCultistas ? (<>
+                  <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(18px,3vw,36px)', color:'#4caf50', letterSpacing:'2px', marginBottom:'16px' }}>
+                    🐙 ¡ERA EL CULTISTA!
+                  </p>
                   <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'clamp(14px,2vw,22px)', letterSpacing:'3px', textShadow:'0 0 30px rgba(76,175,80,0.7)' }}>
                     ¡EL KRAKEN HA ENCONTRADO A SU ELEGIDO!
+                  </p>
+                </>) : (
+                  <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(16px,2.5vw,30px)', color:'rgba(245,230,200,0.6)', letterSpacing:'2px', marginBottom:'8px' }}>
+                    No era el Cultista — el juego continúa
                   </p>
                 )}
               </div>

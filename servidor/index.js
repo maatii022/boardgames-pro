@@ -288,6 +288,8 @@ io.on('connection', (socket) => {
     EVENTOS.ABRIR_COFRE,
     EVENTOS.ACCION_RITUAL,
     'votar-kraken',
+    'accion-especial-elegir-jugador',
+    'accion-especial-confirmar',
   ];
 
   accionesJuego.forEach(accion => {
@@ -307,11 +309,25 @@ io.on('connection', (socket) => {
           if (objetivo) {
             const sacrificado = sala.estado.jugadores.find(j => j.id === objetivo);
             if (sacrificado) {
-              io.to(sala.codigo).emit('kraken-sacrificio', {
-                nombre: sacrificado.nombre,
-                rol: sacrificado.rol,
-                victoriaCultistas: sala.estado.victoria === 'cultistas',
-              });
+              if (sala.estado.victoria === 'cultistas') {
+                // Victoria cultista: sí se revela que era el Cultista
+                io.to(sala.codigo).emit('kraken-sacrificio', {
+                  nombre: sacrificado.nombre,
+                  rol: sacrificado.rol,
+                  victoriaCultistas: true,
+                });
+              } else {
+                // El sacrificado NO era el Cultista — no se revela su rol
+                io.to(sala.codigo).emit('kraken-sacrificio', {
+                  nombre: sacrificado.nombre,
+                  victoriaCultistas: false,
+                });
+                // Solo el jugador sacrificado recibe el mensaje personal
+                const socketSacrificado = sala.jugadores.find(sj => sj.id === objetivo);
+                if (socketSacrificado) {
+                  io.to(socketSacrificado.id).emit('kraken-eliminado');
+                }
+              }
             }
           }
         }

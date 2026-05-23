@@ -18,6 +18,7 @@ export default function SalaJugador() {
   const [motin, setMotin]                 = useState(null);
   const [investigacion, setInvestigacion] = useState(null);
   const [kraken, setKraken]               = useState(null);
+  const [eliminado, setEliminado]         = useState(false);
 
   // Si no hay sala (recarga sin reconexión aún), redirigir
   useEffect(() => {
@@ -45,7 +46,8 @@ export default function SalaJugador() {
       setKraken(data);
       if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 6000);
     });
-    return () => { c1(); c2(); c3(); c4(); c5(); };
+    const c6 = escuchar('kraken-eliminado', () => setEliminado(true));
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); };
   }, [escuchar, navigate, salirDeSala]);
 
   const miJugador   = estado?.miJugador;
@@ -88,13 +90,14 @@ export default function SalaJugador() {
         <div style={{ fontSize:'60px', marginBottom:'12px', animation:'flotar 2s ease-in-out infinite' }}>🌊</div>
         <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'12px' }}>Sacrificio al Kraken</p>
         <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'18px', marginBottom:'8px' }}>{kraken.nombre}</p>
-        <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'20px', color: kraken.rol === 'cultista' ? '#4caf50' : '#ff8a8a', letterSpacing:'2px', marginBottom:'16px' }}>
-          {kraken.rol === 'marinero' ? '⚓ Marinero' : kraken.rol === 'pirata' ? '💀 Pirata' : kraken.rol === 'cultista' ? '🐙 ¡Cultista!' : '👁️ Adepto'}
-        </p>
-        {kraken.victoriaCultistas
-          ? <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'13px', letterSpacing:'2px' }}>¡El Kraken ha encontrado a su elegido!</p>
-          : <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'13px' }}>El juego continúa...</p>
-        }
+        {kraken.victoriaCultistas ? (<>
+          <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'20px', color:'#4caf50', letterSpacing:'2px', marginBottom:'16px' }}>🐙 ¡Era el Cultista!</p>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'13px', letterSpacing:'2px' }}>¡El Kraken ha encontrado a su elegido!</p>
+        </>) : (
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'14px', marginTop:'4px' }}>
+            No era el Cultista — el juego continúa...
+          </p>
+        )}
       </div>
     </div>
   );
@@ -114,6 +117,27 @@ export default function SalaJugador() {
       </div>
     </div>
   );
+
+  // ── Pantalla de jugador sacrificado (permanente) ──────────
+  const soyEliminado = eliminado || miJugador?.sacrificado;
+  if (soyEliminado && fase !== 'lobby' && fase !== 'fase_0' && fase !== 'victoria') {
+    return (
+      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
+        <div style={{ textAlign:'center', animation:'aparecer 0.8s ease', maxWidth:'360px' }}>
+          <div style={{ fontSize:'80px', marginBottom:'20px' }}>🌊</div>
+          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4a9bc7', fontSize:'22px', letterSpacing:'3px', marginBottom:'12px' }}>
+            Has servido de alimento para el Kraken
+          </h2>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px', lineHeight:'1.6' }}>
+            Las profundidades te han reclamado. Solo puedes observar cómo los demás deciden el destino del barco.
+          </p>
+          <div style={{ marginTop:'32px', display:'flex', gap:'8px', justifyContent:'center' }}>
+            {[0,1,2].map(i => <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:'#4a9bc7', animation:`pulsar-kraken 1.4s ease-in-out ${i*0.25}s infinite` }} />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Pantalla de carga mientras reconecta
   if (!sala) {
@@ -350,12 +374,13 @@ export default function SalaJugador() {
 
   // ── FASE 3 ───────────────────────────────────────────────
   if (fase === 'fase_3') {
-    const cofre       = estado?.cofre || {};
-    const etapa       = cofre.etapa;
-    const cartas      = cofre.cartasDisponibles || [];
-    const esTurnoMio  = (etapa === 'capitan'   && soyCapitan)  ||
-                        (etapa === 'teniente'  && soyTeniente) ||
-                        (etapa === 'navegante' && soyNavegante);
+    const cofre          = estado?.cofre || {};
+    const etapa          = cofre.etapa;
+    const cartas         = cofre.cartasDisponibles || [];
+    const accionEspecial = estado?.accionEspecial;
+    const esTurnoMio     = (etapa === 'capitan'   && soyCapitan)  ||
+                           (etapa === 'teniente'  && soyTeniente) ||
+                           (etapa === 'navegante' && soyNavegante);
 
     return (
       <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
@@ -365,54 +390,72 @@ export default function SalaJugador() {
             <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'20px', letterSpacing:'2px' }}>📦 El Cofre</h2>
           </div>
 
-          {/* Turno activo: elegir carta */}
-          {esTurnoMio && cartas.length > 0 && (
-            <SeleccionCarta cartas={cartas} etapa={etapa} emitir={emitir} />
+          {/* ── ACCIÓN ESPECIAL PENDIENTE (SIRENA / TELESCOPIO) ── */}
+          {accionEspecial && accionEspecial.etapa === 'capitan-elige' && (
+            soyCapitan
+              ? <SeleccionJugadorAccionEspecial tipo={accionEspecial.tipo} jugadores={jugadores} socketId={socketId} emitir={emitir} />
+              : <EsperandoAccionEspecial tipo={accionEspecial.tipo} etapa="capitan-elige" nombre={null} />
+          )}
+          {accionEspecial && accionEspecial.etapa === 'jugador-actua' && (
+            accionEspecial.jugadorElegido === socketId
+              ? <RealizarAccionEspecial accionEspecial={accionEspecial} emitir={emitir} />
+              : <EsperandoAccionEspecial
+                  tipo={accionEspecial.tipo} etapa="jugador-actua"
+                  nombre={(jugadores.find(j => j.id === accionEspecial.jugadorElegido) || {}).nombre}
+                />
           )}
 
-          {/* Turno activo pero aún sin cartas (esperando servidor) */}
-          {esTurnoMio && cartas.length === 0 && (
-            <div style={{ textAlign:'center', padding:'32px 20px' }}>
-              <div style={{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'12px' }}>
-                {[0,1,2].map(i => <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
-              </div>
-              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'14px' }}>Recibiendo cartas...</p>
-            </div>
-          )}
+          {/* ── FLUJO NORMAL DEL COFRE ── */}
+          {!accionEspecial && (<>
+            {/* Turno activo: elegir carta */}
+            {esTurnoMio && cartas.length > 0 && (
+              <SeleccionCarta cartas={cartas} etapa={etapa} emitir={emitir} />
+            )}
 
-          {/* Etapa revelar: solo el capitán ve la carta y puede abrirla */}
-          {etapa === 'revelar' && (
-            <div>
-              {soyCapitan ? (
-                <>
-                  <CartaNavegacion carta={cofre.cartaNavegante} />
-                  <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
-                    🃏 Enseñar carta y mover el barco
-                  </button>
-                </>
-              ) : (
-                <div style={{ textAlign:'center', padding:'40px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
-                  <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>🔒</div>
-                  <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
-                    El Capitán va a abrir el cofre...
-                  </p>
+            {/* Turno activo pero aún sin cartas (esperando servidor) */}
+            {esTurnoMio && cartas.length === 0 && (
+              <div style={{ textAlign:'center', padding:'32px 20px' }}>
+                <div style={{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'12px' }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
                 </div>
-              )}
-            </div>
-          )}
+                <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'14px' }}>Recibiendo cartas...</p>
+              </div>
+            )}
 
-          {/* Espera: no es tu turno */}
-          {!esTurnoMio && etapa !== 'revelar' && (
-            <div style={{ textAlign:'center', padding:'32px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
-              <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>📦</div>
-              <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
-                {etapa === 'capitan'  ? 'El Capitán está eligiendo una carta...'   :
-                 etapa === 'teniente' ? 'El Teniente está eligiendo una carta...'  :
-                 etapa === 'navegante'? 'El Navegante está eligiendo la carta final...' :
-                 'El cofre está preparándose...'}
-              </p>
-            </div>
-          )}
+            {/* Etapa revelar: solo el capitán ve la carta y puede abrirla */}
+            {etapa === 'revelar' && (
+              <div>
+                {soyCapitan ? (
+                  <>
+                    <CartaNavegacion carta={cofre.cartaNavegante} />
+                    <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
+                      🃏 Enseñar carta y mover el barco
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ textAlign:'center', padding:'40px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
+                    <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>🔒</div>
+                    <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
+                      El Capitán va a abrir el cofre...
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Espera: no es tu turno */}
+            {!esTurnoMio && etapa !== 'revelar' && (
+              <div style={{ textAlign:'center', padding:'32px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(201,168,76,0.1)', borderRadius:'12px' }}>
+                <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>📦</div>
+                <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>
+                  {etapa === 'capitan'  ? 'El Capitán está eligiendo una carta...'   :
+                   etapa === 'teniente' ? 'El Teniente está eligiendo una carta...'  :
+                   etapa === 'navegante'? 'El Navegante está eligiendo la carta final...' :
+                   'El cofre está preparándose...'}
+                </p>
+              </div>
+            )}
+          </>)}
         </div>
         <BotonRol miJugador={miJugador} />
         {soyHost && <PanelHost fase={fase} emitir={emitir} />}
@@ -775,6 +818,164 @@ function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
   );
 }
 
+// ── Capitán elige jugador para SIRENA o TELESCOPIO ──────────
+function SeleccionJugadorAccionEspecial({ tipo, jugadores, socketId, emitir }) {
+  const [sel, setSel] = useState(null);
+  const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado);
+  const esSirena = tipo === 'sirena';
+
+  return (
+    <div>
+      <div style={{ textAlign:'center', marginBottom:'20px' }}>
+        <div style={{ fontSize:'36px', marginBottom:'10px' }}>{esSirena ? '🧜' : '🔭'}</div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--turquesa-kraken)', fontSize:'13px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'8px' }}>
+          {esSirena ? 'Carta Sirena' : 'Carta Telescopio'}
+        </p>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.55)', fontSize:'13px', lineHeight:'1.5' }}>
+          {esSirena
+            ? 'Elige quién verá las últimas 3 cartas descartadas'
+            : 'Elige quién mirará la siguiente carta del mazo'}
+        </p>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
+        {elegibles.map(j => {
+          const activo = sel === j.id;
+          return (
+            <button key={j.id} onClick={() => setSel(activo ? null : j.id)} style={{
+              padding:'13px 16px', borderRadius:'8px', cursor:'pointer', textAlign:'left',
+              background: activo ? 'rgba(10,147,150,0.18)' : 'rgba(13,27,46,0.7)',
+              border:`1px solid ${activo ? 'var(--turquesa-kraken)' : 'rgba(255,255,255,0.07)'}`,
+              color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+              transition:'all 0.2s', display:'flex', alignItems:'center', gap:'10px',
+            }}>
+              <span style={{ color:'var(--turquesa-kraken)' }}>{activo ? '✓' : '○'}</span>
+              {j.nombre}
+            </button>
+          );
+        })}
+      </div>
+      <button className="btn-primario" onClick={() => sel && emitir('accion-especial-elegir-jugador', { jugadorId: sel })}
+        disabled={!sel} style={{ width:'100%', padding:'16px' }}>
+        {esSirena ? '🧜 Asignar visión' : '🔭 Asignar inspección'}
+      </button>
+    </div>
+  );
+}
+
+// ── Jugador elegido realiza su acción especial ───────────────
+function RealizarAccionEspecial({ accionEspecial, emitir }) {
+  const [confirmado, setConfirmado] = useState(false);
+  const { tipo, cartasSirena, cartaTelescopio } = accionEspecial;
+
+  const colorStyle = (carta) => {
+    const mapa = { azul: ['74,155,199', '#4a9bc7'], rojo: ['192,57,43', '#c0392b'], amarillo: ['201,168,76', '#c9a84c'] };
+    return mapa[carta?.color] || mapa.azul;
+  };
+
+  if (tipo === 'sirena') {
+    const cartas = cartasSirena || [];
+    return (
+      <div>
+        <div style={{ textAlign:'center', marginBottom:'20px' }}>
+          <div style={{ fontSize:'36px', marginBottom:'8px' }}>🧜</div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--turquesa-kraken)', fontSize:'12px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'6px' }}>Últimas 3 cartas descartadas</p>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'12px' }}>Solo tú puedes ver estas cartas</p>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'20px' }}>
+          {cartas.map((carta, i) => {
+            const [rgb, hex] = colorStyle(carta);
+            return (
+              <div key={carta?.id || i} style={{ padding:'14px 16px', borderRadius:'10px', background:`rgba(${rgb},0.1)`, border:`1px solid ${hex}`, display:'flex', alignItems:'center', gap:'12px' }}>
+                <div style={{ width:'34px', height:'34px', borderRadius:'8px', background:`rgba(${rgb},0.25)`, border:`1px solid ${hex}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', flexShrink:0 }}>
+                  {carta?.color === 'azul' ? '🔵' : carta?.color === 'rojo' ? '🔴' : '🟡'}
+                </div>
+                <div>
+                  <p style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'13px', color:hex }}>{carta?.nombre}</p>
+                  <p style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'11px', color:'rgba(245,230,200,0.4)' }}>{carta?.descripcion}</p>
+                </div>
+              </div>
+            );
+          })}
+          {cartas.length === 0 && (
+            <p style={{ textAlign:'center', fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.3)', fontSize:'13px', padding:'20px' }}>No hay cartas descartadas aún</p>
+          )}
+        </div>
+        {!confirmado ? (
+          <button className="btn-primario" onClick={() => { setConfirmado(true); emitir('accion-especial-confirmar', {}); }} style={{ width:'100%', padding:'16px' }}>
+            ✓ Visto, continuar
+          </button>
+        ) : (
+          <div style={{ textAlign:'center', padding:'14px', background:'rgba(98,228,165,0.07)', border:'1px solid rgba(98,228,165,0.2)', borderRadius:'8px' }}>
+            <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px' }}>✓ Confirmado</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (tipo === 'telescopio') {
+    const carta = cartaTelescopio;
+    const [rgb, hex] = colorStyle(carta);
+    return (
+      <div>
+        <div style={{ textAlign:'center', marginBottom:'20px' }}>
+          <div style={{ fontSize:'36px', marginBottom:'8px' }}>🔭</div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--turquesa-kraken)', fontSize:'12px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'6px' }}>Siguiente carta del mazo</p>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'12px' }}>Solo tú puedes ver esta carta</p>
+        </div>
+        {carta ? (
+          <div style={{ padding:'16px', borderRadius:'12px', background:`rgba(${rgb},0.1)`, border:`1px solid ${hex}`, marginBottom:'20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'10px' }}>
+              <div style={{ width:'40px', height:'40px', borderRadius:'8px', background:`rgba(${rgb},0.25)`, border:`1px solid ${hex}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', flexShrink:0 }}>
+                {carta.color === 'azul' ? '🔵' : carta.color === 'rojo' ? '🔴' : '🟡'}
+              </div>
+              <p style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'15px', color:hex }}>{carta.nombre}</p>
+            </div>
+            <p style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'12px', color:'rgba(245,230,200,0.55)', lineHeight:'1.5' }}>{carta.descripcion}</p>
+          </div>
+        ) : (
+          <p style={{ textAlign:'center', fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.3)', fontSize:'13px', padding:'20px' }}>No quedan cartas</p>
+        )}
+        {!confirmado && carta && (
+          <div style={{ display:'flex', gap:'10px' }}>
+            <button onClick={() => { setConfirmado(true); emitir('accion-especial-confirmar', { decision:'descartar' }); }} style={{ flex:1, padding:'14px', borderRadius:'10px', border:'1px solid rgba(192,57,43,0.4)', background:'rgba(192,57,43,0.12)', color:'#ff8a8a', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'1px', cursor:'pointer' }}>
+              🗑️ Descartar
+            </button>
+            <button onClick={() => { setConfirmado(true); emitir('accion-especial-confirmar', { decision:'devolver' }); }} style={{ flex:1, padding:'14px', borderRadius:'10px', border:'1px solid rgba(10,147,150,0.4)', background:'rgba(10,147,150,0.12)', color:'var(--turquesa-kraken)', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'1px', cursor:'pointer' }}>
+              ↩ Devolver
+            </button>
+          </div>
+        )}
+        {(confirmado || !carta) && (
+          <div style={{ textAlign:'center', padding:'14px', background:'rgba(98,228,165,0.07)', border:'1px solid rgba(98,228,165,0.2)', borderRadius:'8px' }}>
+            <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px' }}>✓ Confirmado</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ── Pantalla de espera mientras otro jugador actúa ───────────
+function EsperandoAccionEspecial({ tipo, etapa, nombre }) {
+  const esSirena = tipo === 'sirena';
+  return (
+    <div style={{ textAlign:'center', padding:'40px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(10,147,150,0.15)', borderRadius:'12px' }}>
+      <div style={{ fontSize:'44px', marginBottom:'16px' }}>{esSirena ? '🧜' : '🔭'}</div>
+      <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--turquesa-kraken)', fontSize:'12px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'10px' }}>
+        Carta {esSirena ? 'Sirena' : 'Telescopio'}
+      </p>
+      <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'14px' }}>
+        {etapa === 'capitan-elige'
+          ? 'El Capitán está eligiendo quién actúa...'
+          : nombre ? `${nombre} está revisando las cartas...` : 'Esperando...'}
+      </p>
+    </div>
+  );
+}
+
 // ── Botón de rol (abajo-izquierda) para todos los jugadores ─
 function BotonRol({ miJugador }) {
   const [visible, setVisible] = useState(false);
@@ -789,15 +990,16 @@ function BotonRol({ miJugador }) {
         style={{
           position: 'fixed', bottom: '24px', left: '20px', zIndex: 100,
           width: '52px', height: '52px', borderRadius: '50%',
-          background: cfg.bg, border: `2px solid ${cfg.borde}`,
+          background: 'rgba(13,27,46,0.92)',
+          border: '2px solid rgba(245,230,200,0.2)',
           fontSize: '22px', cursor: 'pointer',
-          boxShadow: `0 4px 20px ${cfg.color}40`,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'transform 0.2s',
           transform: visible ? 'scale(1.1)' : 'none',
         }}
       >
-        🃏
+        👁️
       </button>
 
       {visible && (
