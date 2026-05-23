@@ -211,7 +211,8 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
     }
     case 'abrir-cofre': {
       sala.estado = aplicarCartaNavegacion(sala.estado);
-      if (sala.estado.fase === FASES.FASE_5) {
+      // Avance automático: FASE_5 (turno normal) y FASE_4 (casilla especial aún sin UI propia)
+      if (sala.estado.fase === FASES.FASE_5 || sala.estado.fase === FASES.FASE_4) {
         sala.estado = ejecutarFase5(sala.estado);
       }
       break;
