@@ -8,7 +8,7 @@ const {
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
   vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
-  reconectarPorJugadorId,
+  reconectarPorJugadorId, investigarJugador,
 } = require('./sala');
 
 const app = express();
@@ -287,6 +287,7 @@ io.on('connection', (socket) => {
     EVENTOS.ELEGIR_CARTA_COFRE,
     EVENTOS.ABRIR_COFRE,
     EVENTOS.ACCION_RITUAL,
+    'votar-kraken',
   ];
 
   accionesJuego.forEach(accion => {
@@ -299,10 +300,50 @@ io.on('connection', (socket) => {
         if (sala.estado?.victoria) {
           io.to(sala.codigo).emit(EVENTOS.VICTORIA_DECLARADA, { ganador: sala.estado.victoria });
         }
+        // Emitir resultado del sacrificio al Kraken cuando la votación se resuelva
+        if (accion === 'votar-kraken') {
+          const objetivo = sala.estado.accionFase4?.kraken?.objetivo
+            || (sala.estado.victoria === 'cultistas' ? sala.estado.jugadores.find(j => j.rol === 'cultista')?.id : null);
+          if (objetivo) {
+            const sacrificado = sala.estado.jugadores.find(j => j.id === objetivo);
+            if (sacrificado) {
+              io.to(sala.codigo).emit('kraken-sacrificio', {
+                nombre: sacrificado.nombre,
+                rol: sacrificado.rol,
+                victoriaCultistas: sala.estado.victoria === 'cultistas',
+              });
+            }
+          }
+        }
+        // Emitir resultado del motín cuando todos hayan votado
+        if (accion === EVENTOS.VOTAR_MOTIN && sala.estado.motin.totalPistolas !== undefined) {
+          const nuevoCapitan = sala.estado.motin.exitoso
+            ? sala.estado.jugadores.find(j => j.esCapitan) : null;
+          io.to(sala.codigo).emit('motin-resultado', {
+            exitoso: sala.estado.motin.exitoso,
+            totalPistolas: sala.estado.motin.totalPistolas,
+            umbral: sala.estado.motin.umbral,
+            nuevoCapitan: nuevoCapitan ? { id: nuevoCapitan.id, nombre: nuevoCapitan.nombre } : null,
+          });
+        }
       } catch (e) {
         socket.emit(EVENTOS.ERROR, { mensaje: e.message });
       }
     });
+  });
+
+  // FASE_4: el navegante investiga el rol de un jugador
+  socket.on('fase4-investigar', ({ jugadorId: objetivoId }) => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    try {
+      const { sala, resultado } = investigarJugador(codigo, socket.id, objetivoId);
+      // Solo el navegante ve el resultado
+      socket.emit('investigacion-resultado', resultado);
+      emitirSalaActualizada(sala);
+    } catch (e) {
+      socket.emit(EVENTOS.ERROR, { mensaje: e.message });
+    }
   });
 
   // Jugador pide estado actual al montar la vista (por si perdió eventos al navegar)

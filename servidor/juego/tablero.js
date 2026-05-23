@@ -126,4 +126,13 @@ const esCasillaEspecial = (hexId) => {
   return hex.tipo === TIPOS_HEX.LUPA || hex.tipo === TIPOS_HEX.KRAKEN;
 };
 
-module.exports = { HEXAGONOS, TIPOS_HEX, HEX_INICIO, moverBarco, verificarVictoria, esCasillaEspecial };
+// Devuelve el tipo de acción especial que dispara la casilla
+const tipoCasillaEspecial = (hexId) => {
+  const hex = HEXAGONOS[hexId];
+  if (!hex) return null;
+  if (hex.tipo === TIPOS_HEX.LUPA) return 'lupa';
+  if (hex.tipo === TIPOS_HEX.KRAKEN && hexId !== 'kraken_centro') return 'kraken_menor';
+  return null;
+};
+
+module.exports = { HEXAGONOS, TIPOS_HEX, HEX_INICIO, moverBarco, verificarVictoria, esCasillaEspecial, tipoCasillaEspecial };

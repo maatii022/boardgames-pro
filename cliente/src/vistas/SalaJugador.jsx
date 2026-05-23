@@ -13,8 +13,11 @@ export default function SalaJugador() {
   const navigate = useNavigate();
   const { sala, estado, fase, socketId, emitir, escuchar, salirDeSala } = useSala();
 
-  const [rolConfirmado, setRolConf] = useState(false);
-  const [error, setError]           = useState('');
+  const [rolConfirmado, setRolConf]     = useState(false);
+  const [error, setError]               = useState('');
+  const [motin, setMotin]                 = useState(null);
+  const [investigacion, setInvestigacion] = useState(null);
+  const [kraken, setKraken]               = useState(null);
 
   // Si no hay sala (recarga sin reconexión aún), redirigir
   useEffect(() => {
@@ -27,15 +30,22 @@ export default function SalaJugador() {
     emitir('pedir-estado');
   }, []);
 
-  // Escuchar expulsión
+  // Escuchar expulsión, motín y resultado de investigación
   useEffect(() => {
     const c1 = escuchar('expulsado', ({ mensaje }) => {
-      salirDeSala();
-      alert(mensaje);
-      navigate('/');
+      salirDeSala(); alert(mensaje); navigate('/');
     });
     const c2 = escuchar('error', ({ mensaje }) => setError(mensaje));
-    return () => { c1(); c2(); };
+    const c3 = escuchar('motin-resultado', (data) => {
+      setMotin(data);
+      setTimeout(() => setMotin(null), 5000);
+    });
+    const c4 = escuchar('investigacion-resultado', (data) => setInvestigacion(data));
+    const c5 = escuchar('kraken-sacrificio', (data) => {
+      setKraken(data);
+      if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 6000);
+    });
+    return () => { c1(); c2(); c3(); c4(); c5(); };
   }, [escuchar, navigate, salirDeSala]);
 
   const miJugador   = estado?.miJugador;
@@ -52,15 +62,71 @@ export default function SalaJugador() {
   };
   const cambiarHost = (id) => emitir('seleccionar-host', { nuevoHostId: id });
 
+  // ── Overlays globales (visibles encima de cualquier fase) ───
+  const overlayMotin = motin && (
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.78)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', animation:'aparecer 0.3s ease' }}>
+      <div style={{ background: motin.exitoso ? 'rgba(92,26,26,0.97)' : 'rgba(13,27,46,0.97)', border:`2px solid ${motin.exitoso ? '#c0392b' : '#4a9bc7'}`, borderRadius:'16px', padding:'32px 28px', maxWidth:'340px', width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(0,0,0,0.7)' }}>
+        <div style={{ fontSize:'60px', marginBottom:'12px', animation:'flotar 2s ease-in-out infinite' }}>{motin.exitoso ? '💀' : '⚓'}</div>
+        <h2 style={{ fontFamily:'var(--fuente-titulo)', color: motin.exitoso ? '#ff8a8a' : 'var(--oro-dorado)', fontSize:'22px', letterSpacing:'3px', marginBottom:'10px' }}>
+          {motin.exitoso ? '¡MOTÍN!' : 'Motín fallado'}
+        </h2>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.6)', fontSize:'14px', marginBottom: motin.exitoso && motin.nuevoCapitan ? '10px' : 0 }}>
+          {motin.totalPistolas} pistola{motin.totalPistolas !== 1 ? 's' : ''} / {motin.umbral} necesarias
+        </p>
+        {motin.exitoso && motin.nuevoCapitan && (
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'15px', letterSpacing:'1px', marginTop:'6px' }}>
+            Nuevo capitán: <strong>{motin.nuevoCapitan.nombre}</strong>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  const overlayKraken = kraken && (
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.88)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', animation:'aparecer 0.3s ease' }}>
+      <div style={{ background:'rgba(45,106,79,0.15)', border:`2px solid ${kraken.victoriaCultistas ? '#4caf50' : '#c0392b'}`, borderRadius:'16px', padding:'32px 28px', maxWidth:'340px', width:'100%', textAlign:'center', boxShadow:`0 20px 60px ${kraken.victoriaCultistas ? 'rgba(76,175,80,0.3)' : 'rgba(192,57,43,0.3)'}` }}>
+        <div style={{ fontSize:'60px', marginBottom:'12px', animation:'flotar 2s ease-in-out infinite' }}>🌊</div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'12px' }}>Sacrificio al Kraken</p>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'18px', marginBottom:'8px' }}>{kraken.nombre}</p>
+        <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'20px', color: kraken.rol === 'cultista' ? '#4caf50' : '#ff8a8a', letterSpacing:'2px', marginBottom:'16px' }}>
+          {kraken.rol === 'marinero' ? '⚓ Marinero' : kraken.rol === 'pirata' ? '💀 Pirata' : kraken.rol === 'cultista' ? '🐙 ¡Cultista!' : '👁️ Adepto'}
+        </p>
+        {kraken.victoriaCultistas
+          ? <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'13px', letterSpacing:'2px' }}>¡El Kraken ha encontrado a su elegido!</p>
+          : <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'13px' }}>El juego continúa...</p>
+        }
+      </div>
+    </div>
+  );
+
+  const overlayInvestigacion = investigacion && (
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', animation:'aparecer 0.3s ease' }}>
+      <div style={{ background:'rgba(10,147,150,0.12)', border:'2px solid var(--turquesa-kraken)', borderRadius:'16px', padding:'32px 28px', maxWidth:'340px', width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(10,147,150,0.3)' }}>
+        <div style={{ fontSize:'52px', marginBottom:'14px' }}>🔍</div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'14px' }}>Resultado de la investigación</p>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'18px', marginBottom:'8px' }}>{investigacion.nombre}</p>
+        <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'22px', color:'var(--turquesa-kraken)', letterSpacing:'2px', marginBottom:'24px' }}>
+          {investigacion.rol === 'marinero' ? '⚓ Marinero' : investigacion.rol === 'pirata' ? '💀 Pirata' : investigacion.rol === 'cultista' ? '🐙 Cultista' : '👁️ Adepto'}
+        </p>
+        <button className="btn-primario" onClick={() => setInvestigacion(null)} style={{ width:'100%' }}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+
   // Pantalla de carga mientras reconecta
   if (!sala) {
     return (
-      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 3s ease-in-out infinite' }}>🌊</div>
-          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'13px', letterSpacing:'2px' }}>Reconectando...</p>
+      <>
+        {overlayMotin}
+        <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 3s ease-in-out infinite' }}>🌊</div>
+            <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'13px', letterSpacing:'2px' }}>Reconectando...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -197,7 +263,7 @@ export default function SalaJugador() {
   // ── FASE 1 ───────────────────────────────────────────────
   if (fase === 'fase_1') {
     return (
-      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 1</p>
@@ -220,20 +286,20 @@ export default function SalaJugador() {
           )}
           {soyHost && <PanelHost fase={fase} emitir={emitir} />}
         </div>
-      </div>
+      </div></>
     );
   }
 
   // ── FASE 2 ───────────────────────────────────────────────
   if (fase === 'fase_2') {
     return (
-      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto', textAlign:'center' }}>
           <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 2</p>
           <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'#ff8a8a', fontSize:'20px', letterSpacing:'2px', marginBottom:'24px' }}>💀 Votación de Motín</h2>
           <VotacionMotin pistolas={miJugador?.pistolas ?? 3} umbral={estado?.motin?.umbral} confirmados={estado?.motin?.confirmados} total={jugadores.length} emitir={emitir} />
         </div>
-      </div>
+      </div></>
     );
   }
 
@@ -247,7 +313,7 @@ export default function SalaJugador() {
                         (etapa === 'navegante' && soyNavegante);
 
     return (
-      <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
+      <>{overlayMotin}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
         <div style={{ width:'100%', maxWidth:'380px' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 3</p>
@@ -304,7 +370,69 @@ export default function SalaJugador() {
           )}
         </div>
         {soyHost && <PanelHost fase={fase} emitir={emitir} />}
-      </div>
+      </div></>
+    );
+  }
+
+  // ── FASE 4 ───────────────────────────────────────────────
+  if (fase === 'fase_4') {
+    const tipoFase4  = estado?.accionFase4?.tipo;
+    const krakenVoto = estado?.accionFase4?.kraken;
+    const esLupa     = tipoFase4 === 'lupa';
+    const esKraken   = tipoFase4 === 'kraken_menor';
+
+    return (
+      <>
+        {overlayMotin}
+        {overlayKraken}
+        {overlayInvestigacion}
+        <div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
+          <div style={{ width:'100%', maxWidth:'380px' }}>
+
+            {/* Registro de Camarote (LUPA) */}
+            {esLupa && (<>
+              <div style={{ textAlign:'center', marginBottom:'24px' }}>
+                <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 4 — Casilla Lupa</p>
+                <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--turquesa-kraken)', fontSize:'20px', letterSpacing:'2px' }}>🔍 Registro de Camarote</h2>
+              </div>
+              {soyCapitan ? (
+                <InvestigacionCapitan jugadores={jugadores} socketId={socketId} emitir={emitir} />
+              ) : (
+                <div style={{ textAlign:'center', padding:'40px 20px', background:'rgba(13,27,46,0.6)', border:'1px solid rgba(10,147,150,0.15)', borderRadius:'12px' }}>
+                  <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>🔍</div>
+                  <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>El Capitán está registrando un camarote...</p>
+                </div>
+              )}
+            </>)}
+
+            {/* Sacrificio al Kraken (KRAKEN menor) */}
+            {esKraken && (<>
+              <div style={{ textAlign:'center', marginBottom:'24px' }}>
+                <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 4 — Kraken Menor</p>
+                <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px' }}>🌊 ¿A quién alimentamos al Kraken?</h2>
+              </div>
+              <VotacionKraken
+                jugadores={jugadores}
+                socketId={socketId}
+                emitir={emitir}
+                krakenVoto={krakenVoto}
+              />
+            </>)}
+
+            {/* Fallback si aún no llegó el tipo */}
+            {!esLupa && !esKraken && (
+              <div style={{ textAlign:'center', padding:'40px 20px' }}>
+                <div style={{ display:'flex', gap:'8px', justifyContent:'center', marginBottom:'12px' }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width:'8px', height:'8px', borderRadius:'50%', background:'var(--oro-dorado)', animation:`pulsar-oro 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
+                </div>
+                <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'14px' }}>Cargando acción especial...</p>
+              </div>
+            )}
+
+          </div>
+          {soyHost && <PanelHost fase={fase} emitir={emitir} />}
+        </div>
+      </>
     );
   }
 
@@ -352,12 +480,12 @@ export default function SalaJugador() {
   }
 
   return (
-    <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <>{overlayMotin}<div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div style={{ textAlign:'center' }}>
         <div style={{ fontSize:'48px', marginBottom:'16px', animation:'flotar 3s ease-in-out infinite' }}>🌊</div>
         <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'13px', letterSpacing:'2px' }}>{fase || 'Conectando...'}</p>
       </div>
-    </div>
+    </div></>
   );
 }
 
@@ -418,7 +546,7 @@ function VotacionMotin({ pistolas, umbral, confirmados, total, emitir }) {
       </>) : (
         <div style={{ padding:'24px', background:'rgba(98,228,165,0.07)', border:'1px solid rgba(98,228,165,0.2)', borderRadius:'12px' }}>
           <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px', marginBottom:'8px' }}>✓ Voto registrado</p>
-          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'13px' }}>Esperando: {confirmados||0}/{total||0}</p>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'13px' }}>Esperando: {confirmados?.length || 0}/{total||0}</p>
         </div>
       )}
     </div>
@@ -509,6 +637,93 @@ function CartaNavegacion({ carta }) {
         <p style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'16px', color:hex }}>{carta.nombre}</p>
       </div>
       <p style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'13px', color:'rgba(245,230,200,0.6)', lineHeight:'1.5' }}>{carta.descripcion}</p>
+    </div>
+  );
+}
+
+// ── Registro de Camarote — Capitán investiga un rol (FASE_4 LUPA) ──
+function InvestigacionCapitan({ jugadores, socketId, emitir }) {
+  const [seleccionado, setSeleccionado] = useState(null);
+  const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado && !j.fueraDeServicio);
+  const confirmar = () => { if (seleccionado) emitir('fase4-investigar', { jugadorId: seleccionado }); };
+
+  return (
+    <div>
+      <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.5)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'16px', textAlign:'center' }}>
+        Elige a quién investigar:
+      </p>
+      <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
+        {elegibles.map(j => {
+          const activo = seleccionado === j.id;
+          return (
+            <button key={j.id} onClick={() => setSeleccionado(activo ? null : j.id)} style={{
+              padding:'13px 16px', borderRadius:'8px', cursor:'pointer', textAlign:'left',
+              background: activo ? 'rgba(10,147,150,0.18)' : 'rgba(13,27,46,0.7)',
+              border:`1px solid ${activo ? 'var(--turquesa-kraken)' : 'rgba(255,255,255,0.07)'}`,
+              color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+              transition:'all 0.2s', display:'flex', alignItems:'center', gap:'10px',
+            }}>
+              <span style={{ color:'var(--turquesa-kraken)' }}>{activo ? '✓' : '○'}</span>
+              {j.nombre}
+            </button>
+          );
+        })}
+      </div>
+      <button className="btn-primario" onClick={confirmar} disabled={!seleccionado} style={{ width:'100%', padding:'16px' }}>
+        🔍 Investigar
+      </button>
+    </div>
+  );
+}
+
+// ── Votación de Sacrificio al Kraken (FASE_4 KRAKEN menor) ──
+function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
+  const [seleccionado, setSeleccionado] = useState(null);
+  const [votado, setVotado] = useState(krakenVoto?.haVotado || false);
+  const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado);
+
+  const confirmar = () => {
+    if (!seleccionado) return;
+    emitir('votar-kraken', { objetivoId: seleccionado });
+    setVotado(true);
+  };
+
+  if (votado || krakenVoto?.haVotado) {
+    return (
+      <div style={{ padding:'24px', background:'rgba(76,175,80,0.07)', border:'1px solid rgba(76,175,80,0.2)', borderRadius:'12px', textAlign:'center' }}>
+        <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px', marginBottom:'8px' }}>✓ Voto registrado</p>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.4)', fontSize:'13px' }}>
+          Esperando: {krakenVoto?.confirmados || 0}/{krakenVoto?.total || 0}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.5)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'16px', textAlign:'center' }}>
+        ¿A quién sacrificamos?
+      </p>
+      <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'20px' }}>
+        {elegibles.map(j => {
+          const activo = seleccionado === j.id;
+          return (
+            <button key={j.id} onClick={() => setSeleccionado(activo ? null : j.id)} style={{
+              padding:'13px 16px', borderRadius:'8px', cursor:'pointer', textAlign:'left',
+              background: activo ? 'rgba(76,175,80,0.15)' : 'rgba(13,27,46,0.7)',
+              border:`1px solid ${activo ? '#4caf50' : 'rgba(255,255,255,0.07)'}`,
+              color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+              transition:'all 0.2s', display:'flex', alignItems:'center', gap:'10px',
+            }}>
+              <span style={{ color:'#4caf50' }}>{activo ? '✓' : '○'}</span>
+              {j.nombre}
+            </button>
+          );
+        })}
+      </div>
+      <button className="btn-primario" onClick={confirmar} disabled={!seleccionado} style={{ width:'100%', padding:'16px', background:'linear-gradient(135deg,rgba(76,175,80,0.3),rgba(45,106,79,0.4))', borderColor:'#4caf50' }}>
+        🌊 Sacrificar
+      </button>
     </div>
   );
 }

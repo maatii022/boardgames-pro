@@ -21,10 +21,12 @@ export default function Tablero() {
   const { codigo } = useParams();
   const navigate = useNavigate();
   const { emitir, escuchar, conectado, socketId } = useSocket();
-  const [sala, setSala] = useState(null);
+  const [sala, setSala]     = useState(null);
   const [tablero, setTablero] = useState(null);
-  const [fase, setFase] = useState('lobby');
-  const [error, setError] = useState('');
+  const [fase, setFase]     = useState('lobby');
+  const [error, setError]   = useState('');
+  const [motin, setMotin]   = useState(null);
+  const [kraken, setKraken] = useState(null);
 
   useEffect(() => {
     if (!codigo) return;
@@ -35,7 +37,15 @@ export default function Tablero() {
     const c3 = escuchar('sala-actualizada', (s) => { setSala(s); setFase(s.fase); });
     const c4 = escuchar('fase-cambiada', ({ fase: f }) => setFase(f));
     const c5 = escuchar('error', ({ mensaje }) => setError(mensaje));
-    return () => { c1(); c2(); c3(); c4(); c5(); };
+    const c6 = escuchar('motin-resultado', (data) => {
+      setMotin(data);
+      setTimeout(() => setMotin(null), 6000);
+    });
+    const c7 = escuchar('kraken-sacrificio', (data) => {
+      setKraken(data);
+      if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 7000);
+    });
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
   }, [codigo, emitir, escuchar]);
 
   // Acciones del host
@@ -286,6 +296,47 @@ export default function Tablero() {
           <div style={{ width: 'min(75vh, 78vw)', height: 'min(75vh, 78vw)' }}>
             <TableroHex barcoHex={tablero?.barco?.hexId || 'inicio'} />
           </div>
+
+          {/* Overlay sacrificio Kraken */}
+          {kraken && (
+            <div style={{ position:'absolute', inset:0, background:'rgba(8,7,15,0.88)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)', zIndex:50, animation:'aparecer 0.4s ease' }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:'clamp(60px,10vw,100px)', marginBottom:'16px', animation:'flotar 2.5s ease-in-out infinite' }}>🌊</div>
+                <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'clamp(11px,1.5vw,16px)', letterSpacing:'4px', textTransform:'uppercase', marginBottom:'16px' }}>Sacrificio al Kraken</p>
+                <h2 style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(24px,4vw,52px)', color:'var(--crema-pergamino)', letterSpacing:'3px', marginBottom:'10px' }}>{kraken.nombre}</h2>
+                <p style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(18px,3vw,36px)', color: kraken.rol === 'cultista' ? '#4caf50' : '#ff8a8a', letterSpacing:'2px', marginBottom:'16px' }}>
+                  {kraken.rol === 'marinero' ? '⚓ MARINERO' : kraken.rol === 'pirata' ? '💀 PIRATA' : kraken.rol === 'cultista' ? '🐙 ¡CULTISTA!' : '👁️ ADEPTO'}
+                </p>
+                {kraken.victoriaCultistas && (
+                  <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'clamp(14px,2vw,22px)', letterSpacing:'3px', textShadow:'0 0 30px rgba(76,175,80,0.7)' }}>
+                    ¡EL KRAKEN HA ENCONTRADO A SU ELEGIDO!
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Overlay motín */}
+          {motin && (
+            <div style={{ position:'absolute', inset:0, background:'rgba(8,7,15,0.82)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)', zIndex:50, animation:'aparecer 0.3s ease' }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:'clamp(60px,10vw,100px)', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>
+                  {motin.exitoso ? '💀' : '⚓'}
+                </div>
+                <h2 style={{ fontFamily:'var(--fuente-titulo)', fontSize:'clamp(28px,5vw,60px)', color: motin.exitoso ? '#ff8a8a' : 'var(--oro-dorado)', letterSpacing:'5px', textShadow:`0 0 40px ${motin.exitoso ? 'rgba(192,57,43,0.6)' : 'rgba(201,168,76,0.6)'}`, marginBottom:'14px' }}>
+                  {motin.exitoso ? '¡MOTÍN!' : 'MOTÍN FALLADO'}
+                </h2>
+                <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.55)', fontSize:'clamp(14px,2vw,20px)', letterSpacing:'2px', marginBottom: motin.exitoso && motin.nuevoCapitan ? '12px' : 0 }}>
+                  {motin.totalPistolas} pistola{motin.totalPistolas !== 1 ? 's' : ''} / {motin.umbral} necesarias
+                </p>
+                {motin.exitoso && motin.nuevoCapitan && (
+                  <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'var(--oro-dorado)', fontSize:'clamp(16px,2.5vw,26px)', letterSpacing:'2px' }}>
+                    Nuevo capitán: <strong>{motin.nuevoCapitan.nombre}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Overlay durmiendo */}
           {fase === 'durmiendo' && (

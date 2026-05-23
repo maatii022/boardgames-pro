@@ -1,5 +1,5 @@
 const { FASES, ROLES, TIPOS_CARTA_NAVEGACION, TIPOS_CARTA_RITUAL } = require('../../compartido/constantes');
-const { moverBarco, verificarVictoria, esCasillaEspecial } = require('./tablero');
+const { moverBarco, verificarVictoria, esCasillaEspecial, tipoCasillaEspecial } = require('./tablero');
 const { barajar } = require('./cartas');
 
 // ============================================================
@@ -244,7 +244,15 @@ const aplicarCartaNavegacion = (estado) => {
 
   // Verificar casilla especial
   if (esCasillaEspecial(nuevoHex)) {
-    nuevoEstado = { ...nuevoEstado, fase: FASES.FASE_4 };
+    const tipoAccion = tipoCasillaEspecial(nuevoHex);
+    nuevoEstado = {
+      ...nuevoEstado,
+      fase: FASES.FASE_4,
+      accionFase4: {
+        tipo: tipoAccion,
+        kraken: tipoAccion === 'kraken_menor' ? { votos: {}, confirmados: [] } : null,
+      },
+    };
   } else {
     nuevoEstado = { ...nuevoEstado, fase: FASES.FASE_5 };
   }
@@ -253,10 +261,10 @@ const aplicarCartaNavegacion = (estado) => {
 };
 
 const ejecutarFase5 = (estado) => {
-  // Poner fuera de servicio a teniente y navegante anteriores
   const jugadoresActualizados = estado.jugadores.map(j => ({
     ...j,
-    fueraDeServicio: j.esTeniente || j.esNavegante ? true : false,
+    // Los sacrificados quedan fuera permanentemente; teniente/navegante solo este turno
+    fueraDeServicio: j.sacrificado || j.esTeniente || j.esNavegante,
     esTeniente: false,
     esNavegante: false,
   }));
@@ -269,7 +277,50 @@ const ejecutarFase5 = (estado) => {
     turno: estado.turno + 1,
     cofre: { cartaCapitan: null, cartaTeniente: null, cartaNavegante: null, etapa: null },
     accionEspecial: null,
+    accionFase4: null,
   };
+};
+
+const votarKraken = (estado, socketId, objetivoId) => {
+  const { accionFase4 } = estado;
+  if (!accionFase4?.kraken) throw new Error('No hay votación de sacrificio activa');
+
+  const jugador = estado.jugadores.find(j => j.id === socketId && !j.sacrificado);
+  if (!jugador) throw new Error('Jugador no válido');
+
+  const nuevosVotos = { ...accionFase4.kraken.votos, [socketId]: objetivoId };
+  const confirmados = [...new Set([...accionFase4.kraken.confirmados, socketId])];
+  const activos = estado.jugadores.filter(j => !j.sacrificado);
+  const todosVotaron = confirmados.length >= activos.length;
+
+  if (!todosVotaron) {
+    return {
+      ...estado,
+      accionFase4: { ...accionFase4, kraken: { ...accionFase4.kraken, votos: nuevosVotos, confirmados } },
+    };
+  }
+
+  // Contar votos y determinar sacrificado
+  const conteo = {};
+  Object.values(nuevosVotos).forEach(id => { conteo[id] = (conteo[id] || 0) + 1; });
+  const maxVotos = Math.max(...Object.values(conteo));
+  const empatados = Object.keys(conteo).filter(id => conteo[id] === maxVotos);
+  const sacrificadoId = empatados[0]; // en empate, primer candidato
+  const sacrificado = estado.jugadores.find(j => j.id === sacrificadoId);
+  if (!sacrificado) throw new Error('Sacrificado no encontrado');
+
+  const nuevoKraken = { ...accionFase4.kraken, votos: nuevosVotos, confirmados, objetivo: sacrificadoId };
+
+  // Victoria cultista si se sacrifica al Cultista
+  if (sacrificado.rol === 'cultista') {
+    return { ...estado, fase: FASES.VICTORIA, victoria: 'cultistas', accionFase4: { ...accionFase4, kraken: nuevoKraken } };
+  }
+
+  // Jugador eliminado, continuar
+  const jugadoresActualizados = estado.jugadores.map(j =>
+    j.id === sacrificadoId ? { ...j, sacrificado: true, fueraDeServicio: true } : j
+  );
+  return ejecutarFase5({ ...estado, jugadores: jugadoresActualizados, accionFase4: { ...accionFase4, kraken: nuevoKraken } });
 };
 
 // Inicializa el cofre cuando se entra a fase_3 manualmente (sin pasar por votarMotin)
@@ -294,6 +345,7 @@ module.exports = {
   elegirCartaCofre,
   aplicarCartaNavegacion,
   ejecutarFase5,
+  votarKraken,
   robarCartasMazo,
   inicializarCofre,
 };

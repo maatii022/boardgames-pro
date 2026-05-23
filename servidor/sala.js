@@ -7,6 +7,7 @@ const {
   elegirCartaCofre,
   aplicarCartaNavegacion,
   ejecutarFase5,
+  votarKraken,
   inicializarCofre,
 } = require('./juego/fases');
 
@@ -211,14 +212,18 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
     }
     case 'abrir-cofre': {
       sala.estado = aplicarCartaNavegacion(sala.estado);
-      // Avance automático: FASE_5 (turno normal) y FASE_4 (casilla especial aún sin UI propia)
-      if (sala.estado.fase === FASES.FASE_5 || sala.estado.fase === FASES.FASE_4) {
+      if (sala.estado.fase === FASES.FASE_5) {
         sala.estado = ejecutarFase5(sala.estado);
       }
+      // FASE_4 (casilla especial) queda activa para que el navegante investigue
       break;
     }
     case 'fase-5': {
       sala.estado = ejecutarFase5(sala.estado);
+      break;
+    }
+    case 'votar-kraken': {
+      sala.estado = votarKraken(sala.estado, socketId, datos.objetivoId);
       break;
     }
     default:
@@ -305,6 +310,7 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       rolConfirmado: j.rolConfirmado,
       conectado: j.conectado,
       rol: sala.estado.victoria ? j.rol : undefined,
+      sacrificado: j.sacrificado || false,
     })),
     miJugador: jugadorActual ? {
       rol: jugadorActual.rol,
@@ -316,6 +322,15 @@ const vistaEstadoParaJugador = (sala, socketId) => {
     } : null,
     victoria: sala.estado.victoria,
     accionEspecial: sala.estado.accionEspecial,
+    accionFase4: sala.estado.accionFase4 ? {
+      tipo: sala.estado.accionFase4.tipo,
+      kraken: sala.estado.accionFase4.kraken ? {
+        confirmados: sala.estado.accionFase4.kraken.confirmados.length,
+        total: sala.estado.jugadores.filter(j => !j.sacrificado).length,
+        haVotado: sala.estado.accionFase4.kraken.confirmados.includes(socketId),
+        objetivo: sala.estado.accionFase4.kraken.objetivo || null,
+      } : null,
+    } : null,
     cartasRitualesReveladas: sala.estado.cartasRitualesReveladas,
     mazoDisponibleCount: sala.estado.mazoDisponible.length,
     mazoDescarteCount: sala.estado.mazoDescarte.length,
@@ -366,10 +381,28 @@ const reconectarPorJugadorId = (codigo, jugadorId, nuevoSocketId) => {
   return sala;
 };
 
+// El navegante investiga el rol de otro jugador (FASE_4)
+const investigarJugador = (codigo, socketId, objetivoId) => {
+  const sala = salas.get(codigo);
+  if (!sala?.estado) throw new Error('No hay partida activa');
+
+  const navegante = sala.estado.jugadores.find(j => j.esCapitan);
+  if (!navegante || navegante.id !== socketId) throw new Error('Solo el capitán puede investigar');
+
+  const objetivo = sala.estado.jugadores.find(j => j.id === objetivoId);
+  if (!objetivo) throw new Error('Jugador no encontrado');
+
+  const resultado = { nombre: objetivo.nombre, rol: objetivo.rol };
+  sala.estado = ejecutarFase5(sala.estado);
+  sala.fase = sala.estado.fase;
+
+  return { sala, resultado };
+};
+
 module.exports = {
   crearSala, unirseASala, seleccionarHost, iniciarPartida,
   confirmarRol, avanzarFase, retrocederFase, reiniciarPartida,
   procesarAccion, desconectarJugador, obtenerSala,
   vistaSalaParaCliente, vistaEstadoParaJugador, reintegrarJugador,
-  reconectarPorJugadorId,
+  reconectarPorJugadorId, investigarJugador,
 };
