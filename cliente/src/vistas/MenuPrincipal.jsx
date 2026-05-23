@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../hooks/useSocket';
 
 const JUEGOS = [
   {
@@ -36,12 +37,36 @@ const JUEGOS = [
 
 export default function MenuPrincipal() {
   const navigate = useNavigate();
+  const { emitir, escuchar, conectado } = useSocket();
   const [juegoHover, setJuegoHover] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 100);
   }, []);
+
+  useEffect(() => {
+    const c1 = escuchar('sala-creada', ({ sala }) => {
+      navigate(`/tablero/${sala.codigo}`);
+    });
+    const c2 = escuchar('tablero-conectado', ({ sala }) => {
+      navigate(`/tablero/${sala.codigo}`);
+    });
+    const c3 = escuchar('error', ({ mensaje }) => {
+      setError(mensaje);
+      setCreando(false);
+    });
+    return () => { c1(); c2(); c3(); };
+  }, [escuchar, navigate]);
+
+  const crearSala = () => {
+    if (!conectado) return setError('Conectando al servidor...');
+    setError('');
+    setCreando(true);
+    emitir('crear-sala', { nombre: 'Tablero', esSoloTablero: true });
+  };
 
   return (
     <div style={{
@@ -50,7 +75,7 @@ export default function MenuPrincipal() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       overflowY: 'auto', padding: '40px 20px 60px',
     }}>
-      {/* Partículas decorativas */}
+      {/* Partículas */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
         {[...Array(12)].map((_, i) => (
           <div key={i} style={{
@@ -80,20 +105,13 @@ export default function MenuPrincipal() {
             fontSize: 'clamp(28px, 5vw, 52px)',
             color: 'var(--oro-dorado)',
             textShadow: '0 0 40px rgba(201,168,76,0.5)',
-            letterSpacing: '4px',
-            marginBottom: '8px',
-          }}>
-            MESA DIGITAL
-          </h1>
+            letterSpacing: '4px', marginBottom: '8px',
+          }}>MESA DIGITAL</h1>
           <p style={{
             fontFamily: 'var(--fuente-subtitulo)',
             color: 'rgba(245,230,200,0.5)',
-            letterSpacing: '4px',
-            fontSize: '12px',
-            textTransform: 'uppercase',
-          }}>
-            Juegos de mesa · En la palma de tu mano
-          </p>
+            letterSpacing: '4px', fontSize: '12px', textTransform: 'uppercase',
+          }}>Juegos de mesa · En la palma de tu mano</p>
           <div className="divisor-oro" style={{ marginTop: '24px' }}><span>⚓</span></div>
         </div>
 
@@ -101,24 +119,19 @@ export default function MenuPrincipal() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '24px',
-          marginBottom: '40px',
+          gap: '24px', marginBottom: '40px',
         }}>
           {JUEGOS.map((juego, i) => (
             <div
               key={juego.id}
               onMouseEnter={() => setJuegoHover(juego.id)}
               onMouseLeave={() => setJuegoHover(null)}
-              onClick={() => juego.disponible && navigate('/crear', { state: { juego: juego.id } })}
               style={{
                 background: juegoHover === juego.id && juego.disponible
                   ? `linear-gradient(135deg, rgba(13,27,46,0.95), rgba(${juego.color === '#0a9396' ? '10,147,150' : '201,168,76'}, 0.15))`
                   : 'rgba(13,27,46,0.6)',
                 border: `1px solid ${juegoHover === juego.id && juego.disponible ? juego.color : 'rgba(201,168,76,0.2)'}`,
-                borderRadius: '12px',
-                padding: '32px 28px',
-                cursor: juego.disponible ? 'pointer' : 'default',
-                transition: 'all 0.4s ease',
+                borderRadius: '12px', padding: '32px 28px',
                 opacity: juego.disponible ? 1 : 0.4,
                 transform: juegoHover === juego.id && juego.disponible ? 'translateY(-4px)' : 'none',
                 boxShadow: juegoHover === juego.id && juego.disponible
@@ -126,8 +139,8 @@ export default function MenuPrincipal() {
                   : '0 4px 20px rgba(0,0,0,0.3)',
                 animation: `aparecer 0.6s ease ${i * 0.15}s both`,
                 backdropFilter: 'blur(10px)',
-                position: 'relative',
-                overflow: 'hidden',
+                position: 'relative', overflow: 'hidden',
+                transition: 'all 0.4s ease',
               }}>
 
               {!juego.disponible && (
@@ -144,21 +157,17 @@ export default function MenuPrincipal() {
 
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>{juego.emoji}</div>
               <h2 style={{
-                fontFamily: 'var(--fuente-subtitulo)',
-                fontSize: '20px',
+                fontFamily: 'var(--fuente-subtitulo)', fontSize: '20px',
                 color: juego.disponible ? 'var(--crema-pergamino)' : 'rgba(245,230,200,0.6)',
-                marginBottom: '12px',
-                letterSpacing: '1px',
+                marginBottom: '12px', letterSpacing: '1px',
               }}>{juego.nombre}</h2>
               <p style={{
                 fontFamily: 'var(--fuente-cuerpo)',
-                color: 'rgba(245,230,200,0.6)',
-                fontSize: '14px',
-                lineHeight: '1.6',
-                marginBottom: '20px',
+                color: 'rgba(245,230,200,0.6)', fontSize: '14px',
+                lineHeight: '1.6', marginBottom: '20px',
               }}>{juego.descripcion}</p>
 
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '18px', marginBottom: '2px' }}>👥</div>
                   <div style={{ fontFamily: 'var(--fuente-subtitulo)', fontSize: '11px', color: 'var(--oro-dorado)', letterSpacing: '1px' }}>{juego.jugadores}</div>
@@ -172,46 +181,45 @@ export default function MenuPrincipal() {
               </div>
 
               {juego.disponible && (
-                <div style={{
-                  marginTop: '24px',
-                  background: `linear-gradient(135deg, ${juego.color}, ${juego.color}cc)`,
-                  color: '#08070f',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  letterSpacing: '2px',
-                  textTransform: 'uppercase',
-                  textAlign: 'center',
-                  opacity: juegoHover === juego.id ? 1 : 0.7,
-                  transition: 'opacity 0.3s',
-                }}>Crear Sala →</div>
+                <button
+                  onClick={crearSala}
+                  disabled={creando || !conectado}
+                  style={{
+                    width: '100%',
+                    background: creando
+                      ? 'rgba(10,147,150,0.3)'
+                      : `linear-gradient(135deg, ${juego.color}, ${juego.color}cc)`,
+                    color: creando ? 'rgba(245,230,200,0.5)' : '#08070f',
+                    padding: '12px 20px',
+                    borderRadius: '6px',
+                    fontFamily: 'var(--fuente-subtitulo)',
+                    fontSize: '12px', fontWeight: '700',
+                    letterSpacing: '2px', textTransform: 'uppercase',
+                    border: 'none', cursor: creando || !conectado ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s',
+                    opacity: !conectado ? 0.4 : 1,
+                  }}>
+                  {creando ? '🔄 Creando sala...' : !conectado ? 'Conectando...' : 'Crear Sala →'}
+                </button>
               )}
             </div>
           ))}
         </div>
 
-        {/* Botón unirse */}
+        {/* Solo unirse — sin botón de tablero */}
         <div style={{ textAlign: 'center' }}>
           <div className="divisor-oro"><span>~</span></div>
           <p style={{
             fontFamily: 'var(--fuente-subtitulo)',
-            color: 'rgba(245,230,200,0.5)',
-            fontSize: '13px',
-            letterSpacing: '2px',
-            margin: '20px 0 16px',
-            textTransform: 'uppercase',
+            color: 'rgba(245,230,200,0.5)', fontSize: '13px',
+            letterSpacing: '2px', margin: '20px 0 16px', textTransform: 'uppercase',
           }}>¿Te han invitado a una partida?</p>
-          <div style={{ display:'flex', gap:'12px', justifyContent:'center', flexWrap:'wrap' }}>
-            <button className="btn-secundario" onClick={() => navigate('/unirse')}>
-              🚪 Unirme a una sala
-            </button>
-            <button className="btn-secundario" onClick={() => navigate('/tablero')}
-              style={{ borderColor:'rgba(10,147,150,0.4)', color:'var(--turquesa-kraken)' }}>
-              📺 Abrir tablero
-            </button>
-          </div>
+
+          {error && <p style={{ color: '#ff8a8a', fontSize: '13px', marginBottom: '12px' }}>{error}</p>}
+
+          <button className="btn-secundario" onClick={() => navigate('/unirse')}>
+            🚪 Unirme a una sala
+          </button>
         </div>
       </div>
     </div>
