@@ -53,7 +53,8 @@ const votarMotin = (estado, jugadorId, pistolas) => {
 
   const nuevosVotos = { ...estado.motin.votos, [jugadorId]: pistolas };
   const confirmados = [...new Set([...estado.motin.confirmados, jugadorId])];
-  const todosVotaron = confirmados.length === estado.jugadores.length;
+  const activos = estado.jugadores.filter(j => !j.sacrificado);
+  const todosVotaron = confirmados.length >= activos.length;
 
   if (!todosVotaron) {
     return { ...estado, motin: { ...estado.motin, votos: nuevosVotos, confirmados } };

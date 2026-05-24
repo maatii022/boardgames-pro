@@ -88,7 +88,7 @@ const CARTAS_RITUAL = [
     descripcion: 'Todos cierran los ojos. El Cultista ve el rol del Capitán, Teniente y Navegante actuales (30 segundos).',
     imagen: 'cartas/ritual/registro_camarote.png',
     cantidad: 1,
-    timer: 30,
+    timer: 10,
   },
   {
     id: 'conversion_culto_1',

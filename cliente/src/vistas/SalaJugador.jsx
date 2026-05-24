@@ -1141,7 +1141,7 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
   const tipoCarta = carta?.tipo;
   const [confirmado, setConfirmado] = useState(false);
   const [distribucion, setDistribucion] = useState({});
-  const [tiempoRestante, setTiempoRestante] = useState(30);
+  const [tiempoRestante, setTiempoRestante] = useState(10);
   const [selRegistro, setSelRegistro] = useState(null);
   const emitidoRef = useRef(false);
 
@@ -1149,7 +1149,7 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
   useEffect(() => {
     if (tipoCarta !== 'registro_camarote' || etapa !== 'ver') return;
     emitidoRef.current = false;
-    setTiempoRestante(30);
+    setTiempoRestante(10);
     const interval = setInterval(() => setTiempoRestante(t => t - 1), 1000);
     return () => clearInterval(interval);
   }, [tipoCarta, etapa]); // eslint-disable-line
