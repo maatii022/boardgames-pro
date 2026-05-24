@@ -13,12 +13,13 @@ export default function SalaJugador() {
   const navigate = useNavigate();
   const { sala, estado, fase, socketId, emitir, escuchar, salirDeSala } = useSala();
 
-  const [rolConfirmado, setRolConf]     = useState(false);
-  const [error, setError]               = useState('');
-  const [motin, setMotin]                 = useState(null);
-  const [investigacion, setInvestigacion] = useState(null);
-  const [kraken, setKraken]               = useState(null);
-  const [eliminado, setEliminado]         = useState(false);
+  const [rolConfirmado, setRolConf]         = useState(false);
+  const [error, setError]                   = useState('');
+  const [motin, setMotin]                   = useState(null);
+  const [investigacion, setInvestigacion]   = useState(null);
+  const [kraken, setKraken]                 = useState(null);
+  const [eliminado, setEliminado]           = useState(false);
+  const [ritualReveladoId, setRitualReveladoId] = useState(null);
 
   // Si no hay sala (recarga sin reconexión aún), redirigir
   useEffect(() => {
@@ -49,6 +50,15 @@ export default function SalaJugador() {
     const c6 = escuchar('kraken-eliminado', () => setEliminado(true));
     return () => { c1(); c2(); c3(); c4(); c5(); c6(); };
   }, [escuchar, navigate, salirDeSala]);
+
+  // Auto-transición: mostrar carta ritual 4 s → pantalla de acción
+  const _cartaRitualId = estado?.accionEspecial?.tipo === 'ritual' ? estado?.accionEspecial?.carta?.id : null;
+  useEffect(() => {
+    if (!_cartaRitualId) { setRitualReveladoId(null); return; }
+    if (ritualReveladoId === _cartaRitualId) return;
+    const t = setTimeout(() => setRitualReveladoId(_cartaRitualId), 4000);
+    return () => clearTimeout(t);
+  }, [_cartaRitualId]); // eslint-disable-line
 
   const miJugador   = estado?.miJugador;
   const rolCfg      = miJugador?.rol ? ROL_CONFIG[miJugador.rol] : null;
@@ -157,11 +167,14 @@ export default function SalaJugador() {
   // ── RITUAL DEL CULTO (prioridad sobre cualquier fase) ────
   const accionEspecialRitual = estado?.accionEspecial;
   if (accionEspecialRitual?.tipo === 'ritual') {
+    const revelacionCompleta = ritualReveladoId === accionEspecialRitual.carta?.id;
     return (
       <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
-        {accionEspecialRitual.esCultista
-          ? <RitualCultista accionEspecial={accionEspecialRitual} jugadores={jugadores} socketId={socketId} emitir={emitir} />
-          : <RitualEspera />
+        {!revelacionCompleta
+          ? <RitualReveal carta={accionEspecialRitual.carta} />
+          : accionEspecialRitual.esCultista
+            ? <RitualCultista accionEspecial={accionEspecialRitual} jugadores={jugadores} socketId={socketId} emitir={emitir} />
+            : <RitualEspera />
         }
         <BotonRol miJugador={miJugador} />
       </div>
@@ -1048,6 +1061,54 @@ function BotonRol({ miJugador }) {
         </div>
       )}
     </>
+  );
+}
+
+// ── Revelación de carta ritual (4 s para todos) ─────────────
+function RitualReveal({ carta }) {
+  const [timer, setTimer] = useState(4);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTimer(t => Math.max(0, t - 1)), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const TIPO_EMOJI = {
+    conversion_culto:   '👥',
+    registro_camarote:  '📋',
+    alijo_armas:        '🔫',
+  };
+
+  return (
+    <div style={{ width:'100%', maxWidth:'380px', textAlign:'center', animation:'aparecer 0.5s ease' }}>
+      <div style={{ fontSize:'52px', marginBottom:'10px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+      <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'4px', textTransform:'uppercase', marginBottom:'18px' }}>
+        Levantamiento del Culto
+      </p>
+
+      {/* Carta revelada */}
+      <div style={{ background:'rgba(76,175,80,0.08)', border:'2px solid rgba(76,175,80,0.3)', borderRadius:'16px', padding:'28px 24px', marginBottom:'20px', boxShadow:'0 0 40px rgba(76,175,80,0.15)' }}>
+        <div style={{ fontSize:'36px', marginBottom:'12px' }}>
+          {TIPO_EMOJI[carta?.tipo] || '🐙'}
+        </div>
+        <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'22px', letterSpacing:'3px', marginBottom:'10px', textShadow:'0 0 20px rgba(76,175,80,0.5)' }}>
+          {carta?.nombre || 'Carta Ritual'}
+        </h2>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.55)', fontSize:'13px', lineHeight:'1.6' }}>
+          {carta?.descripcion || ''}
+        </p>
+      </div>
+
+      {/* Cuenta atrás */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'12px' }}>
+        <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'rgba(76,175,80,0.12)', border:`2px solid ${timer > 0 ? 'rgba(76,175,80,0.5)' : 'rgba(76,175,80,0.2)'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'border-color 0.4s' }}>
+          <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'14px', fontWeight:'700' }}>{timer}</span>
+        </div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.3)', fontSize:'11px', letterSpacing:'2px' }}>
+          Cerrando los ojos...
+        </p>
+      </div>
+    </div>
   );
 }
 

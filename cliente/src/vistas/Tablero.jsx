@@ -297,6 +297,41 @@ export default function Tablero() {
             <TableroHex barcoHex={tablero?.barco?.hexId || 'inicio'} />
           </div>
 
+          {/* Overlay ritual del Culto */}
+          {tablero?.accionEspecial?.tipo === 'ritual' && (() => {
+            const carta = tablero.accionEspecial.carta;
+            const TIPO_EMOJI = { conversion_culto:'👥', registro_camarote:'📋', alijo_armas:'🔫' };
+            return (
+              <div style={{ position:'absolute', inset:0, background:'rgba(8,7,15,0.9)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(6px)', zIndex:50, animation:'aparecer 0.4s ease' }}>
+                <div style={{ textAlign:'center', maxWidth:'520px', padding:'0 24px' }}>
+                  <div style={{ fontSize:'clamp(50px,8vw,90px)', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+                  <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'clamp(9px,1.2vw,13px)', letterSpacing:'4px', textTransform:'uppercase', marginBottom:'14px' }}>
+                    Levantamiento del Culto
+                  </p>
+                  <div style={{ background:'rgba(76,175,80,0.07)', border:'2px solid rgba(76,175,80,0.3)', borderRadius:'16px', padding:'clamp(18px,3vw,32px) clamp(20px,4vw,40px)', marginBottom:'20px', boxShadow:'0 0 60px rgba(76,175,80,0.2)' }}>
+                    <div style={{ fontSize:'clamp(28px,4vw,52px)', marginBottom:'12px' }}>
+                      {TIPO_EMOJI[carta?.tipo] || '🐙'}
+                    </div>
+                    <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'clamp(22px,3.5vw,52px)', letterSpacing:'4px', textShadow:'0 0 40px rgba(76,175,80,0.5)', marginBottom:'12px' }}>
+                      {carta?.nombre || 'Ritual del Culto'}
+                    </h2>
+                    <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'clamp(12px,1.5vw,18px)', lineHeight:'1.6' }}>
+                      {carta?.descripcion || ''}
+                    </p>
+                  </div>
+                  <div style={{ display:'flex', gap:'12px', justifyContent:'center', alignItems:'center' }}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{ width:'clamp(8px,1.2vw,12px)', height:'clamp(8px,1.2vw,12px)', borderRadius:'50%', background:'#4caf50', animation:`pulsar-kraken 1.4s ease-in-out ${i*0.3}s infinite` }} />
+                    ))}
+                    <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.3)', fontSize:'clamp(10px,1.3vw,14px)', letterSpacing:'2px', marginLeft:'8px' }}>
+                      El Culto actúa en las sombras...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Overlay sacrificio Kraken */}
           {kraken && (
             <div style={{ position:'absolute', inset:0, background:'rgba(8,7,15,0.88)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)', zIndex:50, animation:'aparecer 0.4s ease' }}>
