@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSala } from '../contextos/SalaContexto';
 
@@ -151,6 +151,20 @@ export default function SalaJugador() {
           </div>
         </div>
       </>
+    );
+  }
+
+  // ── RITUAL DEL CULTO (prioridad sobre cualquier fase) ────
+  const accionEspecialRitual = estado?.accionEspecial;
+  if (accionEspecialRitual?.tipo === 'ritual') {
+    return (
+      <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
+        {accionEspecialRitual.esCultista
+          ? <RitualCultista accionEspecial={accionEspecialRitual} jugadores={jugadores} socketId={socketId} emitir={emitir} />
+          : <RitualEspera />
+        }
+        <BotonRol miJugador={miJugador} />
+      </div>
     );
   }
 
@@ -1034,6 +1048,192 @@ function BotonRol({ miJugador }) {
         </div>
       )}
     </>
+  );
+}
+
+// ── Ritual del Culto — vista para el Cultista ───────────────
+function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
+  const { carta, rolesClave } = accionEspecial;
+  const tipoCarta = carta?.tipo;
+  const [confirmado, setConfirmado] = useState(false);
+  const [distribucion, setDistribucion] = useState({});
+  const [tiempoRestante, setTiempoRestante] = useState(30);
+  const emitidoRef = useRef(false);
+
+  // Timer auto-confirma Registro de Camarote tras 30 s
+  useEffect(() => {
+    if (tipoCarta !== 'registro_camarote') return;
+    const interval = setInterval(() => setTiempoRestante(t => t - 1), 1000);
+    return () => clearInterval(interval);
+  }, [tipoCarta]);
+
+  useEffect(() => {
+    if (tipoCarta === 'registro_camarote' && tiempoRestante <= 0 && !emitidoRef.current) {
+      emitidoRef.current = true;
+      emitir('accion-ritual', {});
+    }
+  }, [tiempoRestante, tipoCarta, emitir]);
+
+  const ROL_LABEL = {
+    pirata:'💀 Pirata', marinero:'⚓ Marinero', cultista:'🐙 Cultista', adepto:'👁️ Adepto',
+  };
+
+  // ── Conversión al Culto ──────────────────────────────────
+  if (tipoCarta === 'conversion_culto') {
+    const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado && !j.fueraDeServicio);
+    return (
+      <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
+        <div style={{ textAlign:'center', marginBottom:'24px' }}>
+          <div style={{ fontSize:'52px', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Carta Ritual</p>
+          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'8px' }}>Conversión al Culto</h2>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'13px' }}>Elige a quién convertir en Adepto:</p>
+        </div>
+        {!confirmado ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+            {elegibles.map(j => (
+              <button key={j.id} onClick={() => {
+                setConfirmado(true);
+                emitir('accion-ritual', { jugadorId: j.id });
+              }} style={{
+                padding:'14px 16px', borderRadius:'10px', cursor:'pointer', textAlign:'left',
+                background:'rgba(76,175,80,0.08)', border:'1px solid rgba(76,175,80,0.25)',
+                color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+                transition:'all 0.2s', display:'flex', alignItems:'center', gap:'10px',
+              }}>
+                <span style={{ color:'rgba(76,175,80,0.6)' }}>○</span>
+                {j.nombre}
+              </button>
+            ))}
+            {elegibles.length === 0 && (
+              <p style={{ textAlign:'center', fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.3)', fontSize:'13px', padding:'20px' }}>No hay jugadores disponibles</p>
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign:'center', padding:'24px', background:'rgba(76,175,80,0.07)', border:'1px solid rgba(76,175,80,0.2)', borderRadius:'12px' }}>
+            <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'13px', letterSpacing:'2px' }}>✓ Conversión realizada</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Registro de Camarote ─────────────────────────────────
+  if (tipoCarta === 'registro_camarote') {
+    const cargos = [
+      { key: 'capitan',   label: '⚓ Capitán'   },
+      { key: 'teniente',  label: '🎖️ Teniente'  },
+      { key: 'navegante', label: '🧭 Navegante'  },
+    ];
+    return (
+      <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
+        <div style={{ textAlign:'center', marginBottom:'20px' }}>
+          <div style={{ fontSize:'52px', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Carta Ritual</p>
+          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'12px' }}>Registro de Camarote</h2>
+          {/* Cuenta atrás */}
+          <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'48px', height:'48px', borderRadius:'50%', background:'rgba(76,175,80,0.12)', border:'2px solid rgba(76,175,80,0.4)' }}>
+            <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'16px', fontWeight:'700' }}>{Math.max(0, tiempoRestante)}</span>
+          </div>
+        </div>
+        <div style={{ background:'rgba(13,27,46,0.85)', border:'1px solid rgba(76,175,80,0.2)', borderRadius:'12px', padding:'20px', display:'flex', flexDirection:'column', gap:'14px', marginBottom:'14px' }}>
+          {cargos.map(({ key, label }) => {
+            const info = rolesClave?.[key];
+            return (
+              <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase' }}>{label}</span>
+                <span style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'13px', color: info ? 'var(--oro-dorado)' : 'rgba(245,230,200,0.25)' }}>
+                  {info ? `${ROL_LABEL[info.rol] || info.rol} — ${info.nombre}` : 'No asignado'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.25)', fontSize:'11px', letterSpacing:'1px', textAlign:'center' }}>
+          Se cierra automáticamente en {Math.max(0, tiempoRestante)}s
+        </p>
+      </div>
+    );
+  }
+
+  // ── Alijo de Armas ───────────────────────────────────────
+  if (tipoCarta === 'alijo_armas') {
+    const elegibles = jugadores.filter(j => !j.sacrificado && !j.fueraDeServicio);
+    const totalDistribuido = Object.values(distribucion).reduce((a, b) => a + b, 0);
+    const pistolasRestantes = 3 - totalDistribuido;
+
+    const ajustar = (id, delta) => {
+      const actual = distribucion[id] || 0;
+      const nuevo = actual + delta;
+      if (nuevo < 0) return;
+      if (delta > 0 && totalDistribuido >= 3) return;
+      setDistribucion(d => ({ ...d, [id]: nuevo }));
+    };
+
+    return (
+      <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
+        <div style={{ textAlign:'center', marginBottom:'20px' }}>
+          <div style={{ fontSize:'52px', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Carta Ritual</p>
+          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'8px' }}>Alijo de Armas</h2>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'13px' }}>
+            Distribuye hasta <strong style={{ color:'var(--oro-dorado)' }}>3 pistolas</strong> entre quien quieras
+            {pistolasRestantes < 3 && <span style={{ color:'#4caf50' }}> ({pistolasRestantes} restantes)</span>}
+          </p>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
+          {elegibles.map(j => {
+            const asignadas = distribucion[j.id] || 0;
+            return (
+              <div key={j.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:'10px', background: asignadas > 0 ? 'rgba(76,175,80,0.08)' : 'rgba(13,27,46,0.7)', border:`1px solid ${asignadas > 0 ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.07)'}`, transition:'all 0.2s' }}>
+                <span style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'14px' }}>{j.nombre}</span>
+                <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                  <button onClick={() => ajustar(j.id, -1)} disabled={!asignadas} style={{ width:'30px', height:'30px', borderRadius:'50%', border:'1px solid rgba(192,57,43,0.4)', background:'rgba(192,57,43,0.1)', color:'#ff8a8a', fontSize:'18px', lineHeight:'1', cursor: asignadas ? 'pointer' : 'not-allowed', opacity: asignadas ? 1 : 0.35, transition:'opacity 0.2s' }}>−</button>
+                  <span style={{ fontFamily:'var(--fuente-subtitulo)', color: asignadas > 0 ? 'var(--oro-dorado)' : 'rgba(245,230,200,0.3)', fontSize:'14px', minWidth:'36px', textAlign:'center' }}>
+                    {asignadas > 0 ? `${asignadas}🔫` : '0'}
+                  </span>
+                  <button onClick={() => ajustar(j.id, 1)} disabled={totalDistribuido >= 3} style={{ width:'30px', height:'30px', borderRadius:'50%', border:'1px solid rgba(201,168,76,0.4)', background:'rgba(201,168,76,0.1)', color:'var(--oro-dorado)', fontSize:'18px', lineHeight:'1', cursor: totalDistribuido < 3 ? 'pointer' : 'not-allowed', opacity: totalDistribuido < 3 ? 1 : 0.35, transition:'opacity 0.2s' }}>+</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {!confirmado ? (
+          <button className="btn-primario" onClick={() => {
+            setConfirmado(true);
+            emitir('accion-ritual', { distribucion });
+          }} style={{ width:'100%', padding:'16px' }}>
+            🔫 Confirmar distribución ({totalDistribuido}/3)
+          </button>
+        ) : (
+          <div style={{ textAlign:'center', padding:'14px', background:'rgba(98,228,165,0.07)', border:'1px solid rgba(98,228,165,0.2)', borderRadius:'8px' }}>
+            <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px' }}>✓ Distribuido</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ── Ritual del Culto — vista para los demás jugadores ────────
+function RitualEspera() {
+  return (
+    <div style={{ width:'100%', maxWidth:'360px', textAlign:'center', animation:'aparecer 0.5s ease' }}>
+      <div style={{ fontSize:'64px', marginBottom:'20px', animation:'flotar 4s ease-in-out infinite' }}>🌑</div>
+      <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--crema-pergamino)', fontSize:'22px', letterSpacing:'3px', marginBottom:'10px' }}>
+        Cierra los ojos
+      </h2>
+      <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.45)', fontSize:'15px', marginBottom:'28px' }}>
+        El Culto actúa en las sombras...
+      </p>
+      <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
+        {[0,1,2].map(i => (
+          <div key={i} style={{ width:'9px', height:'9px', borderRadius:'50%', background:'#4caf50', animation:`pulsar-kraken 1.4s ease-in-out ${i*0.3}s infinite` }} />
+        ))}
+      </div>
+    </div>
   );
 }
 

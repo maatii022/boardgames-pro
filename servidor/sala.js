@@ -12,6 +12,7 @@ const {
   iniciarAccionEspecialPendiente,
   elegirJugadorAccionEspecial,
   confirmarAccionEspecial,
+  procesarAccionRitual,
 } = require('./juego/fases');
 
 // ============================================================
@@ -248,6 +249,10 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
       }
       break;
     }
+    case 'accion-ritual': {
+      sala.estado = procesarAccionRitual(sala.estado, socketId, datos);
+      break;
+    }
     case 'fase-5': {
       sala.estado = ejecutarFase5(sala.estado);
       break;
@@ -361,6 +366,26 @@ const vistaEstadoParaJugador = (sala, socketId) => {
     accionEspecial: (() => {
       const ae = sala.estado.accionEspecial;
       if (!ae) return null;
+
+      // ── Ritual del Culto ──────────────────────────────────────
+      if (ae.tipo === 'ritual') {
+        const esCultista = jugadorActual?.rol === 'cultista';
+        let rolesClave = null;
+        // Solo el Cultista ve los roles de Capitán/Teniente/Navegante (Registro de Camarote)
+        if (ae.carta?.tipo === 'registro_camarote' && esCultista) {
+          const cap = sala.estado.jugadores.find(j => j.esCapitan);
+          const ten = sala.estado.jugadores.find(j => j.esTeniente);
+          const nav = sala.estado.jugadores.find(j => j.esNavegante);
+          rolesClave = {
+            capitan:  cap  ? { nombre: cap.nombre,  rol: cap.rol  } : null,
+            teniente: ten  ? { nombre: ten.nombre,  rol: ten.rol  } : null,
+            navegante: nav ? { nombre: nav.nombre,  rol: nav.rol  } : null,
+          };
+        }
+        return { tipo: 'ritual', carta: ae.carta, esCultista, rolesClave };
+      }
+
+      // ── SIRENA / TELESCOPIO ───────────────────────────────────
       const soyElegido = ae.jugadorElegido === socketId;
       return {
         tipo: ae.tipo,

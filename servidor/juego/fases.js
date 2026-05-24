@@ -276,7 +276,8 @@ const ejecutarFase5 = (estado) => {
     fase: FASES.FASE_1,
     turno: estado.turno + 1,
     cofre: { cartaCapitan: null, cartaTeniente: null, cartaNavegante: null, etapa: null },
-    accionEspecial: null,
+    // Preservar ritual si el Cultista aún no ha actuado
+    accionEspecial: estado.accionEspecial?.tipo === 'ritual' ? estado.accionEspecial : null,
     accionFase4: null,
   };
 };
@@ -408,6 +409,64 @@ const confirmarAccionEspecial = (estado, decision) => {
   return aplicarCartaNavegacion(nuevoEstado);
 };
 
+// ── Acciones Rituales del Culto ───────────────────────────────
+
+const procesarAccionRitual = (estado, socketId, datos) => {
+  const { accionEspecial } = estado;
+  if (!accionEspecial || accionEspecial.tipo !== 'ritual') throw new Error('No hay acción ritual en curso');
+
+  const jugador = estado.jugadores.find(j => j.id === socketId);
+  if (!jugador || jugador.rol !== ROLES.CULTISTA) throw new Error('Solo el Cultista puede realizar acciones rituales');
+
+  const tipoCarta = accionEspecial.carta?.tipo;
+  let nuevoEstado = estado;
+
+  switch (tipoCarta) {
+    case TIPOS_CARTA_RITUAL.CONVERSION_CULTO: {
+      const { jugadorId } = datos;
+      if (!jugadorId) throw new Error('Debes elegir a quién convertir');
+      const objetivo = nuevoEstado.jugadores.find(j => j.id === jugadorId);
+      if (!objetivo) throw new Error('Jugador no encontrado');
+      if (objetivo.sacrificado) throw new Error('No puedes convertir a un jugador eliminado');
+      if (objetivo.rol === ROLES.CULTISTA) throw new Error('Ya es el Cultista');
+
+      nuevoEstado = {
+        ...nuevoEstado,
+        jugadores: nuevoEstado.jugadores.map(j =>
+          j.id === jugadorId ? { ...j, rol: ROLES.ADEPTO } : j
+        ),
+        cultista: {
+          ...nuevoEstado.cultista,
+          adeptos: [...(nuevoEstado.cultista.adeptos || []), jugadorId],
+        },
+      };
+      break;
+    }
+    case TIPOS_CARTA_RITUAL.REGISTRO_CAMAROTE: {
+      // Solo lectura — el Cultista ve los roles; no cambia el estado del juego
+      break;
+    }
+    case TIPOS_CARTA_RITUAL.ALIJO_ARMAS: {
+      const distribucion = datos.distribucion || {};
+      const totalDistribuido = Object.values(distribucion).reduce((a, b) => a + Number(b), 0);
+      if (totalDistribuido > 3) throw new Error('Solo puedes distribuir 3 pistolas en total');
+
+      nuevoEstado = {
+        ...nuevoEstado,
+        jugadores: nuevoEstado.jugadores.map(j => {
+          const extra = Number(distribucion[j.id] || 0);
+          return extra > 0 ? { ...j, pistolas: j.pistolas + extra } : j;
+        }),
+      };
+      break;
+    }
+    default:
+      throw new Error(`Tipo de carta ritual desconocido: ${tipoCarta}`);
+  }
+
+  return { ...nuevoEstado, accionEspecial: null };
+};
+
 module.exports = {
   elegirCapitanAleatorio,
   elegirEquipo,
@@ -422,4 +481,5 @@ module.exports = {
   iniciarAccionEspecialPendiente,
   elegirJugadorAccionEspecial,
   confirmarAccionEspecial,
+  procesarAccionRitual,
 };
