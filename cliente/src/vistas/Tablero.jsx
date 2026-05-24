@@ -5,19 +5,6 @@ import { useSocket } from '../hooks/useSocket';
 
 const urlBase = 'https://boardgames-pro.onrender.com';
 
-/* ── Fuentes de luz de la mesa (sala de espera) ── */
-const LUCES_MESA = [
-  // Vela — corona difusa grande
-  { x:19.5, y:22, sz:680, col:'rgba(255,148,28,0.19)', dur:5.0, del:0.0, anim:'luz-ambar'       },
-  // Vela — halo cálido intermedio
-  { x:19.5, y:22, sz:290, col:'rgba(255,172,46,0.28)', dur:4.2, del:0.8, anim:'vela-parpadeo-2'  },
-  // Vela — punto caliente (la llama)
-  { x:19.5, y:22, sz: 60, col:'rgba(255,248,175,0.80)', dur:3.0, del:0.3, anim:'vela-parpadeo-1' },
-  // Reflejos ámbar difusos sobre brújula y monedas (centro-top)
-  { x:42,   y:14, sz:380, col:'rgba(255,165,35,0.07)',  dur:6.5, del:1.4, anim:'luz-ambar'        },
-  // Calidez difusa lado derecho (monedas, telescopio)
-  { x:78,   y:32, sz:420, col:'rgba(255,140,20,0.06)',  dur:7.5, del:2.5, anim:'vela-parpadeo-2'  },
-];
 
 const FASE_INFO = {
   lobby:     { label: 'Sala de Espera',              color: 'var(--oro-dorado)' },
@@ -129,17 +116,23 @@ export default function Tablero() {
           background:'linear-gradient(to left, rgba(1,0,0,0.55) 0%, transparent 24%)',
         }}/>
 
-        {/* ═══ CAPA 5 — Fuentes de luz de la escena ═══ */}
-        {LUCES_MESA.map((l, i) => (
-          <div key={i} style={{
-            position:'absolute', left:`${l.x}%`, top:`${l.y}%`,
-            width:`${l.sz}px`, height:`${l.sz}px`, borderRadius:'50%',
-            background:`radial-gradient(circle, ${l.col} 0%, transparent 70%)`,
-            transform:'translate(-50%,-50%)',
-            animation:`${l.anim} ${l.dur}s ease-in-out ${l.del}s infinite`,
-            zIndex:3, pointerEvents:'none',
-          }}/>
-        ))}
+        {/* ═══ CAPA 5 — Luz ambiental: contraste alrededor de la vela + calidez difusa ═══ */}
+
+        {/* Halo oscuro alrededor de la vela: la llama de la foto brilla por contraste */}
+        <div style={{
+          position:'absolute', inset:0, zIndex:3, pointerEvents:'none',
+          background:'radial-gradient(circle at 19.5% 22%, transparent 5%, rgba(0,0,0,0.30) 22%, rgba(0,0,0,0.10) 42%, transparent 62%)',
+          animation:'luz-ambar 5.5s ease-in-out infinite',
+        }}/>
+
+        {/* Calidez ambiental muy sutil sobre el centro de la mesa */}
+        <div style={{
+          position:'absolute', left:'44%', top:'46%', zIndex:3, pointerEvents:'none',
+          width:'800px', height:'700px', borderRadius:'50%',
+          transform:'translate(-50%,-50%)',
+          background:'radial-gradient(ellipse, rgba(100,50,5,0.07) 0%, transparent 68%)',
+          animation:'luz-ambar 9.0s ease-in-out 2.0s infinite',
+        }}/>
 
         {/* ═══ HEADER ═══ */}
         <div style={{
@@ -185,9 +178,9 @@ export default function Tablero() {
             </div>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
-              fontSize:'clamp(7px,0.68vw,9px)',
-              color:'rgba(201,168,76,0.75)',
-              textShadow:'0 1px 6px rgba(0,0,0,0.95)',
+              fontSize:'clamp(8px,0.72vw,10px)',
+              color:'rgba(245,218,162,0.92)',
+              textShadow:'0 1px 6px rgba(0,0,0,0.98)',
               marginBottom:'5px',
             }}>Código de sala</p>
             <div style={{
@@ -214,24 +207,50 @@ export default function Tablero() {
             }}>
               <img src="/sala-espera/pergamino.png" alt=""
                 style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none' }}/>
-              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 18% 11%' }}>
-                <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', flexShrink:0, marginBottom:'5%' }}>
-                  <h2 style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(13px,1.32vw,18px)', color:'#120800' }}>Tripulación</h2>
-                  <span style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(7px,0.70vw,10px)', color: numJugadores >= 5 ? '#285028' : '#6a3808', letterSpacing:'1px' }}>{numJugadores}/11</span>
+              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'17% 19% 12%' }}>
+
+                {/* Cabecera */}
+                <div style={{ flexShrink:0, marginBottom:'5%' }}>
+                  <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
+                    <h2 style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(14px,1.42vw,20px)', color:'#0f0500', letterSpacing:'0.5px' }}>
+                      Tripulación
+                    </h2>
+                    <span style={{
+                      fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.72vw,11px)',
+                      color: numJugadores >= 5 ? '#1a4a1a' : '#5a2c05',
+                      letterSpacing:'1px', fontWeight:600,
+                    }}>{numJugadores}/11</span>
+                  </div>
+                  <div style={{ height:'1px', marginTop:'5%', background:'linear-gradient(to right, rgba(50,18,4,0.40), rgba(50,18,4,0.18), transparent)' }}/>
                 </div>
-                <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent: jugadores.length > 0 ? 'space-evenly' : 'flex-start', overflow:'hidden' }}>
+
+                {/* Lista */}
+                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:'clamp(3px,0.55vh,7px)', overflow:'hidden' }}>
                   {jugadores.length === 0 ? (
-                    <p style={{ fontFamily:'var(--fuente-pirata)', color:'rgba(20,8,0,0.32)', fontSize:'clamp(9px,0.88vw,12px)', textAlign:'center' }}>
+                    <p style={{
+                      fontFamily:'var(--fuente-pirata)', color:'rgba(18,7,0,0.38)',
+                      fontSize:'clamp(9px,0.88vw,12px)', textAlign:'center', marginTop:'14%',
+                    }}>
                       Esperando tripulantes...
                     </p>
                   ) : jugadores.map((j, i) => (
-                    <div key={j.id || i} style={{ display:'flex', alignItems:'center', gap:'4%', animation:`aparecer 0.3s ease ${i*0.04}s both` }}>
-                      <span style={{ fontSize:'clamp(7px,0.75vw,10px)', flexShrink:0, opacity:0.65 }}>{j.id === sala.hostId ? '⚓' : '·'}</span>
-                      <span style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(9px,0.90vw,13px)', color:'#0d0600', lineHeight:1.1, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.nombre}</span>
-                      <div style={{ width:'4px', height:'4px', borderRadius:'50%', flexShrink:0, background: j.conectado !== false ? '#3a6a3a' : '#883333', opacity:0.72 }}/>
+                    <div key={j.id || i} style={{ display:'flex', alignItems:'center', gap:'5px', animation:`aparecer 0.35s ease ${i*0.05}s both` }}>
+                      <span style={{ fontSize:'clamp(8px,0.76vw,11px)', flexShrink:0, opacity:0.50, minWidth:'13px', textAlign:'center' }}>
+                        {j.id === sala.hostId ? '⚓' : '›'}
+                      </span>
+                      <span style={{
+                        fontFamily:'var(--fuente-pirata)',
+                        fontSize:'clamp(10px,1.02vw,15px)',
+                        color:'#0c0400',
+                        lineHeight:1.2,
+                        flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                        letterSpacing:'0.4px',
+                      }}>{j.nombre}</span>
+                      <div style={{ width:'5px', height:'5px', borderRadius:'50%', flexShrink:0, background: j.conectado !== false ? '#285828' : '#782828', opacity:0.62 }}/>
                     </div>
                   ))}
                 </div>
+
               </div>
             </div>
 
@@ -239,9 +258,9 @@ export default function Tablero() {
             <div style={{ textAlign:'center', flexShrink:0 }}>
               {numJugadores < 5 && (
                 <p style={{
-                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.82vw,11px)',
-                  color:'rgba(201,168,76,0.75)',
-                  textShadow:'0 1px 6px rgba(0,0,0,0.96), 0 2px 14px rgba(0,0,0,0.80)',
+                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(9px,0.86vw,12px)',
+                  color:'rgba(245,218,162,0.94)',
+                  textShadow:'0 1px 7px rgba(0,0,0,0.98), 0 2px 14px rgba(0,0,0,0.85)',
                   marginBottom:'10px', letterSpacing:'1px',
                 }}>
                   Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
@@ -253,9 +272,9 @@ export default function Tablero() {
                 style={{
                   background: numJugadores >= 5
                     ? 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))'
-                    : 'rgba(18,9,2,0.38)',
-                  border:`1px solid ${numJugadores >= 5 ? 'rgba(232,201,122,0.55)' : 'rgba(75,45,8,0.18)'}`,
-                  color: numJugadores >= 5 ? 'var(--negro-abismo)' : 'rgba(120,82,22,0.38)',
+                    : 'rgba(28,14,3,0.55)',
+                  border:`1px solid ${numJugadores >= 5 ? 'rgba(232,201,122,0.55)' : 'rgba(140,95,25,0.32)'}`,
+                  color: numJugadores >= 5 ? 'var(--negro-abismo)' : 'rgba(190,145,55,0.58)',
                   padding:'clamp(8px,0.9vh,12px) clamp(20px,2.2vw,34px)',
                   fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(10px,0.90vw,13px)',
                   fontWeight: numJugadores >= 5 ? 700 : 400,
@@ -274,9 +293,9 @@ export default function Tablero() {
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'10px' }}>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
-              fontSize:'clamp(8px,0.78vw,11px)',
-              color:'rgba(201,168,76,0.78)',
-              textShadow:'0 1px 6px rgba(0,0,0,0.96)',
+              fontSize:'clamp(9px,0.82vw,12px)',
+              color:'rgba(245,218,162,0.94)',
+              textShadow:'0 1px 7px rgba(0,0,0,0.98)',
               marginBottom:'10px',
             }}>Únete escaneando</p>
             <div style={{ filter:'drop-shadow(0 0 5px rgba(255,255,255,0.10)) drop-shadow(0 5px 14px rgba(0,0,0,0.80))' }}>
@@ -285,8 +304,8 @@ export default function Tablero() {
             <p style={{
               fontFamily:'var(--fuente-subtitulo)',
               fontSize:'clamp(6px,0.55vw,8px)',
-              color:'rgba(201,168,76,0.48)',
-              textShadow:'0 1px 4px rgba(0,0,0,0.92)',
+              color:'rgba(245,218,162,0.62)',
+              textShadow:'0 1px 5px rgba(0,0,0,0.96)',
               marginTop:'8px', wordBreak:'break-all', maxWidth:'185px',
             }}>{urlUnirse}</p>
           </div>
