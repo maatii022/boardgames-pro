@@ -3,16 +3,19 @@ import React from 'react';
 /* Ruta base de los assets de esta carta */
 const A = '/cartas/ftk/';
 
-/* ════════════════════════════════════════════════════════════════
-   Carta Feed The Kraken — usa assets reales en /cartas/ftk/
+/*
+  Color unificado para kraken + título:
+  sepia cálido oscuro → mismo tono de "tinta de pergamino"
+  Ajusta brightness si las imágenes salen muy claras/oscuras.
+*/
+const TINTA = 'sepia(1) saturate(0.6) brightness(0.28)';
 
-   ESTRATEGIA DE LAYOUT:
-   • fondo.png se renderiza como <img width:100% height:auto>
-     → su proporción natural fija la altura del contenedor.
-   • Todo el contenido va en un <div position:absolute inset:0>
-     superpuesto, con flex-column para distribuir los elementos.
-   • Los porcentajes de padding se ajustan a los márgenes del
-     pergamino (bordes rasgados, cuerda arriba, etc.).
+/* ════════════════════════════════════════════════════════════════
+   Carta Feed The Kraken
+   • fondo.png (width:100% height:auto) fija la proporción.
+   • Todo el contenido va en position:absolute inset:0.
+   • flex-column con justify-content:flex-start + marginTop:auto
+     en el botón para anclarlo al fondo del pergamino.
 ═══════════════════════════════════════════════════════════════ */
 export default function CartaFeedTheKraken({
   onCrear, creando, conectado, esHover, onHover, onLeave,
@@ -32,66 +35,62 @@ export default function CartaFeedTheKraken({
         cursor: 'default',
       }}>
 
-      {/* ── FONDO: fija la proporción natural de la carta ── */}
+      {/* ── FONDO: fija la proporción natural del pergamino ── */}
       <img
         src={`${A}fondo.png`}
         alt=""
-        style={{
-          display: 'block',
-          width: '100%',
-          height: 'auto',          /* ← respeta el aspect-ratio del PNG */
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}
+        style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none' }}
       />
 
-      {/* ── CONTENIDO: superpuesto absolutamente ── */}
+      {/* ── CONTENIDO superpuesto ── */}
       <div style={{
         position: 'absolute',
         inset: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-evenly',
-        /* Padding relativo al tamaño de la carta para respetar
-           los bordes rasgados / cuerda superior / margen inferior */
-        padding: '14% 10% 10%',
+        /* top: espacio para la cuerda/nudo del pergamino
+           lados y bottom: margen interior del borde rasgado    */
+        padding: '11% 8% 8%',
       }}>
 
-        {/* ── Kraken ── */}
+        {/* ── Kraken: grande, protagonista ── */}
         <img
           src={`${A}kraken.png`}
           alt="Kraken"
           style={{
-            width: '28%',
+            width: '54%',
             height: 'auto',
             display: 'block',
             userSelect: 'none',
+            filter: TINTA,
           }}
         />
 
-        {/* ── Título + divisor ── */}
+        {/* ── Título + divisor: justo debajo del kraken ── */}
         <img
           src={`${A}titulo.png`}
           alt="Feed The Kraken"
           style={{
-            width: '82%',
+            width: '88%',
             height: 'auto',
             display: 'block',
+            marginTop: '2%',
             userSelect: 'none',
+            filter: TINTA,
           }}
         />
 
-        {/* ── Descripción ── */}
+        {/* ── Descripción: debajo del divisor incorporado en titulo.png ── */}
         <p style={{
           fontFamily: 'var(--fuente-pirata)',
-          fontSize: 'clamp(10px,1.05vw,13px)',
+          fontSize: 'clamp(9px,1vw,12.5px)',
           color: '#2a1608',
           textAlign: 'center',
-          lineHeight: 1.6,
-          margin: 0,
-          padding: '0 4%',
-          letterSpacing: '0.2px',
+          lineHeight: 1.55,
+          margin: '3% 0 0',
+          padding: '0 5%',
+          letterSpacing: '0.15px',
         }}>
           Deducción social en alta mar. Piratas, Marineros y el misterioso Cultista compiten por el control del barco.
         </p>
@@ -99,35 +98,39 @@ export default function CartaFeedTheKraken({
         {/* ── Stats ── */}
         <div style={{
           display: 'flex',
-          gap: '8%',
+          gap: '7%',
           width: '100%',
           justifyContent: 'center',
           alignItems: 'flex-start',
+          marginTop: '4%',
         }}>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign:'center' }}>
             <img src={`${A}personas.png`} alt="Jugadores"
-                 style={{ width:'16%', minWidth:'18px', maxWidth:'28px', display:'block', margin:'0 auto 3px', userSelect:'none' }}/>
-            <div style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(12px,1.2vw,15px)', color:'#1a0d02', lineHeight:1 }}>5–11</div>
-            <div style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(6px,0.6vw,8px)', color:'#5a3510', letterSpacing:'1.4px', textTransform:'uppercase', marginTop:'2px' }}>Jugadores</div>
+                 style={{ width:'32px', height:'auto', display:'block', margin:'0 auto 3px',
+                          userSelect:'none', filter: TINTA }}/>
+            <div style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(11px,1.15vw,14px)', color:'#1a0d02', lineHeight:1 }}>5–11</div>
+            <div style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(6px,0.58vw,8px)', color:'#5a3510', letterSpacing:'1.4px', textTransform:'uppercase', marginTop:'2px' }}>Jugadores</div>
           </div>
-          <div style={{ width:'1px', background:'rgba(80,40,8,0.28)', alignSelf:'stretch', margin:'2px 0' }}/>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ width:'1px', background:'rgba(80,40,8,0.3)', alignSelf:'stretch', margin:'2px 0' }}/>
+          <div style={{ textAlign:'center' }}>
             <img src={`${A}reloj.png`} alt="Duración"
-                 style={{ width:'12%', minWidth:'14px', maxWidth:'22px', display:'block', margin:'0 auto 3px', userSelect:'none' }}/>
-            <div style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(12px,1.2vw,15px)', color:'#1a0d02', lineHeight:1 }}>45–90 min</div>
-            <div style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(6px,0.6vw,8px)', color:'#5a3510', letterSpacing:'1.4px', textTransform:'uppercase', marginTop:'2px' }}>Duración</div>
+                 style={{ width:'24px', height:'auto', display:'block', margin:'0 auto 3px',
+                          userSelect:'none', filter: TINTA }}/>
+            <div style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(11px,1.15vw,14px)', color:'#1a0d02', lineHeight:1 }}>45–90 min</div>
+            <div style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(6px,0.58vw,8px)', color:'#5a3510', letterSpacing:'1.4px', textTransform:'uppercase', marginTop:'2px' }}>Duración</div>
           </div>
         </div>
 
-        {/* ── Botón Crear Sala ── */}
+        {/* ── Botón: anclado al fondo con marginTop:auto ── */}
         <img
           src={`${A}boton.png`}
           alt="Crear Sala"
           onClick={!creando && conectado ? onCrear : undefined}
           style={{
-            width: '75%',
+            width: '80%',
             height: 'auto',
             display: 'block',
+            marginTop: 'auto',
             userSelect: 'none',
             cursor: creando || !conectado ? 'not-allowed' : 'pointer',
             opacity: !conectado ? 0.45 : creando ? 0.55 : 1,
