@@ -297,8 +297,23 @@ io.on('connection', (socket) => {
       const codigo = socketSala.get(socket.id);
       if (!codigo) return;
       try {
+        // Capturar si es una conversión al culto antes de procesar
+        let conversionTargetId = null;
+        if (accion === EVENTOS.ACCION_RITUAL && datos?.jugadorId) {
+          const salaActual = obtenerSala(codigo);
+          if (salaActual?.estado?.accionEspecial?.carta?.tipo === 'conversion_culto') {
+            conversionTargetId = datos.jugadorId;
+          }
+        }
+
         const sala = procesarAccion(codigo, socket.id, accion, datos || {});
         emitirSalaActualizada(sala);
+
+        // Notificar al jugador convertido al Culto
+        if (conversionTargetId) {
+          const socketConvertido = sala.jugadores.find(sj => sj.id === conversionTargetId);
+          if (socketConvertido) io.to(socketConvertido.id).emit('convertido-al-culto');
+        }
         if (sala.estado?.victoria) {
           io.to(sala.codigo).emit(EVENTOS.VICTORIA_DECLARADA, { ganador: sala.estado.victoria });
         }

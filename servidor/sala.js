@@ -370,19 +370,16 @@ const vistaEstadoParaJugador = (sala, socketId) => {
       // ── Ritual del Culto ──────────────────────────────────────
       if (ae.tipo === 'ritual') {
         const esCultista = jugadorActual?.rol === 'cultista';
-        let rolesClave = null;
-        // Solo el Cultista ve los roles de Capitán/Teniente/Navegante (Registro de Camarote)
-        if (ae.carta?.tipo === 'registro_camarote' && esCultista) {
-          const cap = sala.estado.jugadores.find(j => j.esCapitan);
-          const ten = sala.estado.jugadores.find(j => j.esTeniente);
-          const nav = sala.estado.jugadores.find(j => j.esNavegante);
-          rolesClave = {
-            capitan:  cap  ? { nombre: cap.nombre,  rol: cap.rol  } : null,
-            teniente: ten  ? { nombre: ten.nombre,  rol: ten.rol  } : null,
-            navegante: nav ? { nombre: nav.nombre,  rol: nav.rol  } : null,
-          };
+        let etapa = null;
+        let resultado = null;
+        if (esCultista) {
+          etapa = ae.etapa || null;
+          // Registro de Camarote fase 'ver': mostrar rol del jugador investigado
+          if (ae.carta?.tipo === 'registro_camarote' && ae.etapa === 'ver') {
+            resultado = { nombre: ae.nombreVisto, rol: ae.rolVisto };
+          }
         }
-        return { tipo: 'ritual', carta: ae.carta, esCultista, rolesClave };
+        return { tipo: 'ritual', carta: ae.carta, esCultista, etapa, resultado };
       }
 
       // ── SIRENA / TELESCOPIO ───────────────────────────────────

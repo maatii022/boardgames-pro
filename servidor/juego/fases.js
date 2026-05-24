@@ -216,11 +216,13 @@ const aplicarCartaNavegacion = (estado) => {
     case TIPOS_CARTA_NAVEGACION.LEVANTAMIENTO_CULTO: {
       if (nuevoEstado.mazoRitual.length > 0) {
         const [cartaRitual, ...restoRitual] = nuevoEstado.mazoRitual;
+        // Registro de Camarote empieza en 'elegir' (el Cultista elige a quién investigar)
+        const etapaInicial = cartaRitual.tipo === TIPOS_CARTA_RITUAL.REGISTRO_CAMAROTE ? 'elegir' : null;
         nuevoEstado = {
           ...nuevoEstado,
           mazoRitual: restoRitual,
           cartasRitualesReveladas: [...nuevoEstado.cartasRitualesReveladas, cartaRitual],
-          accionEspecial: { tipo: 'ritual', carta: cartaRitual },
+          accionEspecial: { tipo: 'ritual', carta: cartaRitual, etapa: etapaInicial },
         };
       }
       break;
@@ -443,7 +445,23 @@ const procesarAccionRitual = (estado, socketId, datos) => {
       break;
     }
     case TIPOS_CARTA_RITUAL.REGISTRO_CAMAROTE: {
-      // Solo lectura — el Cultista ve los roles; no cambia el estado del juego
+      if (datos.jugadorId) {
+        // Paso 1: el Cultista elige a quién investigar → transición a 'ver'
+        const objetivo = nuevoEstado.jugadores.find(j => j.id === datos.jugadorId);
+        if (!objetivo) throw new Error('Jugador no encontrado');
+        // No limpiamos accionEspecial — actualizamos con el resultado
+        return {
+          ...nuevoEstado,
+          accionEspecial: {
+            ...accionEspecial,
+            etapa: 'ver',
+            objetivoId: datos.jugadorId,
+            rolVisto: objetivo.rol,
+            nombreVisto: objetivo.nombre,
+          },
+        };
+      }
+      // Paso 2: sin jugadorId = confirmar/temporizador → limpiar (cae al return final)
       break;
     }
     case TIPOS_CARTA_RITUAL.ALIJO_ARMAS: {

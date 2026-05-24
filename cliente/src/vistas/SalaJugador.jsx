@@ -20,6 +20,7 @@ export default function SalaJugador() {
   const [kraken, setKraken]                 = useState(null);
   const [eliminado, setEliminado]           = useState(false);
   const [ritualReveladoId, setRitualReveladoId] = useState(null);
+  const [convertidoAlCulto, setConvertidoAlCulto] = useState(false);
 
   // Si no hay sala (recarga sin reconexión aún), redirigir
   useEffect(() => {
@@ -48,7 +49,8 @@ export default function SalaJugador() {
       if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 6000);
     });
     const c6 = escuchar('kraken-eliminado', () => setEliminado(true));
-    return () => { c1(); c2(); c3(); c4(); c5(); c6(); };
+    const c7 = escuchar('convertido-al-culto', () => setConvertidoAlCulto(true));
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
   }, [escuchar, navigate, salirDeSala]);
 
   // Auto-transición: mostrar carta ritual 4 s → pantalla de acción
@@ -56,7 +58,7 @@ export default function SalaJugador() {
   useEffect(() => {
     if (!_cartaRitualId) { setRitualReveladoId(null); return; }
     if (ritualReveladoId === _cartaRitualId) return;
-    const t = setTimeout(() => setRitualReveladoId(_cartaRitualId), 4000);
+    const t = setTimeout(() => setRitualReveladoId(_cartaRitualId), 10000);
     return () => clearTimeout(t);
   }, [_cartaRitualId]); // eslint-disable-line
 
@@ -164,12 +166,32 @@ export default function SalaJugador() {
     );
   }
 
+  // ── Overlay: jugador convertido al Culto ─────────────────
+  const overlayConvertido = convertidoAlCulto && (
+    <div style={{ position:'fixed', inset:0, zIndex:300, background:'rgba(0,0,0,0.92)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px', animation:'aparecer 0.4s ease' }}>
+      <div style={{ background:'rgba(45,106,79,0.18)', border:'2px solid #4caf50', borderRadius:'16px', padding:'36px 28px', maxWidth:'340px', width:'100%', textAlign:'center', boxShadow:'0 20px 60px rgba(76,175,80,0.3)' }}>
+        <div style={{ fontSize:'60px', marginBottom:'16px', animation:'flotar 2s ease-in-out infinite' }}>👁️</div>
+        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'10px' }}>Ritual del Culto</p>
+        <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'22px', letterSpacing:'3px', marginBottom:'12px' }}>
+          Has sido convertido
+        </h2>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.65)', fontSize:'14px', lineHeight:'1.6', marginBottom:'20px' }}>
+          El Cultista ha actuado sobre ti en las sombras.<br/>Ahora eres un <strong style={{ color:'#4caf50' }}>Adepto del Culto</strong>.
+        </p>
+        <button className="btn-primario" onClick={() => setConvertidoAlCulto(false)} style={{ width:'100%' }}>
+          Entendido
+        </button>
+      </div>
+    </div>
+  );
+
   // ── RITUAL DEL CULTO (prioridad sobre cualquier fase) ────
   const accionEspecialRitual = estado?.accionEspecial;
   if (accionEspecialRitual?.tipo === 'ritual') {
     const revelacionCompleta = ritualReveladoId === accionEspecialRitual.carta?.id;
     return (
       <div className="fondo-mar" style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'32px 20px' }}>
+        {overlayConvertido}
         {!revelacionCompleta
           ? <RitualReveal carta={accionEspecialRitual.carta} />
           : accionEspecialRitual.esCultista
@@ -356,7 +378,7 @@ export default function SalaJugador() {
   // ── FASE 1 ───────────────────────────────────────────────
   if (fase === 'fase_1') {
     return (
-      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayConvertido}{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 1</p>
@@ -387,7 +409,7 @@ export default function SalaJugador() {
   // ── FASE 2 ───────────────────────────────────────────────
   if (fase === 'fase_2') {
     return (
-      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
+      <>{overlayConvertido}{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', padding:'24px 16px 40px' }}>
         <div style={{ maxWidth:'400px', margin:'0 auto', textAlign:'center' }}>
           <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 2</p>
           <h2 style={{ fontFamily:'var(--fuente-subtitulo)', color:'#ff8a8a', fontSize:'20px', letterSpacing:'2px', marginBottom:'24px' }}>💀 Votación de Motín</h2>
@@ -410,7 +432,7 @@ export default function SalaJugador() {
                            (etapa === 'navegante' && soyNavegante);
 
     return (
-      <>{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
+      <>{overlayConvertido}{overlayMotin}{overlayInvestigacion}<div className="fondo-mar movil-scroll" style={{ width:'100%', minHeight:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px 16px 48px' }}>
         <div style={{ width:'100%', maxWidth:'380px' }}>
           <div style={{ textAlign:'center', marginBottom:'24px' }}>
             <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.35)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Fase 3</p>
@@ -499,6 +521,7 @@ export default function SalaJugador() {
 
     return (
       <>
+        {overlayConvertido}
         {overlayMotin}
         {overlayKraken}
         {overlayInvestigacion}
@@ -1066,7 +1089,7 @@ function BotonRol({ miJugador }) {
 
 // ── Revelación de carta ritual (4 s para todos) ─────────────
 function RitualReveal({ carta }) {
-  const [timer, setTimer] = useState(4);
+  const [timer, setTimer] = useState(10);
 
   useEffect(() => {
     const interval = setInterval(() => setTimer(t => Math.max(0, t - 1)), 1000);
@@ -1114,26 +1137,29 @@ function RitualReveal({ carta }) {
 
 // ── Ritual del Culto — vista para el Cultista ───────────────
 function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
-  const { carta, rolesClave } = accionEspecial;
+  const { carta, etapa, resultado } = accionEspecial;
   const tipoCarta = carta?.tipo;
   const [confirmado, setConfirmado] = useState(false);
   const [distribucion, setDistribucion] = useState({});
   const [tiempoRestante, setTiempoRestante] = useState(30);
+  const [selRegistro, setSelRegistro] = useState(null);
   const emitidoRef = useRef(false);
 
-  // Timer auto-confirma Registro de Camarote tras 30 s
+  // Timer auto-confirma Registro de Camarote tras 30s — solo cuando etapa === 'ver'
   useEffect(() => {
-    if (tipoCarta !== 'registro_camarote') return;
+    if (tipoCarta !== 'registro_camarote' || etapa !== 'ver') return;
+    emitidoRef.current = false;
+    setTiempoRestante(30);
     const interval = setInterval(() => setTiempoRestante(t => t - 1), 1000);
     return () => clearInterval(interval);
-  }, [tipoCarta]);
+  }, [tipoCarta, etapa]); // eslint-disable-line
 
   useEffect(() => {
-    if (tipoCarta === 'registro_camarote' && tiempoRestante <= 0 && !emitidoRef.current) {
+    if (tipoCarta === 'registro_camarote' && etapa === 'ver' && tiempoRestante <= 0 && !emitidoRef.current) {
       emitidoRef.current = true;
       emitir('accion-ritual', {});
     }
-  }, [tiempoRestante, tipoCarta, emitir]);
+  }, [tiempoRestante, tipoCarta, etapa, emitir]);
 
   const ROL_LABEL = {
     pirata:'💀 Pirata', marinero:'⚓ Marinero', cultista:'🐙 Cultista', adepto:'👁️ Adepto',
@@ -1181,38 +1207,64 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
 
   // ── Registro de Camarote ─────────────────────────────────
   if (tipoCarta === 'registro_camarote') {
-    const cargos = [
-      { key: 'capitan',   label: '⚓ Capitán'   },
-      { key: 'teniente',  label: '🎖️ Teniente'  },
-      { key: 'navegante', label: '🧭 Navegante'  },
-    ];
+    // Paso 2: mostrar resultado + cuenta atrás
+    if (etapa === 'ver' && resultado) {
+      return (
+        <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
+          <div style={{ textAlign:'center', marginBottom:'20px' }}>
+            <div style={{ fontSize:'52px', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
+            <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Carta Ritual</p>
+            <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'12px' }}>Registro de Camarote</h2>
+            <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'48px', height:'48px', borderRadius:'50%', background:'rgba(76,175,80,0.12)', border:'2px solid rgba(76,175,80,0.4)' }}>
+              <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'16px', fontWeight:'700' }}>{Math.max(0, tiempoRestante)}</span>
+            </div>
+          </div>
+          <div style={{ background:'rgba(13,27,46,0.85)', border:'1px solid rgba(76,175,80,0.2)', borderRadius:'12px', padding:'24px', textAlign:'center', marginBottom:'14px' }}>
+            <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'10px' }}>Camarote inspeccionado</p>
+            <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'17px', marginBottom:'8px' }}>{resultado.nombre}</p>
+            <p style={{ fontFamily:'var(--fuente-titulo)', color:'var(--oro-dorado)', fontSize:'18px', letterSpacing:'2px' }}>{ROL_LABEL[resultado.rol] || resultado.rol}</p>
+          </div>
+          <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.25)', fontSize:'11px', letterSpacing:'1px', textAlign:'center' }}>
+            Se cierra automáticamente en {Math.max(0, tiempoRestante)}s
+          </p>
+        </div>
+      );
+    }
+    // Paso 1: elegir jugador a inspeccionar (cualquier jugador activo, incluyendo uno mismo)
+    const candidatos = jugadores.filter(j => !j.sacrificado && !j.fueraDeServicio);
     return (
       <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
         <div style={{ textAlign:'center', marginBottom:'20px' }}>
           <div style={{ fontSize:'52px', marginBottom:'12px', animation:'flotar 3s ease-in-out infinite' }}>🐙</div>
           <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(76,175,80,0.6)', fontSize:'10px', letterSpacing:'3px', textTransform:'uppercase', marginBottom:'6px' }}>Carta Ritual</p>
-          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'12px' }}>Registro de Camarote</h2>
-          {/* Cuenta atrás */}
-          <div style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:'48px', height:'48px', borderRadius:'50%', background:'rgba(76,175,80,0.12)', border:'2px solid rgba(76,175,80,0.4)' }}>
-            <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'#4caf50', fontSize:'16px', fontWeight:'700' }}>{Math.max(0, tiempoRestante)}</span>
-          </div>
+          <h2 style={{ fontFamily:'var(--fuente-titulo)', color:'#4caf50', fontSize:'20px', letterSpacing:'2px', marginBottom:'8px' }}>Registro de Camarote</h2>
+          <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'13px' }}>Elige el camarote a inspeccionar:</p>
         </div>
-        <div style={{ background:'rgba(13,27,46,0.85)', border:'1px solid rgba(76,175,80,0.2)', borderRadius:'12px', padding:'20px', display:'flex', flexDirection:'column', gap:'14px', marginBottom:'14px' }}>
-          {cargos.map(({ key, label }) => {
-            const info = rolesClave?.[key];
+        <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
+          {candidatos.map(j => {
+            const soyYo = j.id === socketId;
+            const activo = selRegistro === j.id;
             return (
-              <div key={key} style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.4)', fontSize:'11px', letterSpacing:'2px', textTransform:'uppercase' }}>{label}</span>
-                <span style={{ fontFamily:'var(--fuente-cuerpo)', fontSize:'13px', color: info ? 'var(--oro-dorado)' : 'rgba(245,230,200,0.25)' }}>
-                  {info ? `${ROL_LABEL[info.rol] || info.rol} — ${info.nombre}` : 'No asignado'}
-                </span>
-              </div>
+              <button key={j.id} onClick={() => setSelRegistro(activo ? null : j.id)} style={{
+                padding:'13px 16px', borderRadius:'10px', cursor:'pointer', textAlign:'left',
+                background: activo ? 'rgba(76,175,80,0.12)' : 'rgba(13,27,46,0.7)',
+                border:`1px solid ${activo ? 'rgba(76,175,80,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+                transition:'all 0.2s', display:'flex', alignItems:'center', gap:'10px',
+              }}>
+                <span style={{ color:'rgba(76,175,80,0.6)' }}>{activo ? '✓' : '○'}</span>
+                <span>{j.nombre}</span>
+                {soyYo && <span style={{ color:'var(--turquesa-kraken)', fontSize:'12px' }}>(tú)</span>}
+              </button>
             );
           })}
         </div>
-        <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,230,200,0.25)', fontSize:'11px', letterSpacing:'1px', textAlign:'center' }}>
-          Se cierra automáticamente en {Math.max(0, tiempoRestante)}s
-        </p>
+        <button className="btn-primario" onClick={() => {
+          if (!selRegistro) return;
+          emitir('accion-ritual', { jugadorId: selRegistro });
+        }} disabled={!selRegistro} style={{ width:'100%', padding:'16px' }}>
+          🔍 Inspeccionar camarote
+        </button>
       </div>
     );
   }
@@ -1244,10 +1296,14 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
           {elegibles.map(j => {
+            const soyYo = j.id === socketId;
             const asignadas = distribucion[j.id] || 0;
             return (
               <div key={j.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:'10px', background: asignadas > 0 ? 'rgba(76,175,80,0.08)' : 'rgba(13,27,46,0.7)', border:`1px solid ${asignadas > 0 ? 'rgba(76,175,80,0.3)' : 'rgba(255,255,255,0.07)'}`, transition:'all 0.2s' }}>
-                <span style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'14px' }}>{j.nombre}</span>
+                <span style={{ fontFamily:'var(--fuente-cuerpo)', color:'var(--crema-pergamino)', fontSize:'14px', display:'flex', alignItems:'center', gap:'6px' }}>
+                  {j.nombre}
+                  {soyYo && <span style={{ color:'var(--turquesa-kraken)', fontSize:'11px' }}>(tú)</span>}
+                </span>
                 <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
                   <button onClick={() => ajustar(j.id, -1)} disabled={!asignadas} style={{ width:'30px', height:'30px', borderRadius:'50%', border:'1px solid rgba(192,57,43,0.4)', background:'rgba(192,57,43,0.1)', color:'#ff8a8a', fontSize:'18px', lineHeight:'1', cursor: asignadas ? 'pointer' : 'not-allowed', opacity: asignadas ? 1 : 0.35, transition:'opacity 0.2s' }}>−</button>
                   <span style={{ fontFamily:'var(--fuente-subtitulo)', color: asignadas > 0 ? 'var(--oro-dorado)' : 'rgba(245,230,200,0.3)', fontSize:'14px', minWidth:'36px', textAlign:'center' }}>
