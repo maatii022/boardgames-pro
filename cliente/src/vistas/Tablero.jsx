@@ -115,48 +115,175 @@ export default function Tablero() {
           </div>
         </div>
 
-        {/* ── Mesa ── */}
+        {/* ── Mesa: grid 3 columnas ── */}
         <div style={{
-          flex: 1, display: 'grid',
-          /* izquierda (código) | centro (pergamino) | derecha (equilibrio visual) */
+          flex: 1,
+          display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
           alignItems: 'center',
-          padding: '16px 48px 20px',
+          padding: '12px 52px 16px',
           overflow: 'hidden',
-          gap: '0',
         }}>
 
-          {/* ── Izquierda: código de sala ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          {/* ── Columna izquierda: código tallado, alineado a la derecha (junto al pergamino) ── */}
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'flex-end',          /* pegado al borde del pergamino */
+            justifyContent: 'center',
+            paddingRight: '5%',
+          }}>
             <p style={{
               fontFamily: 'var(--fuente-subtitulo)',
-              fontSize: 'clamp(8px,0.75vw,10px)',
+              fontSize: 'clamp(7px,0.68vw,9px)',
               letterSpacing: '4px', textTransform: 'uppercase',
-              color: '#111',
-              marginBottom: '8px',
+              color: 'rgba(255,255,255,0.65)',
+              textShadow: '0 1px 3px rgba(0,0,0,0.7)',
+              marginBottom: '6px',
             }}>
               Código de sala
             </p>
             <div style={{
               fontFamily: 'var(--fuente-titulo)',
-              fontSize: 'clamp(38px,4.5vw,68px)',
-              letterSpacing: '0.3em',
-              color: '#0d0d0d',
-              textShadow: '0 2px 4px rgba(0,0,0,0.25)',
+              fontSize: 'clamp(34px,3.8vw,60px)',
+              letterSpacing: '0.32em',
+              color: '#ffffff',
+              textShadow: '0 2px 8px rgba(0,0,0,0.75), 0 1px 2px rgba(0,0,0,0.9)',
             }}>
               {codigo}
             </div>
+          </div>
 
-            {/* Botón iniciar + aviso también aquí, accesible */}
-            <div style={{ marginTop: '28px', textAlign: 'center' }}>
+          {/* ── Columna central: pergamino + botón debajo ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+
+            {/* Pergamino con sombra de profundidad */}
+            <div style={{
+              position: 'relative',
+              width: 'min(460px, 37vw)',
+              flexShrink: 0,
+              /* drop-shadow sigue el contorno del PNG transparente → efecto "apoyado en la mesa" */
+              filter: `
+                drop-shadow(0 18px 36px rgba(0,0,0,0.75))
+                drop-shadow(0  6px 12px rgba(0,0,0,0.55))
+                drop-shadow(0  2px  4px rgba(0,0,0,0.40))
+              `,
+            }}>
+              {/* Imagen del pergamino */}
+              <img
+                src="/sala-espera/pergamino.png"
+                alt=""
+                style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none', pointerEvents: 'none' }}
+              />
+
+              {/* Contenido superpuesto */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', flexDirection: 'column',
+                /* márgenes generosos para respetar los bordes quemados */
+                padding: '16% 17% 12%',
+              }}>
+
+                {/* Título Tripulación */}
+                <div style={{
+                  display: 'flex', alignItems: 'baseline',
+                  justifyContent: 'space-between', flexShrink: 0,
+                  marginBottom: '5%',
+                }}>
+                  <h2 style={{
+                    fontFamily: 'var(--fuente-pirata)',
+                    fontSize: 'clamp(13px,1.35vw,18px)',
+                    color: '#120800',
+                  }}>Tripulación</h2>
+                  <span style={{
+                    fontFamily: 'var(--fuente-subtitulo)',
+                    fontSize: 'clamp(7px,0.72vw,10px)',
+                    color: numJugadores >= 5 ? '#285028' : '#6a3808',
+                    letterSpacing: '1px',
+                  }}>{numJugadores}/11</span>
+                </div>
+
+                {/* Lista de jugadores — sin cajas, distribuidos uniformemente */}
+                <div style={{
+                  flex: 1,
+                  display: 'flex', flexDirection: 'column',
+                  justifyContent: jugadores.length > 0 ? 'space-evenly' : 'flex-start',
+                  overflow: 'hidden',
+                }}>
+                  {jugadores.length === 0 ? (
+                    <p style={{
+                      fontFamily: 'var(--fuente-pirata)',
+                      color: 'rgba(20,8,0,0.35)',
+                      fontSize: 'clamp(9px,0.88vw,12px)',
+                      textAlign: 'center',
+                    }}>
+                      Esperando tripulantes...
+                    </p>
+                  ) : jugadores.map((j, i) => (
+                    <div key={j.id || i} style={{
+                      display: 'flex', alignItems: 'center', gap: '5%',
+                      animation: `aparecer 0.3s ease ${i * 0.04}s both`,
+                    }}>
+                      <span style={{ fontSize: 'clamp(8px,0.78vw,10px)', flexShrink: 0, opacity: 0.7 }}>
+                        {j.id === sala.hostId ? '⚓' : '·'}
+                      </span>
+                      <span style={{
+                        fontFamily: 'var(--fuente-pirata)',
+                        /* tamaño que garantiza que 11 nombres caben sin scroll */
+                        fontSize: 'clamp(9px,0.92vw,13px)',
+                        color: '#0d0600',
+                        flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        lineHeight: 1.1,
+                      }}>
+                        {j.nombre}
+                      </span>
+                      <div style={{
+                        width: '4px', height: '4px', borderRadius: '50%', flexShrink: 0,
+                        background: j.conectado !== false ? '#3a6a3a' : '#883333',
+                        opacity: 0.75,
+                      }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* QR — parte inferior derecha, aspecto de "tinta sobre pergamino" */}
+                <div style={{
+                  flexShrink: 0, marginTop: '4%',
+                  display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+                  opacity: 0.72,   /* ligera transparencia → tinta vieja sobre papel */
+                }}>
+                  <QRCodeSVG
+                    value={urlUnirse}
+                    size={86}
+                    level="M"
+                    bgColor="transparent"
+                    fgColor="#1a0c04"
+                  />
+                  <p style={{
+                    fontFamily: 'var(--fuente-subtitulo)',
+                    fontSize: 'clamp(4px,0.45vw,6px)',
+                    color: 'rgba(20,8,0,0.40)',
+                    marginTop: '3%', letterSpacing: '0.2px',
+                    wordBreak: 'break-all', textAlign: 'right',
+                  }}>
+                    {urlUnirse}
+                  </p>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Botón Iniciar + aviso — debajo del pergamino, sobre la madera */}
+            <div style={{ textAlign: 'center', flexShrink: 0 }}>
               {numJugadores < 5 && (
                 <p style={{
                   fontFamily: 'var(--fuente-pirata)',
                   fontSize: 'clamp(9px,0.85vw,12px)',
-                  color: '#111',
-                  marginBottom: '10px',
+                  /* blanco con sombra negra → contrasta sobre cualquier tono de madera */
+                  color: '#ffffff',
+                  textShadow: '0 1px 4px rgba(0,0,0,0.85), 0 2px 8px rgba(0,0,0,0.6)',
+                  marginBottom: '8px',
                 }}>
-                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
+                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para poder iniciar
                 </p>
               )}
               <button
@@ -164,137 +291,35 @@ export default function Tablero() {
                 disabled={numJugadores < 5}
                 style={{
                   background: numJugadores >= 5
-                    ? 'linear-gradient(135deg,rgba(80,45,6,0.90),rgba(120,75,12,0.85))'
-                    : 'rgba(30,16,3,0.30)',
-                  border: `1px solid ${numJugadores >= 5 ? 'rgba(160,105,30,0.55)' : 'rgba(60,35,6,0.2)'}`,
-                  color: numJugadores >= 5 ? 'rgba(240,205,130,0.95)' : 'rgba(80,50,12,0.4)',
-                  padding: 'clamp(9px,1vh,13px) clamp(20px,2.2vw,32px)',
+                    ? 'linear-gradient(135deg, rgba(60,32,4,0.92), rgba(100,62,10,0.88))'
+                    : 'rgba(20,10,2,0.45)',
+                  border: `1px solid ${numJugadores >= 5 ? 'rgba(180,130,50,0.6)' : 'rgba(80,50,10,0.25)'}`,
+                  color: numJugadores >= 5 ? 'rgba(245,210,140,0.97)' : 'rgba(130,90,30,0.45)',
+                  padding: 'clamp(8px,0.9vh,12px) clamp(18px,2vw,30px)',
                   fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: 'clamp(10px,0.95vw,13px)',
+                  fontSize: 'clamp(10px,0.9vw,13px)',
                   letterSpacing: '2px', textTransform: 'uppercase',
-                  borderRadius: '6px',
+                  borderRadius: '5px',
                   cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
                   backdropFilter: 'blur(4px)',
+                  boxShadow: numJugadores >= 5 ? '0 4px 14px rgba(0,0,0,0.55)' : 'none',
                   transition: 'all 0.3s ease',
-                  textShadow: numJugadores >= 5 ? '0 1px 3px rgba(0,0,0,0.55)' : 'none',
+                  textShadow: numJugadores >= 5 ? '0 1px 3px rgba(0,0,0,0.6)' : 'none',
                 }}>
                 🎮 Iniciar Partida
               </button>
-              {error && <p style={{ color: '#993322', fontSize: '11px', marginTop: '8px', fontFamily: 'var(--fuente-subtitulo)' }}>{error}</p>}
-            </div>
-          </div>
-
-          {/* ── Centro: pergamino ── */}
-          <div style={{ position: 'relative', width: 'min(480px, 38vw)', flexShrink: 0 }}>
-
-            {/* Imagen del pergamino */}
-            <img
-              src="/sala-espera/pergamino.png"
-              alt=""
-              style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none', pointerEvents: 'none' }}
-            />
-
-            {/* Contenido sobre el pergamino */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              display: 'flex', flexDirection: 'column',
-              /* padding generoso para no pisar los bordes quemados del pergamino */
-              padding: '12% 14% 10%',
-            }}>
-
-              {/* Cabecera */}
-              <div style={{
-                display: 'flex', alignItems: 'baseline',
-                justifyContent: 'space-between', flexShrink: 0,
-                marginBottom: '4%',
-              }}>
-                <h2 style={{
-                  fontFamily: 'var(--fuente-pirata)',
-                  fontSize: 'clamp(14px,1.5vw,20px)',
-                  color: '#1a0c04',
-                }}>Tripulación</h2>
-                <span style={{
-                  fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: 'clamp(8px,0.82vw,11px)',
-                  color: numJugadores >= 5 ? '#2e5e2e' : '#7a4010',
-                  letterSpacing: '1px',
-                }}>{numJugadores}/11</span>
-              </div>
-
-              {/* Lista de jugadores */}
-              <div style={{
-                flex: 1, overflowY: 'auto', display: 'flex',
-                flexDirection: 'column', gap: '2%', minHeight: 0,
-              }}>
-                {jugadores.length === 0 ? (
-                  <p style={{
-                    fontFamily: 'var(--fuente-pirata)',
-                    color: 'rgba(40,20,5,0.35)',
-                    fontSize: 'clamp(9px,0.9vw,12px)',
-                    textAlign: 'center', paddingTop: '12%',
-                  }}>
-                    Esperando tripulantes...
-                  </p>
-                ) : jugadores.map((j, i) => (
-                  <div key={j.id || i} style={{
-                    display: 'flex', alignItems: 'center', gap: '4%',
-                    padding: '1.5% 2%', borderRadius: '3px',
-                    background: j.id === sala.hostId ? 'rgba(80,40,5,0.1)' : 'rgba(40,20,5,0.04)',
-                    border: `1px solid ${j.id === sala.hostId ? 'rgba(120,70,10,0.22)' : 'rgba(80,40,5,0.07)'}`,
-                    animation: `aparecer 0.35s ease ${i * 0.05}s both`,
-                  }}>
-                    <span style={{ fontSize: 'clamp(9px,0.85vw,11px)', flexShrink: 0 }}>
-                      {j.id === sala.hostId ? '⚓' : '🏴'}
-                    </span>
-                    <span style={{
-                      fontFamily: 'var(--fuente-pirata)',
-                      fontSize: 'clamp(10px,1vw,14px)',
-                      color: j.id === sala.hostId ? '#3a1e04' : '#2a1608',
-                      flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {j.nombre}
-                    </span>
-                    <div style={{
-                      width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0,
-                      background: j.conectado !== false ? '#4a7a4a' : '#aa4444',
-                    }} />
-                    {j.id !== sala.hostId && (
-                      <button onClick={() => cambiarHost(j.id)} style={{
-                        background: 'rgba(80,40,5,0.1)', border: '1px solid rgba(100,55,10,0.2)',
-                        color: 'rgba(80,45,10,0.65)', borderRadius: '3px',
-                        padding: '1px 5px', fontSize: 'clamp(7px,0.65vw,9px)',
-                        fontFamily: 'var(--fuente-subtitulo)', cursor: 'pointer',
-                        flexShrink: 0,
-                      }}>⚓</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* QR centrado en la parte inferior — sin fondo, solo los cuadrados */}
-              <div style={{ flexShrink: 0, textAlign: 'center', marginTop: '5%' }}>
-                <QRCodeSVG
-                  value={urlUnirse}
-                  size={100}
-                  level="M"
-                  bgColor="transparent"
-                  fgColor="#1a0c04"
-                />
+              {error && (
                 <p style={{
+                  color: '#ffccaa', fontSize: '11px', marginTop: '8px',
                   fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: 'clamp(5px,0.52vw,7px)',
-                  color: 'rgba(40,20,5,0.38)',
-                  marginTop: '2%', letterSpacing: '0.3px',
-                  wordBreak: 'break-all',
-                }}>
-                  {urlUnirse}
-                </p>
-              </div>
-
+                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                }}>{error}</p>
+              )}
             </div>
+
           </div>
 
-          {/* ── Derecha: vacío (equilibrio visual) ── */}
+          {/* ── Columna derecha: vacía (equilibrio visual) ── */}
           <div />
 
         </div>
