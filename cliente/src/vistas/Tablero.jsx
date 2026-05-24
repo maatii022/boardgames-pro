@@ -5,6 +5,19 @@ import { useSocket } from '../hooks/useSocket';
 
 const urlBase = 'https://boardgames-pro.onrender.com';
 
+/* ── Fuentes de luz de la mesa (sala de espera) ── */
+const LUCES_MESA = [
+  // Vela — corona difusa grande
+  { x:19.5, y:22, sz:680, col:'rgba(255,148,28,0.19)', dur:5.0, del:0.0, anim:'luz-ambar'       },
+  // Vela — halo cálido intermedio
+  { x:19.5, y:22, sz:290, col:'rgba(255,172,46,0.28)', dur:4.2, del:0.8, anim:'vela-parpadeo-2'  },
+  // Vela — punto caliente (la llama)
+  { x:19.5, y:22, sz: 60, col:'rgba(255,248,175,0.80)', dur:3.0, del:0.3, anim:'vela-parpadeo-1' },
+  // Reflejos ámbar difusos sobre brújula y monedas (centro-top)
+  { x:42,   y:14, sz:380, col:'rgba(255,165,35,0.07)',  dur:6.5, del:1.4, anim:'luz-ambar'        },
+  // Calidez difusa lado derecho (monedas, telescopio)
+  { x:78,   y:32, sz:420, col:'rgba(255,140,20,0.06)',  dur:7.5, del:2.5, anim:'vela-parpadeo-2'  },
+];
 
 const FASE_INFO = {
   lobby:     { label: 'Sala de Espera',              color: 'var(--oro-dorado)' },
@@ -78,139 +91,134 @@ export default function Tablero() {
   if (fase === 'lobby') {
     const urlUnirse = `${urlBase}/unirse/${codigo}`;
     return (
-      <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+      <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', background:'#0a0502' }}>
 
-        {/* ════ FONDO — mismo tratamiento que menú principal ════ */}
-
-        {/* Imagen base: mínimo procesado para mantener la foto legible */}
+        {/* ═══ CAPA 0 — Imagen base (ligeramente oscurecida para que los efectos CSS brillen) ═══ */}
         <div style={{
-          position:'absolute', inset:0, zIndex:0,
+          position:'absolute', inset:'-8px', zIndex:0,
           backgroundImage:"url('/sala-espera/fondo.png')",
           backgroundSize:'cover', backgroundPosition:'center',
-          filter:'brightness(0.78) saturate(1.20)',
+          filter:'brightness(0.62) saturate(1.28)',
+          transform:'scale(1.01)',
         }}/>
 
-        {/* Viñeta radial — oscurece bordes de forma natural, más marcada en la zona inferior */}
+        {/* ═══ CAPA 1 — Overlay cálido (tono ámbar como en menú principal) ═══ */}
         <div style={{
           position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
-          background:'radial-gradient(ellipse 66% 62% at 50% 46%, transparent 24%, rgba(3,1,0,0.68) 100%)',
+          background:`
+            radial-gradient(ellipse 72% 52% at 20% 24%, rgba(120,55,5,0.28) 0%, transparent 62%),
+            linear-gradient(180deg, rgba(5,2,1,0.30) 0%, rgba(8,3,1,0.10) 42%, rgba(5,2,1,0.45) 100%)
+          `,
         }}/>
-        {/* Gradiente inferior — refuerza las esquinas bajas y tapa la marca de agua */}
+
+        {/* ═══ CAPA 2 — Viñeta radial (bordes oscuros, centro visible) ═══ */}
         <div style={{
-          position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
-          background:'linear-gradient(to top, rgba(2,1,0,0.52) 0%, rgba(2,1,0,0.16) 10%, transparent 26%)',
+          position:'absolute', inset:0, zIndex:2, pointerEvents:'none',
+          background:'radial-gradient(ellipse 64% 60% at 50% 46%, transparent 20%, rgba(3,1,0,0.82) 100%)',
         }}/>
 
-        {/* ── Iluminación de vela — posición calibrada sobre la llama real (~19.5% izq, ~22% alto) ── */}
-
-        {/* Capa 1 — corona difusa: baña la zona con calor ámbar */}
+        {/* ═══ CAPA 3 — Gradiente inferior (sólido en esquinas, cubre marca de agua) ═══ */}
         <div style={{
-          position:'absolute', left:'19.5%', top:'22%', zIndex:2, pointerEvents:'none',
-          width:'640px', height:'580px', borderRadius:'50%',
-          transform:'translate(-50%,-50%)',
-          background:'radial-gradient(ellipse, rgba(255,148,28,0.20) 0%, rgba(240,118,14,0.11) 24%, rgba(210,88,8,0.04) 54%, transparent 74%)',
-          animation:'luz-ambar 5.0s ease-in-out infinite',
+          position:'absolute', inset:0, zIndex:2, pointerEvents:'none',
+          background:'linear-gradient(to top, rgba(1,0,0,0.78) 0%, rgba(1,0,0,0.32) 13%, transparent 30%)',
         }}/>
 
-        {/* Capa 2 — punto caliente de la llama: tenue, parpadeo muy lento */}
+        {/* ═══ CAPA 4 — Gradiente lateral derecho (esquina inferior derecha aún más oscura) ═══ */}
         <div style={{
-          position:'absolute', left:'19.5%', top:'22%', zIndex:2, pointerEvents:'none',
-          width:'58px', height:'58px', borderRadius:'50%',
-          transform:'translate(-50%,-50%)',
-          background:'radial-gradient(circle, rgba(255,248,175,0.82) 0%, rgba(255,208,95,0.55) 30%, rgba(255,165,42,0.18) 60%, transparent 80%)',
-          animation:'vela-parpadeo-1 3.0s ease-in-out 0.3s infinite',
+          position:'absolute', inset:0, zIndex:2, pointerEvents:'none',
+          background:'linear-gradient(to left, rgba(1,0,0,0.55) 0%, transparent 24%)',
         }}/>
 
-        {/* Capa 3 — halo cálido sobre la mesa inmediata */}
-        <div style={{
-          position:'absolute', left:'19.5%', top:'22%', zIndex:2, pointerEvents:'none',
-          width:'280px', height:'260px', borderRadius:'50%',
-          transform:'translate(-50%,-50%)',
-          background:'radial-gradient(ellipse, rgba(255,170,44,0.30) 0%, rgba(238,132,20,0.14) 38%, rgba(205,92,6,0.04) 70%, transparent 85%)',
-          animation:'vela-parpadeo-2 4.2s ease-in-out 0.8s infinite',
-        }}/>
+        {/* ═══ CAPA 5 — Fuentes de luz de la escena ═══ */}
+        {LUCES_MESA.map((l, i) => (
+          <div key={i} style={{
+            position:'absolute', left:`${l.x}%`, top:`${l.y}%`,
+            width:`${l.sz}px`, height:`${l.sz}px`, borderRadius:'50%',
+            background:`radial-gradient(circle, ${l.col} 0%, transparent 70%)`,
+            transform:'translate(-50%,-50%)',
+            animation:`${l.anim} ${l.dur}s ease-in-out ${l.del}s infinite`,
+            zIndex:3, pointerEvents:'none',
+          }}/>
+        ))}
 
-        {/* ════ HEADER ════ */}
+        {/* ═══ HEADER ═══ */}
         <div style={{
           position:'relative', zIndex:10, flexShrink:0,
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding:'12px 32px',
-          background:'rgba(5,2,1,0.52)', backdropFilter:'blur(6px)',
-          borderBottom:'1px solid rgba(80,40,10,0.30)',
+          background:'rgba(4,2,1,0.70)', backdropFilter:'blur(8px)',
+          borderBottom:'1px solid rgba(201,168,76,0.20)',
         }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
-            <span style={{ fontSize:'24px' }}>🐙</span>
+          <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+            <span style={{ fontSize:'22px', animation:'flotar 5s ease-in-out infinite', filter:'drop-shadow(0 0 10px rgba(255,140,30,0.55))' }}>🐙</span>
             <div>
-              <h1 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--oro-dorado)', fontSize:'17px', letterSpacing:'3px' }}>Feed The Kraken</h1>
-              <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,220,170,0.38)', fontSize:'9px', letterSpacing:'2px', textTransform:'uppercase' }}>Sala de espera</p>
+              <h1 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--oro-dorado)', fontSize:'17px', letterSpacing:'3px', textShadow:'0 0 20px rgba(201,168,76,0.40)' }}>Feed The Kraken</h1>
+              <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,220,170,0.42)', fontSize:'9px', letterSpacing:'3px', textTransform:'uppercase' }}>Sala de Espera</p>
             </div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: conectado ? '#6abf6a' : '#cc4444' }}/>
+            <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: conectado ? '#6abf6a' : '#cc4444', boxShadow: conectado ? '0 0 8px rgba(106,191,106,0.65)' : 'none' }}/>
             <button onClick={() => navigate('/')} style={{
-              background:'none', border:'1px solid rgba(200,160,80,0.22)',
-              color:'rgba(220,185,110,0.42)', padding:'5px 14px', borderRadius:'6px',
-              cursor:'pointer', fontFamily:'var(--fuente-subtitulo)', fontSize:'10px', letterSpacing:'1px',
+              background:'none', border:'1px solid rgba(201,168,76,0.22)',
+              color:'rgba(201,168,76,0.52)', padding:'5px 14px', borderRadius:'4px',
+              cursor:'pointer', fontFamily:'var(--fuente-subtitulo)', fontSize:'10px', letterSpacing:'1px', transition:'all 0.3s ease',
             }}>Salir</button>
           </div>
         </div>
 
-        {/* ════ MESA: código | pergamino | QR ════ */}
+        {/* ═══ MESA: código izq | pergamino centro | QR der ═══ */}
         <div style={{
           position:'relative', zIndex:10, flex:1,
           display:'grid', gridTemplateColumns:'1fr auto 1fr',
           alignItems:'center',
           padding:'10px 52px 14px',
           overflow:'hidden',
+          animation:'aparecer 0.8s ease 0.15s both',
         }}>
 
-          {/* ── Columna izquierda: código de sala (alineado a la derecha, junto al pergamino) ── */}
+          {/* ── Código de sala ── */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', justifyContent:'center', paddingRight:'6%' }}>
+            {/* Decoración ornamental */}
+            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
+              <div style={{ width:'52px', height:'1px', background:'linear-gradient(to left, rgba(201,168,76,0.60), transparent)' }}/>
+              <span style={{ color:'rgba(201,168,76,0.68)', fontSize:'11px' }}>⚓</span>
+            </div>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
               fontSize:'clamp(7px,0.68vw,9px)',
-              color:'rgba(255,255,255,0.62)',
-              textShadow:'0 1px 4px rgba(0,0,0,0.80)',
-              marginBottom:'6px',
+              color:'rgba(201,168,76,0.75)',
+              textShadow:'0 1px 6px rgba(0,0,0,0.95)',
+              marginBottom:'5px',
             }}>Código de sala</p>
             <div style={{
               fontFamily:'var(--fuente-titulo)',
               fontSize:'clamp(32px,3.6vw,56px)',
               letterSpacing:'0.32em',
-              color:'#ffffff',
-              textShadow:'0 2px 10px rgba(0,0,0,0.80), 0 1px 3px rgba(0,0,0,0.95)',
+              color:'var(--oro-claro)',
+              textShadow:'0 0 38px rgba(255,215,100,0.55), 0 2px 14px rgba(0,0,0,0.96)',
             }}>
               {codigo}
             </div>
           </div>
 
-          {/* ── Columna central: pergamino con lista de tripulación + botón debajo ── */}
+          {/* ── Pergamino + botón ── */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'10px' }}>
 
-            {/* Pergamino — drop-shadow sobre PNG transparente */}
             <div style={{
               position:'relative', width:'min(440px,36vw)', flexShrink:0,
               filter:`
-                drop-shadow(0 20px 40px rgba(0,0,0,0.80))
-                drop-shadow(0  7px 14px rgba(0,0,0,0.60))
-                drop-shadow(0  2px  5px rgba(0,0,0,0.45))
+                drop-shadow(0 24px 50px rgba(0,0,0,0.90))
+                drop-shadow(0  8px 18px rgba(0,0,0,0.70))
+                drop-shadow(0  2px  6px rgba(0,0,0,0.55))
               `,
             }}>
               <img src="/sala-espera/pergamino.png" alt=""
                 style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none' }}/>
-
-              <div style={{
-                position:'absolute', inset:0,
-                display:'flex', flexDirection:'column',
-                padding:'16% 18% 11%',
-              }}>
-                {/* Cabecera */}
+              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 18% 11%' }}>
                 <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', flexShrink:0, marginBottom:'5%' }}>
                   <h2 style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(13px,1.32vw,18px)', color:'#120800' }}>Tripulación</h2>
                   <span style={{ fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(7px,0.70vw,10px)', color: numJugadores >= 5 ? '#285028' : '#6a3808', letterSpacing:'1px' }}>{numJugadores}/11</span>
                 </div>
-
-                {/* Lista sin cajas — space-evenly garantiza que 11 entran */}
                 <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent: jugadores.length > 0 ? 'space-evenly' : 'flex-start', overflow:'hidden' }}>
                   {jugadores.length === 0 ? (
                     <p style={{ fontFamily:'var(--fuente-pirata)', color:'rgba(20,8,0,0.32)', fontSize:'clamp(9px,0.88vw,12px)', textAlign:'center' }}>
@@ -218,15 +226,8 @@ export default function Tablero() {
                     </p>
                   ) : jugadores.map((j, i) => (
                     <div key={j.id || i} style={{ display:'flex', alignItems:'center', gap:'4%', animation:`aparecer 0.3s ease ${i*0.04}s both` }}>
-                      <span style={{ fontSize:'clamp(7px,0.75vw,10px)', flexShrink:0, opacity:0.65 }}>
-                        {j.id === sala.hostId ? '⚓' : '·'}
-                      </span>
-                      <span style={{
-                        fontFamily:'var(--fuente-pirata)',
-                        fontSize:'clamp(9px,0.90vw,13px)',
-                        color:'#0d0600', lineHeight:1.1,
-                        flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                      }}>{j.nombre}</span>
+                      <span style={{ fontSize:'clamp(7px,0.75vw,10px)', flexShrink:0, opacity:0.65 }}>{j.id === sala.hostId ? '⚓' : '·'}</span>
+                      <span style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(9px,0.90vw,13px)', color:'#0d0600', lineHeight:1.1, flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.nombre}</span>
                       <div style={{ width:'4px', height:'4px', borderRadius:'50%', flexShrink:0, background: j.conectado !== false ? '#3a6a3a' : '#883333', opacity:0.72 }}/>
                     </div>
                   ))}
@@ -234,72 +235,59 @@ export default function Tablero() {
               </div>
             </div>
 
-            {/* Botón + aviso — debajo del pergamino, sobre la madera */}
+            {/* Botón + aviso */}
             <div style={{ textAlign:'center', flexShrink:0 }}>
               {numJugadores < 5 && (
                 <p style={{
-                  fontFamily:'var(--fuente-pirata)', fontSize:'clamp(9px,0.84vw,12px)',
-                  color:'#ffffff',
-                  textShadow:'0 1px 5px rgba(0,0,0,0.90), 0 2px 10px rgba(0,0,0,0.70)',
-                  marginBottom:'8px',
+                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.82vw,11px)',
+                  color:'rgba(201,168,76,0.75)',
+                  textShadow:'0 1px 6px rgba(0,0,0,0.96), 0 2px 14px rgba(0,0,0,0.80)',
+                  marginBottom:'10px', letterSpacing:'1px',
                 }}>
-                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para poder iniciar
+                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
                 </p>
               )}
-              <button onClick={iniciarPartida} disabled={numJugadores < 5} style={{
-                background: numJugadores >= 5 ? 'linear-gradient(135deg,rgba(55,28,4,0.92),rgba(95,58,8,0.88))' : 'rgba(18,9,2,0.45)',
-                border:`1px solid ${numJugadores >= 5 ? 'rgba(175,125,45,0.62)' : 'rgba(75,45,8,0.22)'}`,
-                color: numJugadores >= 5 ? 'rgba(245,210,135,0.97)' : 'rgba(120,82,22,0.42)',
-                padding:'clamp(8px,0.9vh,12px) clamp(18px,2vw,30px)',
-                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(10px,0.90vw,13px)',
-                letterSpacing:'2px', textTransform:'uppercase', borderRadius:'5px',
-                cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
-                backdropFilter:'blur(4px)',
-                boxShadow: numJugadores >= 5 ? '0 4px 16px rgba(0,0,0,0.60)' : 'none',
-                transition:'all 0.3s ease',
-                textShadow: numJugadores >= 5 ? '0 1px 3px rgba(0,0,0,0.65)' : 'none',
-              }}>
-                🎮 Iniciar Partida
+              <button
+                onClick={numJugadores >= 5 ? iniciarPartida : undefined}
+                disabled={numJugadores < 5}
+                style={{
+                  background: numJugadores >= 5
+                    ? 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))'
+                    : 'rgba(18,9,2,0.38)',
+                  border:`1px solid ${numJugadores >= 5 ? 'rgba(232,201,122,0.55)' : 'rgba(75,45,8,0.18)'}`,
+                  color: numJugadores >= 5 ? 'var(--negro-abismo)' : 'rgba(120,82,22,0.38)',
+                  padding:'clamp(8px,0.9vh,12px) clamp(20px,2.2vw,34px)',
+                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(10px,0.90vw,13px)',
+                  fontWeight: numJugadores >= 5 ? 700 : 400,
+                  letterSpacing:'2px', textTransform:'uppercase', borderRadius:'4px',
+                  cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
+                  boxShadow: numJugadores >= 5 ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
+                  transition:'all 0.3s ease',
+                }}>
+                ⚓ Iniciar Partida
               </button>
               {error && <p style={{ color:'#ffccaa', fontSize:'11px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', textShadow:'0 1px 4px rgba(0,0,0,0.85)' }}>{error}</p>}
             </div>
           </div>
 
-          {/* ── Columna derecha: QR en el hueco de la madera junto al pergamino ── */}
+          {/* ── QR en el tablón junto al pergamino ── */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'10px' }}>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
               fontSize:'clamp(8px,0.78vw,11px)',
-              color:'rgba(255,255,255,0.80)',
-              textShadow:'0 1px 6px rgba(0,0,0,0.95), 0 2px 12px rgba(0,0,0,0.70)',
+              color:'rgba(201,168,76,0.78)',
+              textShadow:'0 1px 6px rgba(0,0,0,0.96)',
               marginBottom:'10px',
             }}>Únete escaneando</p>
-
-            {/* QR blanco — contrasta con la madera oscura */}
-            <div style={{
-              filter:`
-                drop-shadow(0 0 6px rgba(255,255,255,0.15))
-                drop-shadow(0 4px 10px rgba(0,0,0,0.70))
-                drop-shadow(0 1px 3px rgba(0,0,0,0.55))
-              `,
-            }}>
-              <QRCodeSVG
-                value={urlUnirse}
-                size={185}
-                level="M"
-                bgColor="transparent"
-                fgColor="#ffffff"
-              />
+            <div style={{ filter:'drop-shadow(0 0 5px rgba(255,255,255,0.10)) drop-shadow(0 5px 14px rgba(0,0,0,0.80))' }}>
+              <QRCodeSVG value={urlUnirse} size={185} level="M" bgColor="transparent" fgColor="#ffffff"/>
             </div>
-
             <p style={{
               fontFamily:'var(--fuente-subtitulo)',
               fontSize:'clamp(6px,0.55vw,8px)',
-              color:'rgba(255,255,255,0.52)',
-              textShadow:'0 1px 4px rgba(0,0,0,0.90)',
-              marginTop:'8px', letterSpacing:'0.2px',
-              wordBreak:'break-all',
-              maxWidth:'185px',
+              color:'rgba(201,168,76,0.48)',
+              textShadow:'0 1px 4px rgba(0,0,0,0.92)',
+              marginTop:'8px', wordBreak:'break-all', maxWidth:'185px',
             }}>{urlUnirse}</p>
           </div>
 
