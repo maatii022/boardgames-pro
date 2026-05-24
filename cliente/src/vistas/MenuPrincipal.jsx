@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import CartaFeedTheKraken from './CartaFeedTheKraken';
+import CartaCatan from './CartaCatan';
 
 /* ─── Luces sala arcana ─────────────────────────────────────── */
 const VELAS = [
@@ -365,7 +366,7 @@ export default function MenuPrincipal() {
             {JUEGOS.map((j, idx) => {
               const esEste = hover === j.id;
 
-              /* ── Carta especial FTK ── */
+              /* ── Carta Feed The Kraken ── */
               if (j.id === 'feed-the-kraken') {
                 return (
                   <div key={j.id} style={{ animation: `aparecer 0.6s ease 0s both` }}>
@@ -381,7 +382,16 @@ export default function MenuPrincipal() {
                 );
               }
 
-              /* ── Cartas genéricas (Catán, Próximamente) ── */
+              /* ── Carta Catán ── */
+              if (j.id === 'catan') {
+                return (
+                  <div key={j.id} style={{ animation: `aparecer 0.6s ease ${idx * 0.14}s both` }}>
+                    <CartaCatan />
+                  </div>
+                );
+              }
+
+              /* ── Carta genérica (Próximamente) ── */
               return (
                 <div
                   key={j.id}
