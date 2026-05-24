@@ -37,6 +37,8 @@ const crearEstadoInicial = (jugadores, tablero = 'principal') => {
 
   // Detectar si hay personaje "Capitán" para asignar primer capitán
   const idxCapitan = jugadoresConRol.findIndex(j => j.personaje?.id === 'capitan');
+  // Si hay capitán por personaje, marcarle con esCapitan:true desde el principio
+  if (idxCapitan >= 0) jugadoresConRol[idxCapitan].esCapitan = true;
 
   return {
     fase: FASES.FASE_0,

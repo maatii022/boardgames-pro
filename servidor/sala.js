@@ -164,8 +164,8 @@ const avanzarFase = (codigo, socketId) => {
     if (sala.estado) sala.estado.fase = nuevaFase;
 
     if (sala.estado) {
-      // Elegir capitán al entrar en Fase 1 si aún no hay uno
-      if (nuevaFase === FASES.FASE_1 && !sala.estado.capitanIdx && sala.estado.capitanIdx !== 0) {
+      // Elegir capitán al entrar en Fase 1 si ningún jugador tiene esCapitan:true
+      if (nuevaFase === FASES.FASE_1 && !sala.estado.jugadores.some(j => j.esCapitan)) {
         sala.estado = elegirCapitanAleatorio(sala.estado);
       }
       // Inicializar cofre al entrar en Fase 3 manualmente (si no viene de votarMotin)
