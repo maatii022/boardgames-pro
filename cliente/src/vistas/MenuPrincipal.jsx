@@ -96,7 +96,14 @@ export default function MenuPrincipal() {
 
   const esMar = hover === 'feed-the-kraken';
 
-  useEffect(() => { setTimeout(() => setVisible(true), 80); }, []);
+  // Precarga ambas imágenes de fondo para que estén en caché antes del hover
+  useEffect(() => {
+    ['fondo-menu.png', 'fondo-menu-feed-the-kraken.png'].forEach(src => {
+      const img = new Image();
+      img.src = `/${src}`;
+    });
+    setTimeout(() => setVisible(true), 80);
+  }, []);
 
   useEffect(() => {
     const c1 = escuchar('sala-creada',       ({ sala }) => navigate(`/tablero/${sala.codigo}`));
