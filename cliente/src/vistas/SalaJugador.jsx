@@ -1231,8 +1231,8 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
         </div>
       );
     }
-    // Paso 1: elegir jugador a inspeccionar (cualquier jugador activo, incluyendo uno mismo)
-    const candidatos = jugadores.filter(j => !j.sacrificado && !j.fueraDeServicio);
+    // Paso 1: elegir jugador a inspeccionar — todos menos el propio Cultista
+    const candidatos = jugadores.filter(j => j.id !== socketId && !j.sacrificado);
     return (
       <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
         <div style={{ textAlign:'center', marginBottom:'20px' }}>
@@ -1272,7 +1272,7 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
 
   // ── Alijo de Armas ───────────────────────────────────────
   if (tipoCarta === 'alijo_armas') {
-    const elegibles = jugadores.filter(j => !j.sacrificado && !j.fueraDeServicio);
+    const elegibles = jugadores.filter(j => !j.sacrificado);
     const totalDistribuido = Object.values(distribucion).reduce((a, b) => a + b, 0);
     const pistolasRestantes = 3 - totalDistribuido;
 
