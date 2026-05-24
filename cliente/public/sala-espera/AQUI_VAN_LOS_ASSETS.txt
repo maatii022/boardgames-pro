@@ -1,0 +1,11 @@
+Sube aquí los siguientes archivos:
+
+  fondo.png      → imagen que ocupa TODA la pantalla de fondo (sin blur, nítida)
+                   Ejemplo: la mesa de madera con monedas, brújula, pistola, etc.
+                   Puede ser JPG renombrado a PNG — no necesita transparencia.
+                   Resolución recomendada: 1920x1080 o superior (landscape).
+
+  pergamino.png  → panel de pergamino que irá en el lado DERECHO de la pantalla
+                   mostrando la lista de tripulación.
+                   Debe ser PNG con fondo transparente (canal alfa).
+                   Proporción recomendada: más alta que ancha (portrait), tipo carta.
