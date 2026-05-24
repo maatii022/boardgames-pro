@@ -1167,7 +1167,8 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
 
   // ── Conversión al Culto ──────────────────────────────────
   if (tipoCarta === 'conversion_culto') {
-    const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado && !j.fueraDeServicio);
+    const vistos = accionEspecial.jugadoresVistos || [];
+    const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado && !vistos.includes(j.id));
     return (
       <div style={{ width:'100%', maxWidth:'380px', animation:'aparecer 0.4s ease' }}>
         <div style={{ textAlign:'center', marginBottom:'24px' }}>

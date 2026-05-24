@@ -379,7 +379,8 @@ const vistaEstadoParaJugador = (sala, socketId) => {
             resultado = { nombre: ae.nombreVisto, rol: ae.rolVisto };
           }
         }
-        return { tipo: 'ritual', carta: ae.carta, esCultista, etapa, resultado };
+        const jugadoresVistos = esCultista ? (sala.estado.cultista?.jugadoresVistos || []) : [];
+        return { tipo: 'ritual', carta: ae.carta, esCultista, etapa, resultado, jugadoresVistos };
       }
 
       // ── SIRENA / TELESCOPIO ───────────────────────────────────

@@ -461,7 +461,19 @@ const procesarAccionRitual = (estado, socketId, datos) => {
           },
         };
       }
-      // Paso 2: sin jugadorId = confirmar/temporizador → limpiar (cae al return final)
+      // Paso 2: sin jugadorId = confirmar/temporizador → guardar quién fue visto y limpiar
+      if (accionEspecial.objetivoId) {
+        nuevoEstado = {
+          ...nuevoEstado,
+          cultista: {
+            ...nuevoEstado.cultista,
+            jugadoresVistos: [
+              ...(nuevoEstado.cultista.jugadoresVistos || []),
+              accionEspecial.objetivoId,
+            ],
+          },
+        };
+      }
       break;
     }
     case TIPOS_CARTA_RITUAL.ALIJO_ARMAS: {

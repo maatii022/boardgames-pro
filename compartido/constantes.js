@@ -64,13 +64,13 @@ const TIPOS_CARTA_RITUAL = {
 };
 
 const CONFIG_JUGADORES = {
-  5:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 2, umbralMotin: 4 },
-  6:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 3, umbralMotin: 5 },
-  7:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 4, umbralMotin: 6 },
-  8:  { piratas: 3, cultistas: 1, adeptos: 0, marineros: 4, umbralMotin: 7 },
-  9:  { piratas: 3, cultistas: 1, adeptos: 0, marineros: 5, umbralMotin: 7 },
-  10: { piratas: 4, cultistas: 1, adeptos: 0, marineros: 5, umbralMotin: 8 },
-  11: { piratas: 4, cultistas: 1, adeptos: 1, marineros: 5, umbralMotin: 8 },
+  5:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 2, umbralMotin: 3 },
+  6:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 3, umbralMotin: 3 },
+  7:  { piratas: 2, cultistas: 1, adeptos: 0, marineros: 4, umbralMotin: 3 },
+  8:  { piratas: 3, cultistas: 1, adeptos: 0, marineros: 4, umbralMotin: 4 },
+  9:  { piratas: 3, cultistas: 1, adeptos: 0, marineros: 5, umbralMotin: 4 },
+  10: { piratas: 4, cultistas: 1, adeptos: 0, marineros: 5, umbralMotin: 5 },
+  11: { piratas: 4, cultistas: 1, adeptos: 1, marineros: 5, umbralMotin: 5 },
 };
 
 const TABLEROS = {
