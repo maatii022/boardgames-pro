@@ -297,13 +297,14 @@ io.on('connection', (socket) => {
       const codigo = socketSala.get(socket.id);
       if (!codigo) return;
       try {
-        // Capturar si es una conversión al culto antes de procesar
+        // Capturar targets de notificaciones privadas antes de procesar la acción
         let conversionTargetId = null;
+        let registroTargetId   = null;
         if (accion === EVENTOS.ACCION_RITUAL && datos?.jugadorId) {
           const salaActual = obtenerSala(codigo);
-          if (salaActual?.estado?.accionEspecial?.carta?.tipo === 'conversion_culto') {
-            conversionTargetId = datos.jugadorId;
-          }
+          const tipoCarta  = salaActual?.estado?.accionEspecial?.carta?.tipo;
+          if (tipoCarta === 'conversion_culto')  conversionTargetId = datos.jugadorId;
+          if (tipoCarta === 'registro_camarote') registroTargetId   = datos.jugadorId;
         }
 
         const sala = procesarAccion(codigo, socket.id, accion, datos || {});
@@ -313,6 +314,10 @@ io.on('connection', (socket) => {
         if (conversionTargetId) {
           const socketConvertido = sala.jugadores.find(sj => sj.id === conversionTargetId);
           if (socketConvertido) io.to(socketConvertido.id).emit('convertido-al-culto');
+        }
+        // Notificar al jugador cuyo camarote registró el Culto (vibración silenciosa)
+        if (registroTargetId) {
+          io.to(registroTargetId).emit('camarote-registrado');
         }
         if (sala.estado?.victoria) {
           io.to(sala.codigo).emit(EVENTOS.VICTORIA_DECLARADA, { ganador: sala.estado.victoria });
@@ -369,8 +374,10 @@ io.on('connection', (socket) => {
     if (!codigo) return;
     try {
       const { sala, resultado } = investigarJugador(codigo, socket.id, objetivoId);
-      // Solo el navegante ve el resultado
+      // Solo el capitán ve el resultado
       socket.emit('investigacion-resultado', resultado);
+      // El jugador investigado recibe una vibración silenciosa
+      io.to(objetivoId).emit('camarote-registrado');
       emitirSalaActualizada(sala);
     } catch (e) {
       socket.emit(EVENTOS.ERROR, { mensaje: e.message });

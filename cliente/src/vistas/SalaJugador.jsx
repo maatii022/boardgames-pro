@@ -60,7 +60,10 @@ export default function SalaJugador() {
       vibrar('convertido');
       setConvertidoAlCulto(true);
     });
-    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
+    const c8 = escuchar('camarote-registrado', () => {
+      vibrar('camaroteRegistrado');
+    });
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); c8(); };
   }, [escuchar, navigate, salirDeSala, vibrar]);
 
   // Vibrar al entrar en victoria
@@ -83,6 +86,52 @@ export default function SalaJugador() {
     const t = setTimeout(() => setRitualReveladoId(_cartaRitualId), 10000);
     return () => clearTimeout(t);
   }, [_cartaRitualId]); // eslint-disable-line
+
+  // ── Vibrar al recibir un arma ────────────────────────────────
+  const _prevPistolasRef = useRef(null);
+  useEffect(() => {
+    const p = estado?.miJugador?.pistolas;
+    if (p === undefined || p === null) return;
+    if (_prevPistolasRef.current !== null && p > _prevPistolasRef.current) {
+      vibrar('armaRecibida');
+    }
+    _prevPistolasRef.current = p;
+  }, [estado?.miJugador?.pistolas]); // eslint-disable-line
+
+  // ── Vibrar cuando te toca actuar ─────────────────────────────
+  const _cofreEtapa   = estado?.cofre?.etapa;
+  const _accionEsp    = estado?.accionEspecial;
+  const _tipoFase4    = estado?.accionFase4?.tipo;
+  const _soyCapitan   = estado?.miJugador?.esCapitan;
+  const _soyTeniente  = estado?.miJugador?.esTeniente;
+  const _soyNavegante = estado?.miJugador?.esNavegante;
+  const _sacrificado  = estado?.miJugador?.sacrificado;
+
+  const _esMiTurno = !_sacrificado && !!(
+    (fase === 'fase_1' && _soyCapitan) ||
+    (fase === 'fase_2') ||
+    (fase === 'fase_3' && !_accionEsp && (
+      (_cofreEtapa === 'capitan'   && _soyCapitan)  ||
+      (_cofreEtapa === 'teniente'  && _soyTeniente) ||
+      (_cofreEtapa === 'navegante' && _soyNavegante) ||
+      (_cofreEtapa === 'revelar'   && _soyCapitan)
+    )) ||
+    (fase === 'fase_3' && _accionEsp?.etapa === 'capitan-elige' && _soyCapitan) ||
+    (fase === 'fase_3' && _accionEsp?.etapa === 'jugador-actua' && _accionEsp?.jugadorElegido === socketId) ||
+    (fase === 'fase_4' && _tipoFase4 === 'lupa' && _soyCapitan) ||
+    (_accionEsp?.tipo === 'ritual' && _accionEsp?.esCultista &&
+      ritualReveladoId === _accionEsp?.carta?.id)
+  );
+
+  // La clave cambia cuando aparece una NUEVA acción (fase + etapa + jugador elegido)
+  const _turnoKey = _esMiTurno
+    ? `${fase}|${_cofreEtapa || ''}|${_accionEsp?.etapa || ''}|${_accionEsp?.jugadorElegido || ''}`
+    : '';
+  const _prevTurnoKeyRef = useRef('');
+  useEffect(() => {
+    if (_turnoKey && _turnoKey !== _prevTurnoKeyRef.current) vibrar('turnoAccion');
+    _prevTurnoKeyRef.current = _turnoKey;
+  }, [_turnoKey]); // eslint-disable-line
 
   const miJugador   = estado?.miJugador;
   const rolCfg      = miJugador?.rol ? ROL_CONFIG[miJugador.rol] : null;

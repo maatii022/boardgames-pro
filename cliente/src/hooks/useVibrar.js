@@ -26,6 +26,15 @@ const PATRONES = {
   // Ritual
   ritualReveal:   [50, 30, 50, 30, 50],
   convertido:     [60, 40, 120, 40, 60],
+
+  // Atención: te toca actuar
+  turnoAccion:         [70, 30, 70, 30, 70],
+
+  // Recibir un arma
+  armaRecibida:        [40, 25, 120],
+
+  // Alguien registró tu camarote
+  camaroteRegistrado:  [25, 20, 25, 20, 70],
 };
 
 /**
