@@ -81,7 +81,7 @@ export default function Tablero() {
         width: '100%', height: '100%',
         backgroundImage: "url('/sala-espera/fondo.png')",
         backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundPosition: 'center center',
         display: 'flex', flexDirection: 'column',
         overflow: 'hidden', position: 'relative',
       }}>
@@ -90,8 +90,8 @@ export default function Tablero() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '12px 32px', flexShrink: 0, zIndex: 10,
-          background: 'rgba(6,3,1,0.55)', backdropFilter: 'blur(6px)',
-          borderBottom: '1px solid rgba(80,40,10,0.35)',
+          background: 'rgba(6,3,1,0.50)', backdropFilter: 'blur(6px)',
+          borderBottom: '1px solid rgba(80,40,10,0.3)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '24px' }}>🐙</span>
@@ -108,79 +108,114 @@ export default function Tablero() {
             <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: conectado ? '#6abf6a' : '#cc4444' }} />
             <button onClick={() => navigate('/')} style={{
               background: 'none', border: '1px solid rgba(200,160,80,0.2)',
-              color: 'rgba(220,185,110,0.4)', padding: '5px 14px',
+              color: 'rgba(220,185,110,0.45)', padding: '5px 14px',
               borderRadius: '6px', cursor: 'pointer',
               fontFamily: 'var(--fuente-subtitulo)', fontSize: '10px', letterSpacing: '1px',
             }}>Salir</button>
           </div>
         </div>
 
-        {/* ── Mesa: código tallado + pergamino centrado ── */}
+        {/* ── Mesa ── */}
         <div style={{
-          flex: 1, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          padding: '10px 24px 14px', gap: '10px',
+          flex: 1, display: 'grid',
+          /* izquierda (código) | centro (pergamino) | derecha (equilibrio visual) */
+          gridTemplateColumns: '1fr auto 1fr',
+          alignItems: 'center',
+          padding: '16px 48px 20px',
           overflow: 'hidden',
+          gap: '0',
         }}>
 
-          {/* Código tallado en la madera */}
-          <div style={{ textAlign: 'center', flexShrink: 0 }}>
+          {/* ── Izquierda: código de sala ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <p style={{
               fontFamily: 'var(--fuente-subtitulo)',
-              fontSize: 'clamp(7px,0.7vw,9px)',
+              fontSize: 'clamp(8px,0.75vw,10px)',
               letterSpacing: '4px', textTransform: 'uppercase',
-              /* texto muy oscuro, casi fundido con la madera */
-              color: 'rgba(14,7,2,0.55)',
-              textShadow: '0 1px 1px rgba(180,120,50,0.2)',
-              marginBottom: '2px',
-            }}>Código de sala</p>
+              color: '#111',
+              marginBottom: '8px',
+            }}>
+              Código de sala
+            </p>
             <div style={{
               fontFamily: 'var(--fuente-titulo)',
-              fontSize: 'clamp(32px,3.8vw,56px)',
-              letterSpacing: '0.38em',
-              /* efecto tallado: color oscuro + sombra cálida hacia abajo (surco) */
-              color: 'rgba(13,6,1,0.72)',
-              textShadow: `
-                0  1px 0   rgba(185,130,55,0.30),
-                0  2px 4px rgba(0,0,0,0.55),
-                0 -1px 0   rgba(0,0,0,0.20)
-              `,
+              fontSize: 'clamp(38px,4.5vw,68px)',
+              letterSpacing: '0.3em',
+              color: '#0d0d0d',
+              textShadow: '0 2px 4px rgba(0,0,0,0.25)',
             }}>
               {codigo}
             </div>
+
+            {/* Botón iniciar + aviso también aquí, accesible */}
+            <div style={{ marginTop: '28px', textAlign: 'center' }}>
+              {numJugadores < 5 && (
+                <p style={{
+                  fontFamily: 'var(--fuente-pirata)',
+                  fontSize: 'clamp(9px,0.85vw,12px)',
+                  color: '#111',
+                  marginBottom: '10px',
+                }}>
+                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
+                </p>
+              )}
+              <button
+                onClick={iniciarPartida}
+                disabled={numJugadores < 5}
+                style={{
+                  background: numJugadores >= 5
+                    ? 'linear-gradient(135deg,rgba(80,45,6,0.90),rgba(120,75,12,0.85))'
+                    : 'rgba(30,16,3,0.30)',
+                  border: `1px solid ${numJugadores >= 5 ? 'rgba(160,105,30,0.55)' : 'rgba(60,35,6,0.2)'}`,
+                  color: numJugadores >= 5 ? 'rgba(240,205,130,0.95)' : 'rgba(80,50,12,0.4)',
+                  padding: 'clamp(9px,1vh,13px) clamp(20px,2.2vw,32px)',
+                  fontFamily: 'var(--fuente-subtitulo)',
+                  fontSize: 'clamp(10px,0.95vw,13px)',
+                  letterSpacing: '2px', textTransform: 'uppercase',
+                  borderRadius: '6px',
+                  cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
+                  backdropFilter: 'blur(4px)',
+                  transition: 'all 0.3s ease',
+                  textShadow: numJugadores >= 5 ? '0 1px 3px rgba(0,0,0,0.55)' : 'none',
+                }}>
+                🎮 Iniciar Partida
+              </button>
+              {error && <p style={{ color: '#993322', fontSize: '11px', marginTop: '8px', fontFamily: 'var(--fuente-subtitulo)' }}>{error}</p>}
+            </div>
           </div>
 
-          {/* Pergamino centrado */}
-          <div style={{ position: 'relative', width: 'min(400px,34vw)', flexShrink: 1, minHeight: 0 }}>
+          {/* ── Centro: pergamino ── */}
+          <div style={{ position: 'relative', width: 'min(480px, 38vw)', flexShrink: 0 }}>
 
-            {/* Imagen del pergamino — fija las proporciones */}
+            {/* Imagen del pergamino */}
             <img
               src="/sala-espera/pergamino.png"
               alt=""
               style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none', pointerEvents: 'none' }}
             />
 
-            {/* Contenido superpuesto */}
+            {/* Contenido sobre el pergamino */}
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',
-              padding: '9% 10% 8%',
+              /* padding generoso para no pisar los bordes quemados del pergamino */
+              padding: '12% 14% 10%',
             }}>
 
-              {/* Cabecera tripulación */}
+              {/* Cabecera */}
               <div style={{
                 display: 'flex', alignItems: 'baseline',
                 justifyContent: 'space-between', flexShrink: 0,
-                marginBottom: '3%',
+                marginBottom: '4%',
               }}>
                 <h2 style={{
                   fontFamily: 'var(--fuente-pirata)',
-                  fontSize: 'clamp(13px,1.4vw,18px)',
+                  fontSize: 'clamp(14px,1.5vw,20px)',
                   color: '#1a0c04',
                 }}>Tripulación</h2>
                 <span style={{
                   fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: 'clamp(8px,0.8vw,11px)',
+                  fontSize: 'clamp(8px,0.82vw,11px)',
                   color: numJugadores >= 5 ? '#2e5e2e' : '#7a4010',
                   letterSpacing: '1px',
                 }}>{numJugadores}/11</span>
@@ -189,26 +224,26 @@ export default function Tablero() {
               {/* Lista de jugadores */}
               <div style={{
                 flex: 1, overflowY: 'auto', display: 'flex',
-                flexDirection: 'column', gap: '1.5%', minHeight: 0,
+                flexDirection: 'column', gap: '2%', minHeight: 0,
               }}>
                 {jugadores.length === 0 ? (
                   <p style={{
                     fontFamily: 'var(--fuente-pirata)',
                     color: 'rgba(40,20,5,0.35)',
                     fontSize: 'clamp(9px,0.9vw,12px)',
-                    textAlign: 'center', paddingTop: '10%',
+                    textAlign: 'center', paddingTop: '12%',
                   }}>
                     Esperando tripulantes...
                   </p>
                 ) : jugadores.map((j, i) => (
                   <div key={j.id || i} style={{
-                    display: 'flex', alignItems: 'center', gap: '5%',
-                    padding: '1.2% 3%', borderRadius: '3px',
+                    display: 'flex', alignItems: 'center', gap: '4%',
+                    padding: '1.5% 2%', borderRadius: '3px',
                     background: j.id === sala.hostId ? 'rgba(80,40,5,0.1)' : 'rgba(40,20,5,0.04)',
                     border: `1px solid ${j.id === sala.hostId ? 'rgba(120,70,10,0.22)' : 'rgba(80,40,5,0.07)'}`,
                     animation: `aparecer 0.35s ease ${i * 0.05}s both`,
                   }}>
-                    <span style={{ fontSize: 'clamp(9px,0.9vw,12px)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 'clamp(9px,0.85vw,11px)', flexShrink: 0 }}>
                       {j.id === sala.hostId ? '⚓' : '🏴'}
                     </span>
                     <span style={{
@@ -226,35 +261,29 @@ export default function Tablero() {
                     {j.id !== sala.hostId && (
                       <button onClick={() => cambiarHost(j.id)} style={{
                         background: 'rgba(80,40,5,0.1)', border: '1px solid rgba(100,55,10,0.2)',
-                        color: 'rgba(80,45,10,0.6)', borderRadius: '3px',
+                        color: 'rgba(80,45,10,0.65)', borderRadius: '3px',
                         padding: '1px 5px', fontSize: 'clamp(7px,0.65vw,9px)',
                         fontFamily: 'var(--fuente-subtitulo)', cursor: 'pointer',
-                        letterSpacing: '0.5px', flexShrink: 0,
+                        flexShrink: 0,
                       }}>⚓</button>
                     )}
                   </div>
                 ))}
               </div>
 
-              {/* QR + URL — anclados al fondo del pergamino */}
-              <div style={{ flexShrink: 0, textAlign: 'center', marginTop: '4%' }}>
-                <div style={{
-                  display: 'inline-block', padding: '6px',
-                  background: 'rgba(240,220,180,0.85)', borderRadius: '6px',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                }}>
-                  <QRCodeSVG
-                    value={urlUnirse}
-                    size={Math.round(Math.min(window.innerWidth * 0.34 * 0.70, 400 * 0.70))}
-                    level="M"
-                    bgColor="transparent"
-                    fgColor="#1a0c04"
-                  />
-                </div>
+              {/* QR centrado en la parte inferior — sin fondo, solo los cuadrados */}
+              <div style={{ flexShrink: 0, textAlign: 'center', marginTop: '5%' }}>
+                <QRCodeSVG
+                  value={urlUnirse}
+                  size={100}
+                  level="M"
+                  bgColor="transparent"
+                  fgColor="#1a0c04"
+                />
                 <p style={{
                   fontFamily: 'var(--fuente-subtitulo)',
-                  fontSize: 'clamp(5px,0.55vw,7px)',
-                  color: 'rgba(40,20,5,0.4)',
+                  fontSize: 'clamp(5px,0.52vw,7px)',
+                  color: 'rgba(40,20,5,0.38)',
                   marginTop: '2%', letterSpacing: '0.3px',
                   wordBreak: 'break-all',
                 }}>
@@ -265,42 +294,8 @@ export default function Tablero() {
             </div>
           </div>
 
-          {/* Botón Iniciar — sobre la madera, bajo el pergamino */}
-          <div style={{ flexShrink: 0, textAlign: 'center' }}>
-            {numJugadores < 5 && (
-              <p style={{
-                fontFamily: 'var(--fuente-pirata)',
-                fontSize: 'clamp(9px,0.9vw,12px)',
-                color: 'rgba(14,7,2,0.55)',
-                textShadow: '0 1px 1px rgba(180,120,50,0.2)',
-                marginBottom: '6px',
-              }}>
-                Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para poder iniciar
-              </p>
-            )}
-            <button
-              onClick={iniciarPartida}
-              disabled={numJugadores < 5}
-              style={{
-                background: numJugadores >= 5
-                  ? 'linear-gradient(135deg,rgba(90,50,8,0.88),rgba(130,80,15,0.82))'
-                  : 'rgba(40,22,5,0.35)',
-                border: `1px solid ${numJugadores >= 5 ? 'rgba(170,110,35,0.5)' : 'rgba(70,40,8,0.22)'}`,
-                color: numJugadores >= 5 ? 'rgba(240,205,130,0.95)' : 'rgba(90,55,15,0.4)',
-                padding: 'clamp(8px,1vh,12px) clamp(22px,2.5vw,36px)',
-                fontFamily: 'var(--fuente-subtitulo)',
-                fontSize: 'clamp(10px,1vw,13px)',
-                letterSpacing: '2px', textTransform: 'uppercase',
-                borderRadius: '6px',
-                cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
-                backdropFilter: 'blur(4px)',
-                transition: 'all 0.3s ease',
-                textShadow: numJugadores >= 5 ? '0 1px 3px rgba(0,0,0,0.6)' : 'none',
-              }}>
-              🎮 Iniciar Partida
-            </button>
-            {error && <p style={{ color: '#cc6644', fontSize: '11px', marginTop: '6px', fontFamily: 'var(--fuente-subtitulo)' }}>{error}</p>}
-          </div>
+          {/* ── Derecha: vacío (equilibrio visual) ── */}
+          <div />
 
         </div>
       </div>
