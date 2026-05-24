@@ -5,18 +5,6 @@ import { useSocket } from '../hooks/useSocket';
 
 const urlBase = 'https://boardgames-pro.onrender.com';
 
-/* ── Destellos sobre las monedas del fondo de sala de espera ── */
-const DESTELLOS_MONEDAS = [
-  { x:48, y:11, dur:2.8, del:0.0 }, { x:57, y: 9, dur:3.4, del:0.9 },
-  { x:65, y:13, dur:2.5, del:1.6 }, { x:73, y:18, dur:3.1, del:0.4 },
-  { x:40, y:16, dur:2.9, del:2.1 }, { x:33, y:24, dur:3.6, del:0.7 },
-  { x:84, y:28, dur:2.6, del:1.3 }, { x:90, y:45, dur:3.3, del:0.2 },
-  { x:87, y:62, dur:2.7, del:1.9 }, { x:78, y:74, dur:3.0, del:0.6 },
-  { x:62, y:80, dur:3.5, del:1.1 }, { x:48, y:82, dur:2.8, del:2.3 },
-  { x:35, y:76, dur:3.2, del:0.8 }, { x:22, y:70, dur:2.6, del:1.5 },
-  { x:12, y:55, dur:3.7, del:0.3 }, { x:16, y:38, dur:2.9, del:1.8 },
-  { x:26, y:28, dur:3.1, del:0.5 }, { x:68, y: 8, dur:2.4, del:2.0 },
-];
 
 const FASE_INFO = {
   lobby:     { label: 'Sala de Espera',              color: 'var(--oro-dorado)' },
@@ -108,38 +96,40 @@ export default function Tablero() {
           background:'radial-gradient(ellipse 68% 65% at 50% 50%, transparent 35%, rgba(6,3,1,0.55) 100%)',
         }}/>
 
-        {/* Luz de vela (candelabro esquina superior izquierda de la imagen) */}
+        {/* ── Iluminación realista de vela (candelabro ~21% izq, ~19% alto) ── */}
+
+        {/* Capa 1 — corona grande y difusa: irradia calor por toda la zona */}
         <div style={{
-          position:'absolute', left:'18%', top:'8%', zIndex:2, pointerEvents:'none',
-          width:'340px', height:'340px', borderRadius:'50%',
-          background:'radial-gradient(circle, rgba(255,165,50,0.11) 0%, transparent 70%)',
-          animation:'luz-ambar 2.8s ease-in-out infinite',
-        }}/>
-        <div style={{
-          position:'absolute', left:'20%', top:'10%', zIndex:2, pointerEvents:'none',
-          width:'140px', height:'140px', borderRadius:'50%',
-          background:'radial-gradient(circle, rgba(255,195,75,0.16) 0%, transparent 70%)',
-          animation:'vela-parpadeo-1 2.1s ease-in-out 0.4s infinite',
+          position:'absolute', left:'21%', top:'19%', zIndex:2, pointerEvents:'none',
+          width:'660px', height:'600px', borderRadius:'50%',
+          transform:'translate(-50%,-50%)',
+          background:'radial-gradient(ellipse, rgba(255,148,28,0.22) 0%, rgba(240,118,14,0.12) 24%, rgba(210,88,8,0.05) 52%, transparent 74%)',
+          animation:'luz-ambar 3.4s ease-in-out infinite',
         }}/>
 
-        {/* Destellos sobre monedas — 2 px, muy sutiles */}
-        {DESTELLOS_MONEDAS.map((d, i) => (
-          <div key={i} style={{
-            position:'absolute', left:`${d.x}%`, top:`${d.y}%`,
-            width:'2px', height:'2px', borderRadius:'50%',
-            background:'rgba(255,220,80,1)',
-            boxShadow:'0 0 4px 2px rgba(255,200,55,0.60)',
-            transform:'translate(-50%,-50%)',
-            animation:`centelleo-luz ${d.dur}s ease-in-out ${d.del}s infinite`,
-            zIndex:3, pointerEvents:'none',
-          }}/>
-        ))}
-
-        {/* Cubre marca de agua IA (esquina inferior derecha) */}
+        {/* Capa 2 — punto caliente: la llama misma */}
         <div style={{
-          position:'absolute', bottom:0, right:0, zIndex:4, pointerEvents:'none',
-          width:'150px', height:'130px',
-          background:'radial-gradient(ellipse at 100% 100%, rgba(15,6,1,0.98) 8%, rgba(12,5,1,0.80) 38%, transparent 68%)',
+          position:'absolute', left:'21%', top:'19%', zIndex:2, pointerEvents:'none',
+          width:'64px', height:'64px', borderRadius:'50%',
+          transform:'translate(-50%,-50%)',
+          background:'radial-gradient(circle, rgba(255,248,175,0.88) 0%, rgba(255,208,95,0.62) 28%, rgba(255,165,42,0.22) 58%, transparent 80%)',
+          animation:'vela-parpadeo-1 1.7s ease-in-out 0.1s infinite',
+        }}/>
+
+        {/* Capa 3 — halo medio: ilumina el tablón inmediato alrededor */}
+        <div style={{
+          position:'absolute', left:'21%', top:'19%', zIndex:2, pointerEvents:'none',
+          width:'290px', height:'268px', borderRadius:'50%',
+          transform:'translate(-50%,-50%)',
+          background:'radial-gradient(ellipse, rgba(255,172,46,0.34) 0%, rgba(238,135,22,0.18) 36%, rgba(205,95,8,0.05) 68%, transparent 84%)',
+          animation:'vela-parpadeo-2 2.4s ease-in-out 0.55s infinite',
+        }}/>
+
+        {/* Cubre marca de agua IA (esquina inferior derecha) — sólido en el vértice */}
+        <div style={{
+          position:'absolute', bottom:0, right:0, zIndex:9, pointerEvents:'none',
+          width:'270px', height:'210px',
+          background:'radial-gradient(ellipse at 100% 100%, rgba(8,3,1,1) 20%, rgba(8,3,1,0.97) 44%, rgba(8,3,1,0.72) 64%, rgba(8,3,1,0.32) 82%, transparent 95%)',
         }}/>
 
         {/* ════ HEADER ════ */}
@@ -277,41 +267,41 @@ export default function Tablero() {
             </div>
           </div>
 
-          {/* ── Columna derecha: QR grande sobre la madera ── */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'6%' }}>
+          {/* ── Columna derecha: QR blanco sobre la madera, centrado ── */}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingLeft:'4%', paddingRight:'2%' }}>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
               fontSize:'clamp(7px,0.68vw,9px)',
-              color:'rgba(255,255,255,0.60)',
-              textShadow:'0 1px 4px rgba(0,0,0,0.80)',
-              marginBottom:'10px',
+              color:'rgba(255,255,255,0.62)',
+              textShadow:'0 1px 5px rgba(0,0,0,0.90)',
+              marginBottom:'12px', textAlign:'center',
             }}>Únete escaneando</p>
 
-            {/* QR pirograbado — tinta quemada sobre madera */}
+            {/* QR blanco — contrasta con la madera oscura */}
             <div style={{
               filter:`
-                drop-shadow(0 3px 6px rgba(0,0,0,0.55))
-                drop-shadow(0 1px 2px rgba(0,0,0,0.40))
+                drop-shadow(0 0 8px rgba(255,255,255,0.18))
+                drop-shadow(0 4px 10px rgba(0,0,0,0.65))
+                drop-shadow(0 1px 3px rgba(0,0,0,0.50))
               `,
-              opacity:0.90,
             }}>
               <QRCodeSVG
                 value={urlUnirse}
-                size={160}
+                size={185}
                 level="M"
                 bgColor="transparent"
-                fgColor="#220d02"
+                fgColor="#ffffff"
               />
             </div>
 
             <p style={{
               fontFamily:'var(--fuente-subtitulo)',
-              fontSize:'clamp(5px,0.52vw,7px)',
-              color:'rgba(255,255,255,0.38)',
+              fontSize:'clamp(5px,0.50vw,7px)',
+              color:'rgba(255,255,255,0.35)',
               textShadow:'0 1px 3px rgba(0,0,0,0.70)',
-              marginTop:'8px', letterSpacing:'0.3px',
+              marginTop:'10px', letterSpacing:'0.3px',
               wordBreak:'break-all',
-              maxWidth:'160px',
+              maxWidth:'185px', textAlign:'center',
             }}>{urlUnirse}</p>
           </div>
 
