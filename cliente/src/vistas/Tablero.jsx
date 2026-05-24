@@ -5,6 +5,19 @@ import { useSocket } from '../hooks/useSocket';
 
 const urlBase = 'https://boardgames-pro.onrender.com';
 
+/* ── Destellos sobre las monedas del fondo de sala de espera ── */
+const DESTELLOS_MONEDAS = [
+  { x:48, y:11, dur:2.8, del:0.0 }, { x:57, y: 9, dur:3.4, del:0.9 },
+  { x:65, y:13, dur:2.5, del:1.6 }, { x:73, y:18, dur:3.1, del:0.4 },
+  { x:40, y:16, dur:2.9, del:2.1 }, { x:33, y:24, dur:3.6, del:0.7 },
+  { x:84, y:28, dur:2.6, del:1.3 }, { x:90, y:45, dur:3.3, del:0.2 },
+  { x:87, y:62, dur:2.7, del:1.9 }, { x:78, y:74, dur:3.0, del:0.6 },
+  { x:62, y:80, dur:3.5, del:1.1 }, { x:48, y:82, dur:2.8, del:2.3 },
+  { x:35, y:76, dur:3.2, del:0.8 }, { x:22, y:70, dur:2.6, del:1.5 },
+  { x:12, y:55, dur:3.7, del:0.3 }, { x:16, y:38, dur:2.9, del:1.8 },
+  { x:26, y:28, dur:3.1, del:0.5 }, { x:68, y: 8, dur:2.4, del:2.0 },
+];
+
 const FASE_INFO = {
   lobby:     { label: 'Sala de Espera',              color: 'var(--oro-dorado)' },
   fase_0:    { label: 'Revelando Roles',             color: 'var(--turquesa-kraken)' },
@@ -79,12 +92,77 @@ export default function Tablero() {
     return (
       <div style={{
         width: '100%', height: '100%',
-        backgroundImage: "url('/sala-espera/fondo.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center center',
+        position: 'relative', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
-        overflow: 'hidden', position: 'relative',
       }}>
+
+        {/* ════ CAPAS DE FONDO ════ */}
+
+        {/* Capa 1 — imagen nítida, base */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: "url('/sala-espera/fondo.png')",
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'brightness(0.84) saturate(1.25)',
+        }} />
+
+        {/* Capa 2 — misma imagen con blur, enmascarada para cubrir solo los bordes
+                    → centro nítido, periferia desenfocada (depth-of-field) */}
+        <div style={{
+          position: 'absolute', inset: '-20px', zIndex: 1,
+          backgroundImage: "url('/sala-espera/fondo.png')",
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'blur(10px) brightness(0.72) saturate(1.15)',
+          WebkitMaskImage: 'radial-gradient(ellipse 52% 55% at 50% 50%, transparent 18%, rgba(0,0,0,0.9) 68%)',
+          maskImage:       'radial-gradient(ellipse 52% 55% at 50% 50%, transparent 18%, rgba(0,0,0,0.9) 68%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Capa 3 — viñeta oscura en los bordes */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 2,
+          background: 'radial-gradient(ellipse 60% 62% at 50% 50%, transparent 22%, rgba(8,4,1,0.52) 100%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Capa 4 — luz ambiente de la vela (esquina superior izquierda) */}
+        <div style={{
+          position: 'absolute', left: '19%', top: '12%', zIndex: 3,
+          width: '380px', height: '380px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,170,55,0.13) 0%, transparent 70%)',
+          animation: 'luz-ambar 2.6s ease-in-out infinite',
+          pointerEvents: 'none',
+        }} />
+        {/* Sub-destello de la vela */}
+        <div style={{
+          position: 'absolute', left: '19%', top: '12%', zIndex: 3,
+          width: '180px', height: '180px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,200,80,0.18) 0%, transparent 70%)',
+          animation: 'vela-parpadeo-1 2.0s ease-in-out 0.3s infinite',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Capa 5 — destellos sobre las monedas */}
+        {DESTELLOS_MONEDAS.map((d, i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${d.x}%`, top: `${d.y}%`,
+            width: '3px', height: '3px', borderRadius: '50%',
+            background: 'rgba(255,220,80,1)',
+            boxShadow: '0 0 5px 3px rgba(255,200,55,0.75)',
+            transform: 'translate(-50%,-50%)',
+            animation: `centelleo-luz ${d.dur}s ease-in-out ${d.del}s infinite`,
+            zIndex: 4, pointerEvents: 'none',
+          }} />
+        ))}
+
+        {/* Capa 6 — cubre la marca de agua de la IA (esquina inferior derecha) */}
+        <div style={{
+          position: 'absolute', bottom: 0, right: 0, zIndex: 5,
+          width: '160px', height: '120px',
+          background: 'radial-gradient(ellipse at 100% 100%, rgba(22,10,2,0.98) 0%, rgba(18,8,1,0.85) 35%, transparent 72%)',
+          pointerEvents: 'none',
+        }} />
 
         {/* ── Header ── */}
         <div style={{
@@ -245,23 +323,28 @@ export default function Tablero() {
                   ))}
                 </div>
 
-                {/* QR — parte inferior derecha, aspecto de "tinta sobre pergamino" */}
+                {/* QR — aspecto pirograbado: tinta oscura cálida sobre pergamino */}
                 <div style={{
                   flexShrink: 0, marginTop: '4%',
                   display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-                  opacity: 0.72,   /* ligera transparencia → tinta vieja sobre papel */
                 }}>
-                  <QRCodeSVG
-                    value={urlUnirse}
-                    size={86}
-                    level="M"
-                    bgColor="transparent"
-                    fgColor="#1a0c04"
-                  />
+                  {/* filter: drop-shadow da profundidad de surco grabado */}
+                  <div style={{
+                    filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.45)) drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
+                    opacity: 0.82,
+                  }}>
+                    <QRCodeSVG
+                      value={urlUnirse}
+                      size={88}
+                      level="M"
+                      bgColor="transparent"
+                      fgColor="#2e1205"   /* marrón oscuro cálido — tinta quemada */
+                    />
+                  </div>
                   <p style={{
                     fontFamily: 'var(--fuente-subtitulo)',
-                    fontSize: 'clamp(4px,0.45vw,6px)',
-                    color: 'rgba(20,8,0,0.40)',
+                    fontSize: 'clamp(4px,0.44vw,6px)',
+                    color: 'rgba(20,8,0,0.38)',
                     marginTop: '3%', letterSpacing: '0.2px',
                     wordBreak: 'break-all', textAlign: 'right',
                   }}>
