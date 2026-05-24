@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSala } from '../contextos/SalaContexto';
+import useVibrar, { vibrar } from '../hooks/useVibrar';
 
 const ROL_CONFIG = {
   marinero: { color:'#4a9bc7', bg:'rgba(26,58,92,0.9)',  borde:'#4a9bc7', emoji:'⚓', nombre:'Marinero' },
@@ -12,6 +13,7 @@ const ROL_CONFIG = {
 export default function SalaJugador() {
   const navigate = useNavigate();
   const { sala, estado, fase, socketId, emitir, escuchar, salirDeSala } = useSala();
+  const vibrar = useVibrar();
 
   const [rolConfirmado, setRolConf]         = useState(false);
   const [error, setError]                   = useState('');
@@ -40,24 +42,44 @@ export default function SalaJugador() {
     });
     const c2 = escuchar('error', ({ mensaje }) => setError(mensaje));
     const c3 = escuchar('motin-resultado', (data) => {
+      vibrar(data.exitoso ? 'motin' : 'motinFallado');
       setMotin(data);
       setTimeout(() => setMotin(null), 5000);
     });
     const c4 = escuchar('investigacion-resultado', (data) => setInvestigacion(data));
     const c5 = escuchar('kraken-sacrificio', (data) => {
+      vibrar('krakenSacrificio');
       setKraken(data);
       if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 6000);
     });
-    const c6 = escuchar('kraken-eliminado', () => setEliminado(true));
-    const c7 = escuchar('convertido-al-culto', () => setConvertidoAlCulto(true));
+    const c6 = escuchar('kraken-eliminado', () => {
+      vibrar('derrota');
+      setEliminado(true);
+    });
+    const c7 = escuchar('convertido-al-culto', () => {
+      vibrar('convertido');
+      setConvertidoAlCulto(true);
+    });
     return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
-  }, [escuchar, navigate, salirDeSala]);
+  }, [escuchar, navigate, salirDeSala, vibrar]);
 
-  // Auto-transición: mostrar carta ritual 4 s → pantalla de acción
+  // Vibrar al entrar en victoria
+  const _miRolParaVictoria = miJugador?.rol;
+  const _ganadorVictoria   = estado?.victoria;
+  useEffect(() => {
+    if (fase !== 'victoria' || !_ganadorVictoria) return;
+    const gane = (_ganadorVictoria === 'piratas' && _miRolParaVictoria === 'pirata')
+              || (_ganadorVictoria === 'marineros' && _miRolParaVictoria === 'marinero')
+              || (_ganadorVictoria === 'cultistas' && (_miRolParaVictoria === 'cultista' || _miRolParaVictoria === 'adepto'));
+    vibrar(gane ? 'victoria' : 'derrota');
+  }, [fase]); // eslint-disable-line
+
+  // Auto-transición: mostrar carta ritual 10s → pantalla de acción
   const _cartaRitualId = estado?.accionEspecial?.tipo === 'ritual' ? estado?.accionEspecial?.carta?.id : null;
   useEffect(() => {
     if (!_cartaRitualId) { setRitualReveladoId(null); return; }
     if (ritualReveladoId === _cartaRitualId) return;
+    vibrar('ritualReveal'); // vibrar al aparecer la carta ritual
     const t = setTimeout(() => setRitualReveladoId(_cartaRitualId), 10000);
     return () => clearTimeout(t);
   }, [_cartaRitualId]); // eslint-disable-line
@@ -304,7 +326,7 @@ export default function SalaJugador() {
             </>)}
           </div>
           {!rolConfirmado ? (
-            <button className="btn-primario" onClick={() => { emitir('confirmar-rol'); setRolConf(true); }} style={{ width:'100%', padding:'16px' }}>✅ He visto mi rol</button>
+            <button className="btn-primario" onClick={() => { vibrar('confirmar'); emitir('confirmar-rol'); setRolConf(true); }} style={{ width:'100%', padding:'16px' }}>✅ He visto mi rol</button>
           ) : (
             <div style={{ padding:'16px', background:'rgba(98,228,165,0.08)', border:'1px solid rgba(98,228,165,0.25)', borderRadius:'8px' }}>
               <p style={{ color:'#98e4a5', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px' }}>✓ Esperando al resto...</p>
@@ -477,7 +499,7 @@ export default function SalaJugador() {
                 {soyCapitan ? (
                   <>
                     <CartaNavegacion carta={cofre.cartaNavegante} />
-                    <button className="btn-primario" onClick={() => emitir('abrir-cofre')} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
+                    <button className="btn-primario" onClick={() => { vibrar('cartaRevelada'); emitir('abrir-cofre'); }} style={{ width:'100%', marginTop:'16px', padding:'16px' }}>
                       🃏 Enseñar carta y mover el barco
                     </button>
                   </>
@@ -633,7 +655,7 @@ function SeleccionEquipo({ jugadores, socketId, emitir }) {
   const [teniente, setTeniente]   = useState(null);
   const [navegante, setNavegante] = useState(null);
   const elegibles = jugadores.filter(j => j.id !== socketId && !j.fueraDeServicio);
-  const confirmar = () => { if (teniente && navegante) emitir('elegir-equipo', { tenienteId: teniente, naveganteId: navegante }); };
+  const confirmar = () => { if (teniente && navegante) { vibrar('confirmar'); emitir('elegir-equipo', { tenienteId: teniente, naveganteId: navegante }); } };
 
   return (
     <div>
@@ -666,7 +688,7 @@ function SeleccionEquipo({ jugadores, socketId, emitir }) {
 function VotacionMotin({ pistolas, umbral, confirmados, total, emitir }) {
   const [sel, setSel]       = useState(0);
   const [votado, setVotado] = useState(false);
-  const votar = () => { emitir('votar-motin', { pistolas: sel }); setVotado(true); };
+  const votar = () => { vibrar('seleccionar'); emitir('votar-motin', { pistolas: sel }); setVotado(true); };
   return (
     <div>
       <div style={{ background:'rgba(139,26,26,0.1)', border:'1px solid rgba(192,57,43,0.2)', borderRadius:'12px', padding:'16px', marginBottom:'24px' }}>
@@ -824,6 +846,7 @@ function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
 
   const confirmar = () => {
     if (!seleccionado) return;
+    vibrar('seleccionar');
     emitir('votar-kraken', { objetivoId: seleccionado });
     setVotado(true);
   };
@@ -1262,6 +1285,7 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
         </div>
         <button className="btn-primario" onClick={() => {
           if (!selRegistro) return;
+          vibrar('confirmar');
           emitir('accion-ritual', { jugadorId: selRegistro });
         }} disabled={!selRegistro} style={{ width:'100%', padding:'16px' }}>
           🔍 Inspeccionar camarote
@@ -1318,6 +1342,7 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
         </div>
         {!confirmado ? (
           <button className="btn-primario" onClick={() => {
+            vibrar('confirmar');
             setConfirmado(true);
             emitir('accion-ritual', { distribucion });
           }} style={{ width:'100%', padding:'16px' }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useSocket } from '../hooks/useSocket';
@@ -297,6 +297,9 @@ export default function Tablero() {
             <TableroHex barcoHex={tablero?.barco?.hexId || 'inicio'} />
           </div>
 
+          {/* Niebla ambiental */}
+          <NieblaTablero fase={fase} />
+
           {/* Overlay ritual del Culto */}
           {tablero?.accionEspecial?.tipo === 'ritual' && (() => {
             const carta = tablero.accionEspecial.carta;
@@ -377,15 +380,19 @@ export default function Tablero() {
             </div>
           )}
 
-          {/* Overlay durmiendo */}
+          {/* Overlay durmiendo — texto flotante sobre la niebla */}
           {fase === 'durmiendo' && (
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,7,15,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
-              <div style={{ textAlign: 'center', animation: 'aparecer 1s ease' }}>
-                <div style={{ fontSize: 'clamp(60px,10vw,100px)', marginBottom: '24px', animation: 'flotar 4s ease-in-out infinite' }}>🌙</div>
-                <h2 style={{ fontFamily: 'var(--fuente-titulo)', color: 'var(--crema-pergamino)', fontSize: 'clamp(22px,4vw,48px)', letterSpacing: '4px', marginBottom: '12px' }}>
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'radial-gradient(ellipse 65% 55% at 50% 50%, rgba(5,9,20,0.45) 0%, transparent 100%)',
+            }}>
+              <div style={{ textAlign: 'center', animation: 'aparecer 1.2s ease' }}>
+                <div style={{ fontSize: 'clamp(60px,10vw,100px)', marginBottom: '24px', animation: 'flotar 4s ease-in-out infinite', filter: 'drop-shadow(0 0 24px rgba(120,160,220,0.55))' }}>🌙</div>
+                <h2 style={{ fontFamily: 'var(--fuente-titulo)', color: 'var(--crema-pergamino)', fontSize: 'clamp(22px,4vw,48px)', letterSpacing: '4px', marginBottom: '12px', textShadow: '0 2px 20px rgba(5,9,20,0.9)' }}>
                   La tripulación se va a dormir
                 </h2>
-                <p style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'rgba(245,230,200,0.5)', fontSize: 'clamp(14px,2vw,20px)' }}>
+                <p style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'rgba(245,230,200,0.55)', fontSize: 'clamp(14px,2vw,20px)', textShadow: '0 1px 12px rgba(5,9,20,0.8)' }}>
                   Los piratas están abriéndose los ojos entre sí...
                 </p>
                 <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.3)', fontSize: '11px', letterSpacing: '2px', marginTop: '20px', textTransform: 'uppercase' }}>
@@ -510,6 +517,88 @@ export default function Tablero() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Niebla ambiental ──
+function NieblaTablero({ fase }) {
+  // estados: 'oculto' | 'visible' | 'dispersando'
+  const [estado, setEstado] = useState(fase === 'durmiendo' ? 'visible' : 'oculto');
+  const prevFaseRef = useRef(fase);
+  const timerRef    = useRef(null);
+
+  useEffect(() => {
+    const prev = prevFaseRef.current;
+    prevFaseRef.current = fase;
+
+    if (fase === 'durmiendo' && estado !== 'visible') {
+      // Entramos en durmiendo → mostrar niebla (cancela dispersión pendiente)
+      clearTimeout(timerRef.current);
+      setEstado('visible');
+    } else if (prev === 'durmiendo' && fase !== 'durmiendo') {
+      // Salimos de durmiendo → dispersar y luego ocultar
+      setEstado('dispersando');
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setEstado('oculto'), 3200);
+    }
+  }, [fase]); // eslint-disable-line
+
+  // Limpieza al desmontar
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
+  if (estado === 'oculto') return null;
+  const dispersando = estado === 'dispersando';
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 5, overflow: 'hidden' }}>
+      {/* Velo base azul-oscuro — se desvanece suavemente al dispersar */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse 120% 120% at 50% 50%, rgba(8,14,26,0.55) 0%, rgba(5,9,18,0.68) 100%)',
+        transition: 'opacity 3s ease',
+        opacity: dispersando ? 0 : 1,
+      }} />
+
+      {/* Capa 1 — masa principal, deriva lenta (20 s) */}
+      <div style={{
+        position: 'absolute', inset: '-30%',
+        background: 'radial-gradient(ellipse 72% 56% at 38% 62%, rgba(140,175,212,0.21) 0%, rgba(100,142,188,0.07) 55%, transparent 72%)',
+        filter: 'blur(26px)',
+        animation: dispersando
+          ? 'niebla-dispersar 2.8s ease-out forwards'
+          : 'niebla-deriva-1 20s ease-in-out infinite',
+      }} />
+
+      {/* Capa 2 — masa secundaria, dirección opuesta (27 s) */}
+      <div style={{
+        position: 'absolute', inset: '-30%',
+        background: 'radial-gradient(ellipse 66% 50% at 64% 37%, rgba(158,196,222,0.16) 0%, rgba(118,158,192,0.06) 52%, transparent 70%)',
+        filter: 'blur(32px)',
+        animation: dispersando
+          ? 'niebla-dispersar 2.5s ease-out 0.25s forwards'
+          : 'niebla-deriva-2 27s ease-in-out infinite',
+      }} />
+
+      {/* Capa 3 — jirones finos en la parte alta (15 s) */}
+      <div style={{
+        position: 'absolute', inset: '-30%',
+        background: 'radial-gradient(ellipse 56% 40% at 50% 21%, rgba(202,222,240,0.11) 0%, transparent 65%)',
+        filter: 'blur(18px)',
+        animation: dispersando
+          ? 'niebla-dispersar 2.1s ease-out 0.10s forwards'
+          : 'niebla-deriva-3 15s ease-in-out infinite',
+      }} />
+
+      {/* Capa 4 — acento verdoso muy sutil (Kraken) — se mueve con deriva-1 desfasada */}
+      <div style={{
+        position: 'absolute', inset: '-30%',
+        background: 'radial-gradient(ellipse 48% 38% at 55% 72%, rgba(10,100,80,0.08) 0%, transparent 65%)',
+        filter: 'blur(22px)',
+        animation: dispersando
+          ? 'niebla-dispersar 3.0s ease-out 0.05s forwards'
+          : 'niebla-deriva-1 24s ease-in-out 4s infinite',
+      }} />
     </div>
   );
 }
