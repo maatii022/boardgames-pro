@@ -64,7 +64,7 @@ export default function SalaJugador() {
   }, [escuchar, navigate, salirDeSala, vibrar]);
 
   // Vibrar al entrar en victoria
-  const _miRolParaVictoria = miJugador?.rol;
+  const _miRolParaVictoria = estado?.miJugador?.rol;
   const _ganadorVictoria   = estado?.victoria;
   useEffect(() => {
     if (fase !== 'victoria' || !_ganadorVictoria) return;
