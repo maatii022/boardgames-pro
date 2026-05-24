@@ -189,6 +189,36 @@ button {
   100% { left: 200%;  }
 }
 
+/* ── Iluminación de velas (menú principal) ───────────────────── */
+@keyframes vela-parpadeo-1 {
+  0%,100% { opacity: 0.55; transform: scale(1);    }
+  12%     { opacity: 0.78; transform: scale(1.06); }
+  28%     { opacity: 0.42; transform: scale(0.94); }
+  47%     { opacity: 0.70; transform: scale(1.04); }
+  65%     { opacity: 0.38; transform: scale(0.97); }
+  82%     { opacity: 0.74; transform: scale(1.05); }
+}
+@keyframes vela-parpadeo-2 {
+  0%,100% { opacity: 0.50; transform: scale(1.02); }
+  18%     { opacity: 0.68; transform: scale(0.95); }
+  36%     { opacity: 0.40; transform: scale(1.08); }
+  57%     { opacity: 0.76; transform: scale(0.97); }
+  78%     { opacity: 0.34; transform: scale(1.04); }
+}
+@keyframes luz-ambar {
+  0%,100% { opacity: 0.20; transform: scale(1)    translate(0px,  0px); }
+  30%     { opacity: 0.34; transform: scale(1.12) translate(-5px,-4px); }
+  65%     { opacity: 0.16; transform: scale(0.92) translate(4px,  3px); }
+}
+@keyframes pocion-brillar {
+  0%,100% { opacity: 0.35; transform: scale(1);    }
+  50%     { opacity: 0.68; transform: scale(1.14); }
+}
+@keyframes centelleo-luz {
+  0%,100% { opacity: 0; }
+  50%     { opacity: 1; }
+}
+
 /* ── Niebla del tablero ──────────────────────────────────── */
 @keyframes niebla-deriva-1 {
   0%   { transform: translate(0%,   0%)   scale(1);    }
