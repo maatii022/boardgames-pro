@@ -1,0 +1,11 @@
+Sube aquí los siguientes archivos (PNG con fondo transparente):
+
+  fondo.png      → la carta de pergamino completa (con cuerda, brújula y bordes rasgados incluidos)
+  kraken.png     → el icono del kraken (sin fondo)
+  titulo.png     → el título "Feed The Kraken" + divisor ornamental juntos (sin fondo)
+  personas.png   → el icono de jugadores (silueta de personas, sin fondo)
+  reloj.png      → el icono de duración (reloj de arena, sin fondo)
+  boton.png      → el botón "Crear Sala" con el texto ya incluido (sin fondo)
+
+Todos deben ser PNG con transparencia (canal alfa).
+El botón "Crear Sala" lo gestiona CSS.
