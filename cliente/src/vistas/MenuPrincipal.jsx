@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import CartaFeedTheKraken from './CartaFeedTheKraken';
 
 /* ─── Luces sala arcana ─────────────────────────────────────── */
 const VELAS = [
@@ -363,79 +364,58 @@ export default function MenuPrincipal() {
           }}>
             {JUEGOS.map((j, idx) => {
               const esEste = hover === j.id;
-              const esFTK  = j.id === 'feed-the-kraken';
+
+              /* ── Carta especial FTK ── */
+              if (j.id === 'feed-the-kraken') {
+                return (
+                  <div key={j.id} style={{ animation: `aparecer 0.6s ease 0s both` }}>
+                    <CartaFeedTheKraken
+                      onCrear={crearSala}
+                      creando={creando}
+                      conectado={conectado}
+                      esHover={esEste}
+                      onHover={() => setHover('feed-the-kraken')}
+                      onLeave={() => setHover(null)}
+                    />
+                  </div>
+                );
+              }
+
+              /* ── Cartas genéricas (Catán, Próximamente) ── */
               return (
                 <div
                   key={j.id}
-                  onMouseEnter={() => j.disponible && setHover(j.id)}
-                  onMouseLeave={() => setHover(null)}
                   style={{
-                    background: esEste && j.disponible
-                      ? esFTK
-                        ? 'linear-gradient(140deg, rgba(6,14,30,0.97), rgba(10,147,150,0.14))'
-                        : 'linear-gradient(140deg, rgba(14,7,28,0.97), rgba(201,168,76,0.12))'
-                      : 'rgba(6,5,16,0.74)',
-                    border: `1px solid ${
-                      esEste && j.disponible
-                        ? esFTK ? 'rgba(10,147,150,0.72)' : 'rgba(201,168,76,0.55)'
-                        : 'rgba(201,168,76,0.14)'
-                    }`,
+                    background: 'rgba(6,5,16,0.74)',
+                    border: '1px solid rgba(201,168,76,0.14)',
                     borderRadius: 'clamp(8px,1vw,14px)',
                     padding: 'clamp(16px,2.2vw,28px) clamp(14px,1.8vw,24px)',
-                    opacity: j.disponible ? 1 : 0.36,
-                    transform: esEste && j.disponible ? 'translateY(-6px) scale(1.02)' : 'none',
-                    boxShadow: esEste && j.disponible
-                      ? esFTK
-                        ? '0 20px 50px rgba(0,0,0,0.65), 0 0 44px rgba(10,147,150,0.2)'
-                        : '0 20px 50px rgba(0,0,0,0.65), 0 0 44px rgba(201,168,76,0.14)'
-                      : '0 4px 24px rgba(0,0,0,0.45)',
+                    opacity: 0.36,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
                     backdropFilter: 'blur(18px)',
-                    transition: 'all 0.38s cubic-bezier(0.25,0.8,0.25,1)',
-                    cursor: j.disponible ? 'default' : 'not-allowed',
-                    position: 'relative', overflow: 'hidden',
                     animation: `aparecer 0.6s ease ${idx * 0.14}s both`,
                     display: 'flex', flexDirection: 'column',
+                    position: 'relative', overflow: 'hidden',
+                    cursor: 'not-allowed',
                   }}>
 
-                  {/* Shimmer FTK */}
-                  {esFTK && esEste && (
-                    <div style={{
-                      position: 'absolute', top: 0, left: '-100%',
-                      width: '55%', height: '100%',
-                      background: 'linear-gradient(90deg, transparent, rgba(10,147,150,0.07), transparent)',
-                      animation: 'shimmer-card 2.2s ease infinite',
-                      pointerEvents: 'none',
-                    }}/>
-                  )}
-
-                  {!j.disponible && (
-                    <div style={{
-                      position: 'absolute', top: '10px', right: '10px',
-                      background: 'rgba(201,168,76,0.09)',
-                      border: '1px solid rgba(201,168,76,0.22)',
-                      borderRadius: '20px', padding: '2px 8px',
-                      fontFamily: 'var(--fuente-subtitulo)', fontSize: '8px',
-                      color: 'rgba(201,168,76,0.6)', letterSpacing: '1.5px',
-                      textTransform: 'uppercase',
-                    }}>Próximamente</div>
-                  )}
-
                   <div style={{
-                    fontSize: 'clamp(26px,3.5vw,42px)',
-                    marginBottom: 'clamp(8px,1.2vh,14px)',
-                    filter: esFTK && esEste ? 'drop-shadow(0 0 10px rgba(10,200,200,0.55))' : 'none',
-                    transition: 'filter 0.38s ease',
-                  }}>{j.ico}</div>
+                    position: 'absolute', top: '10px', right: '10px',
+                    background: 'rgba(201,168,76,0.09)',
+                    border: '1px solid rgba(201,168,76,0.22)',
+                    borderRadius: '20px', padding: '2px 8px',
+                    fontFamily: 'var(--fuente-subtitulo)', fontSize: '8px',
+                    color: 'rgba(201,168,76,0.6)', letterSpacing: '1.5px',
+                    textTransform: 'uppercase',
+                  }}>Próximamente</div>
+
+                  <div style={{ fontSize: 'clamp(26px,3.5vw,42px)', marginBottom: 'clamp(8px,1.2vh,14px)' }}>{j.ico}</div>
 
                   <h2 style={{
                     fontFamily: 'var(--fuente-subtitulo)',
                     fontSize: 'clamp(13px,1.6vw,19px)',
-                    color: esEste && j.disponible
-                      ? esFTK ? 'rgba(10,220,230,0.95)' : 'var(--crema-pergamino)'
-                      : j.disponible ? 'var(--crema-pergamino)' : 'rgba(245,230,200,0.45)',
-                    marginBottom: 'clamp(6px,0.8vh,10px)',
-                    letterSpacing: '0.8px',
-                    transition: 'color 0.38s ease',
+                    color: 'rgba(245,230,200,0.45)',
+                    marginBottom: 'clamp(6px,0.8vh,10px)', letterSpacing: '0.8px',
                   }}>{j.nombre}</h2>
 
                   <p style={{
@@ -446,10 +426,7 @@ export default function MenuPrincipal() {
                     marginBottom: 'clamp(10px,1.2vh,16px)',
                   }}>{j.desc}</p>
 
-                  <div style={{
-                    display: 'flex', gap: 'clamp(12px,1.8vw,22px)',
-                    marginBottom: 'clamp(10px,1.2vh,16px)',
-                  }}>
+                  <div style={{ display:'flex', gap:'clamp(12px,1.8vw,22px)', marginBottom:'clamp(10px,1.2vh,16px)' }}>
                     {[{ico:'👥',val:j.jugadores,lbl:'jugadores'},{ico:'⏱️',val:j.duracion,lbl:'duración'}].map(s => (
                       <div key={s.lbl}>
                         <div style={{fontSize:'13px',marginBottom:'1px'}}>{s.ico}</div>
@@ -458,33 +435,6 @@ export default function MenuPrincipal() {
                       </div>
                     ))}
                   </div>
-
-                  {j.disponible && (
-                    <button
-                      onClick={crearSala}
-                      disabled={creando || !conectado}
-                      style={{
-                        width: '100%',
-                        background: creando
-                          ? 'rgba(10,147,150,0.18)'
-                          : esFTK
-                            ? 'linear-gradient(135deg, rgba(8,110,118,0.92), rgba(10,147,150,0.82))'
-                            : 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))',
-                        color: esFTK ? '#d0f8f8' : '#08070f',
-                        padding: 'clamp(8px,1vh,12px) 14px',
-                        borderRadius: '6px',
-                        fontFamily: 'var(--fuente-subtitulo)',
-                        fontSize: 'clamp(9px,1vw,11px)',
-                        fontWeight: 700, letterSpacing: '1.5px',
-                        textTransform: 'uppercase', border: 'none',
-                        cursor: creando || !conectado ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.3s ease',
-                        opacity: !conectado ? 0.4 : 1,
-                        boxShadow: esFTK && esEste ? '0 4px 20px rgba(10,147,150,0.3)' : 'none',
-                      }}>
-                      {creando ? '🔄 Creando...' : !conectado ? 'Conectando...' : esFTK ? '⚓ Crear Sala' : 'Crear Sala →'}
-                    </button>
-                  )}
                 </div>
               );
             })}
