@@ -131,7 +131,7 @@ export default function MenuPrincipal() {
           backgroundImage: "url('/fondo-menu.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
-          filter: 'blur(2.5px) brightness(0.28) saturate(1.3)',
+          filter: 'blur(1px) brightness(0.28) saturate(1.3)',
           transform: 'scale(1.03)',
         }}/>
         {/* Overlay cálido */}
@@ -209,7 +209,7 @@ export default function MenuPrincipal() {
           backgroundImage: "url('/fondo-menu-feed-the-kraken.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
-          filter: 'blur(2px) brightness(0.30) saturate(1.2)',
+          filter: 'blur(1px) brightness(0.30) saturate(1.2)',
           transform: 'scale(1.03)',
         }}/>
         {/* Overlay frío marino */}
