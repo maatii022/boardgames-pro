@@ -102,8 +102,10 @@ export default function MenuPrincipal() {
   const { playMusica, stopMusica, playAmbiente, stopAmbiente, playSFX } = useAudio();
 
   // ── Refs para la gestión local de timers de audio ─────────
-  const timersAudio = useRef([]);
-  const maderaIdx   = useRef(0);
+  const timersAudio  = useRef([]);
+  const maderaIdx    = useRef(0);
+  const audioStarted = useRef(false);
+  const [audioListo, setAudioListo] = useState(false);
 
   const pararTimers = useCallback(() => {
     timersAudio.current.forEach(clearTimeout);
@@ -117,14 +119,34 @@ export default function MenuPrincipal() {
     timersAudio.current.push(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Música: arranca al montar, fade-out al desmontar ──────
+  // ── Música: arranca en la PRIMERA interacción del usuario ─
+  // (los navegadores bloquean el autoplay sin gesto previo)
   useEffect(() => {
-    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
-    return () => { stopMusica('musica-menu', 2500); pararTimers(); stopAmbiente('amb-fogata'); };
+    const iniciarAudio = () => {
+      if (audioStarted.current) return;
+      audioStarted.current = true;
+      setAudioListo(true);
+      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
+    };
+
+    document.addEventListener('mousemove',  iniciarAudio, { once: true });
+    document.addEventListener('click',      iniciarAudio, { once: true });
+    document.addEventListener('touchstart', iniciarAudio, { once: true });
+
+    return () => {
+      stopMusica('musica-menu', 2500);
+      pararTimers();
+      stopAmbiente('amb-fogata');
+      document.removeEventListener('mousemove',  iniciarAudio);
+      document.removeEventListener('click',      iniciarAudio);
+      document.removeEventListener('touchstart', iniciarAudio);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ambientes: solo activos cuando NO hay hover de carta ──
   useEffect(() => {
+    if (!audioListo) return; // esperar primera interacción
+
     if (esMar) {
       // Carta FTK en hover → apagar todo lo ambiental
       pararTimers();
@@ -156,7 +178,7 @@ export default function MenuPrincipal() {
       }, 6000 + Math.random() * 6000);
       timersAudio.current.push(tMadera);
     }
-  }, [esMar]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [esMar, audioListo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Precarga ambas imágenes de fondo para que estén en caché antes del hover
   useEffect(() => {
