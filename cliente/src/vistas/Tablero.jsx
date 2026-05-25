@@ -155,43 +155,41 @@ export default function Tablero() {
         {/* ═══ MESA: código izq | pergamino centro | QR der ═══ */}
         <div style={{
           position:'relative', zIndex:10, flex:1,
-          display:'grid', gridTemplateColumns:'1fr auto 1fr',
-          alignItems:'center',
+          display:'flex', flexDirection:'column',
           padding:'10px 52px 14px',
           overflow:'hidden',
           animation:'aparecer 0.8s ease 0.15s both',
         }}>
 
-          {/* ── Código de sala ── */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', justifyContent:'center', paddingRight:'6%' }}>
-            {/* Todo el bloque se centra internamente entre sí */}
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
-              {/* Decoración ornamental */}
-              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'2px' }}>
-                <div style={{ width:'44px', height:'1px', background:'linear-gradient(to left, rgba(201,168,76,0.55), transparent)' }}/>
-                <span style={{ color:'rgba(201,168,76,0.65)', fontSize:'11px' }}>⚓</span>
-              </div>
-              <p style={{
-                fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
-                fontSize:'clamp(8px,0.72vw,10px)',
-                color:'rgba(245,218,162,0.92)',
-                textShadow:'0 1px 6px rgba(0,0,0,0.98)',
-              }}>Código de sala</p>
-              <div style={{
-                fontFamily:'var(--fuente-titulo)',
-                fontSize:'clamp(32px,3.6vw,56px)',
-                letterSpacing:'0.32em',
-                color:'var(--oro-claro)',
-                textShadow:'0 0 38px rgba(255,215,100,0.55), 0 2px 14px rgba(0,0,0,0.96)',
-              }}>
-                {codigo}
+          {/* Grid interior — botón fuera para que no distorsione la alineación vertical */}
+          <div style={{
+            flex:1, minHeight:0,
+            display:'grid', gridTemplateColumns:'1fr auto 1fr',
+            alignItems:'center',
+          }}>
+
+            {/* ── Código de sala ── */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', justifyContent:'center', paddingRight:'6%' }}>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
+                <p style={{
+                  fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
+                  fontSize:'clamp(8px,0.72vw,10px)',
+                  color:'rgba(245,218,162,0.92)',
+                  textShadow:'0 1px 6px rgba(0,0,0,0.98)',
+                }}>Código de sala</p>
+                <div style={{
+                  fontFamily:'var(--fuente-titulo)',
+                  fontSize:'clamp(32px,3.6vw,56px)',
+                  letterSpacing:'0.32em',
+                  color:'var(--oro-claro)',
+                  textShadow:'0 0 38px rgba(255,215,100,0.55), 0 2px 14px rgba(0,0,0,0.96)',
+                }}>
+                  {codigo}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ── Pergamino + botón ── */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'10px' }}>
-
+            {/* ── Pergamino ── */}
             <div style={{
               position:'relative', width:'min(440px,36vw)', flexShrink:0,
               filter:`
@@ -201,12 +199,11 @@ export default function Tablero() {
               `,
             }}>
               <img src="/sala-espera/pergamino.png" alt=""
-                style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none' }}/>
+                style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none', filter:'brightness(0.90)' }}/>
               <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 18% 10%' }}>
 
-                {/* ── Cabecera del pergamino ── */}
+                {/* Cabecera */}
                 <div style={{ flexShrink:0, marginBottom:'3%' }}>
-                  {/* Título centrado */}
                   <h2 style={{
                     fontFamily:'var(--fuente-pirata)',
                     fontSize:'clamp(15px,1.45vw,21px)',
@@ -215,31 +212,26 @@ export default function Tablero() {
                     textAlign:'center',
                     marginBottom:'3%',
                   }}>Tripulación</h2>
-                  {/* Línea decorativa */}
                   <div style={{ height:'1px', background:'linear-gradient(to right, transparent, rgba(45,15,2,0.50) 30%, rgba(45,15,2,0.50) 70%, transparent)' }}/>
-                  {/* Contador derecha */}
                   <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'2%' }}>
                     <span style={{
                       fontFamily:'var(--fuente-subtitulo)',
                       fontSize:'clamp(7px,0.65vw,9px)',
-                      color: numJugadores >= 5 ? '#1a4a18' : '#5a2a04',
-                      letterSpacing:'1.5px', fontWeight:700,
+                      color: numJugadores >= 5 ? '#174a14' : '#4a1e04',
+                      letterSpacing:'1.5px', fontWeight:700, opacity:0.90,
                     }}>{numJugadores} / 11</span>
                   </div>
                 </div>
 
-                {/* ── Lista de tripulantes ── */}
+                {/* Lista */}
                 <div style={{
-                  flex:1,
-                  display:'flex',
-                  flexDirection:'column',
-                  gap:'clamp(2px,0.38vh,4px)',
-                  overflow:'hidden',
+                  flex:1, display:'flex', flexDirection:'column',
+                  gap:'clamp(1px,0.30vh,3px)', overflow:'hidden',
                 }}>
                   {jugadores.length === 0 ? (
                     <p style={{
                       fontFamily:'var(--fuente-pirata)',
-                      color:'rgba(16,6,0,0.36)',
+                      color:'rgba(10,4,0,0.68)',
                       fontSize:'clamp(9px,0.86vw,12px)',
                       textAlign:'center',
                       marginTop:'18%',
@@ -248,43 +240,36 @@ export default function Tablero() {
                       Esperando tripulantes…
                     </p>
                   ) : jugadores.map((j, i) => (
-                    <div
-                      key={j.id || i}
-                      style={{
-                        display:'flex', alignItems:'center', gap:'5px',
-                        padding:'1px 2px',
-                        animation:`aparecer 0.3s ease ${i * 0.05}s both`,
-                      }}
-                    >
-                      {/* Indicador host / miembro */}
+                    <div key={j.id || i} style={{
+                      display:'flex', alignItems:'center', gap:'5px',
+                      padding:'2px 3px',
+                      borderBottom: i < jugadores.length - 1 ? '1px solid rgba(40,15,2,0.08)' : 'none',
+                      animation:`aparecer 0.3s ease ${i * 0.05}s both`,
+                    }}>
                       <span style={{
-                        flexShrink:0, minWidth:'14px', textAlign:'center',
-                        fontSize:'clamp(7px,0.68vw,9px)',
-                        color: j.id === sala.hostId ? '#180600' : '#3a1a06',
-                        opacity: j.id === sala.hostId ? 0.70 : 0.28,
+                        flexShrink:0, width:'11px', textAlign:'center',
+                        fontSize: j.id === sala.hostId ? 'clamp(7px,0.64vw,8px)' : 'clamp(10px,0.90vw,12px)',
+                        color: j.id === sala.hostId ? '#2a0e02' : 'rgba(50,20,5,0.45)',
+                        lineHeight:1,
                       }}>
-                        {j.id === sala.hostId ? '⚓' : '—'}
+                        {j.id === sala.hostId ? '⚓' : '·'}
                       </span>
-
-                      {/* Nombre */}
                       <span style={{
-                        fontFamily:'var(--fuente-pirata)',
-                        fontSize:'clamp(9px,0.92vw,13px)',
-                        color:'#080200',
-                        lineHeight:1.25,
-                        flex:1,
+                        fontFamily:'var(--fuente-subtitulo)',
+                        fontSize:'clamp(8px,0.82vw,11.5px)',
+                        color: j.id === sala.hostId ? '#080100' : '#130600',
+                        lineHeight:1.2, flex:1,
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                        letterSpacing:'0.35px',
+                        letterSpacing:'0.9px',
+                        fontWeight: j.id === sala.hostId ? 700 : 500,
+                        textTransform:'uppercase',
                       }}>
                         {j.nombre}
                       </span>
-
-                      {/* Punto de conexión */}
                       <div style={{
-                        flexShrink:0,
-                        width:'4px', height:'4px', borderRadius:'50%',
-                        background: j.conectado !== false ? '#226022' : '#722222',
-                        opacity:0.55,
+                        flexShrink:0, width:'4px', height:'4px', borderRadius:'50%',
+                        background: j.conectado !== false ? '#175017' : '#601717',
+                        opacity:0.70,
                       }}/>
                     </div>
                   ))}
@@ -293,65 +278,64 @@ export default function Tablero() {
               </div>
             </div>
 
-            {/* Botón + aviso */}
-            <div style={{ textAlign:'center', flexShrink:0 }}>
-              {numJugadores < 5 && (
-                <p style={{
-                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(9px,0.86vw,12px)',
-                  color:'rgba(245,218,162,0.94)',
-                  textShadow:'0 1px 7px rgba(0,0,0,0.98), 0 2px 14px rgba(0,0,0,0.85)',
-                  marginBottom:'10px', letterSpacing:'1px',
-                }}>
-                  Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
-                </p>
-              )}
-              <button
-                onClick={numJugadores >= 5 ? iniciarPartida : undefined}
-                disabled={numJugadores < 5}
-                style={{
-                  background: numJugadores >= 5
-                    ? 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))'
-                    : 'rgba(28,14,3,0.55)',
-                  border:`1px solid ${numJugadores >= 5 ? 'rgba(232,201,122,0.55)' : 'rgba(140,95,25,0.32)'}`,
-                  color: numJugadores >= 5 ? 'var(--negro-abismo)' : 'rgba(190,145,55,0.58)',
-                  padding:'clamp(8px,0.9vh,12px) clamp(20px,2.2vw,34px)',
-                  fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(10px,0.90vw,13px)',
-                  fontWeight: numJugadores >= 5 ? 700 : 400,
-                  letterSpacing:'2px', textTransform:'uppercase', borderRadius:'4px',
-                  cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
-                  boxShadow: numJugadores >= 5 ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
-                  transition:'all 0.3s ease',
-                }}>
-                ⚓ Iniciar Partida
-              </button>
-              {error && <p style={{ color:'#ffccaa', fontSize:'11px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', textShadow:'0 1px 4px rgba(0,0,0,0.85)' }}>{error}</p>}
+            {/* ── QR en el tablón junto al pergamino ── */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'10px' }}>
+              <p style={{
+                fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
+                fontSize:'clamp(9px,0.84vw,12px)',
+                color:'rgba(245,218,162,0.96)',
+                textShadow:'0 1px 7px rgba(0,0,0,0.98)',
+                marginBottom:'10px',
+                width:'185px', textAlign:'center',
+              }}>Únete escaneando</p>
+              <div style={{ filter:'drop-shadow(0 0 5px rgba(255,255,255,0.10)) drop-shadow(0 5px 14px rgba(0,0,0,0.80))' }}>
+                <QRCodeSVG value={urlUnirse} size={185} level="M" bgColor="transparent" fgColor="#ffffff"/>
+              </div>
+              <p style={{
+                fontFamily:'var(--fuente-subtitulo)',
+                fontSize:'clamp(7px,0.62vw,9px)',
+                color:'rgba(245,218,162,0.72)',
+                textShadow:'0 1px 5px rgba(0,0,0,0.96)',
+                marginTop:'8px',
+                width:'185px', textAlign:'center',
+                whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+              }}>{urlUnirse}</p>
             </div>
+
           </div>
 
-          {/* ── QR en el tablón junto al pergamino ── */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'10px' }}>
-            {/* Label centrado respecto al QR */}
-            <p style={{
-              fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
-              fontSize:'clamp(9px,0.84vw,12px)',
-              color:'rgba(245,218,162,0.96)',
-              textShadow:'0 1px 7px rgba(0,0,0,0.98)',
-              marginBottom:'10px',
-              width:'185px', textAlign:'center',
-            }}>Únete escaneando</p>
-            <div style={{ filter:'drop-shadow(0 0 5px rgba(255,255,255,0.10)) drop-shadow(0 5px 14px rgba(0,0,0,0.80))' }}>
-              <QRCodeSVG value={urlUnirse} size={185} level="M" bgColor="transparent" fgColor="#ffffff"/>
-            </div>
-            {/* URL en una sola línea, centrada, más legible */}
-            <p style={{
-              fontFamily:'var(--fuente-subtitulo)',
-              fontSize:'clamp(7px,0.62vw,9px)',
-              color:'rgba(245,218,162,0.72)',
-              textShadow:'0 1px 5px rgba(0,0,0,0.96)',
-              marginTop:'8px',
-              width:'185px', textAlign:'center',
-              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-            }}>{urlUnirse}</p>
+          {/* ── Botón + aviso (fuera del grid para no distorsionar alineación vertical) ── */}
+          <div style={{ flexShrink:0, textAlign:'center', paddingTop:'8px', paddingBottom:'4px' }}>
+            {numJugadores < 5 && (
+              <p style={{
+                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(9px,0.86vw,12px)',
+                color:'rgba(245,218,162,0.94)',
+                textShadow:'0 1px 7px rgba(0,0,0,0.98), 0 2px 14px rgba(0,0,0,0.85)',
+                marginBottom:'10px', letterSpacing:'1px',
+              }}>
+                Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
+              </p>
+            )}
+            <button
+              onClick={numJugadores >= 5 ? iniciarPartida : undefined}
+              disabled={numJugadores < 5}
+              style={{
+                background: numJugadores >= 5
+                  ? 'linear-gradient(135deg, var(--oro-dorado), var(--oro-claro))'
+                  : 'rgba(28,14,3,0.55)',
+                border:`1px solid ${numJugadores >= 5 ? 'rgba(232,201,122,0.55)' : 'rgba(140,95,25,0.32)'}`,
+                color: numJugadores >= 5 ? 'var(--negro-abismo)' : 'rgba(190,145,55,0.58)',
+                padding:'clamp(8px,0.9vh,12px) clamp(20px,2.2vw,34px)',
+                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(10px,0.90vw,13px)',
+                fontWeight: numJugadores >= 5 ? 700 : 400,
+                letterSpacing:'2px', textTransform:'uppercase', borderRadius:'4px',
+                cursor: numJugadores >= 5 ? 'pointer' : 'not-allowed',
+                boxShadow: numJugadores >= 5 ? '0 4px 20px rgba(201,168,76,0.40)' : 'none',
+                transition:'all 0.3s ease',
+              }}>
+              ⚓ Iniciar Partida
+            </button>
+            {error && <p style={{ color:'#ffccaa', fontSize:'11px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', textShadow:'0 1px 4px rgba(0,0,0,0.85)' }}>{error}</p>}
           </div>
 
         </div>
