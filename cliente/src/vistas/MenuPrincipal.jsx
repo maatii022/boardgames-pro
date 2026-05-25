@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { useAudio } from '../contextos/AudioContexto';
 import CartaFeedTheKraken from './CartaFeedTheKraken';
 import CartaCatan from './CartaCatan';
 
@@ -98,6 +99,65 @@ export default function MenuPrincipal() {
 
   const esMar = hover === 'feed-the-kraken';
 
+  const { playMusica, stopMusica, playAmbiente, stopAmbiente, playSFX } = useAudio();
+
+  // ── Refs para la gestión local de timers de audio ─────────
+  const timersAudio = useRef([]);
+  const maderaIdx   = useRef(0);
+
+  const pararTimers = useCallback(() => {
+    timersAudio.current.forEach(clearTimeout);
+    timersAudio.current = [];
+  }, []);
+
+  // Programa un sfx que se auto-reprograma con delay aleatorio
+  const programar = useCallback((fn, minMs, maxMs) => {
+    const delay = minMs + Math.random() * (maxMs - minMs);
+    const t = setTimeout(() => { fn(); programar(fn, minMs, maxMs); }, delay);
+    timersAudio.current.push(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Música: arranca al montar, fade-out al desmontar ──────
+  useEffect(() => {
+    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
+    return () => { stopMusica('musica-menu', 2500); pararTimers(); stopAmbiente('amb-fogata'); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Ambientes: solo activos cuando NO hay hover de carta ──
+  useEffect(() => {
+    if (esMar) {
+      // Carta FTK en hover → apagar todo lo ambiental
+      pararTimers();
+      stopAmbiente('amb-fogata', 1200);
+    } else {
+      // Sin hover → encender ambiente
+      const tFogata = setTimeout(() => {
+        playAmbiente('amb-fogata', '/sonidos/ambiente-fogata.mp3', 0.22);
+      }, 300);
+      timersAudio.current.push(tFogata);
+
+      // Búho: primera vez entre 10–20 s, luego cada 28–90 s
+      const tBuho = setTimeout(() => {
+        programar(() => playSFX('sfx-buho', '/sonidos/sfx-buho.mp3', 0.30), 28000, 90000);
+      }, 10000 + Math.random() * 10000);
+      timersAudio.current.push(tBuho);
+
+      // Crujidos alternando madera1 / madera2: primera vez 6–12 s, luego 15–50 s
+      const MADERAS = [
+        { key: 'sfx-madera1', src: '/sonidos/sfx-madera1.mp3' },
+        { key: 'sfx-madera2', src: '/sonidos/sfx-madera2.mp3' },
+      ];
+      const tMadera = setTimeout(() => {
+        programar(() => {
+          const m = MADERAS[maderaIdx.current % 2];
+          maderaIdx.current += 1;
+          playSFX(m.key, m.src, 0.14);
+        }, 15000, 50000);
+      }, 6000 + Math.random() * 6000);
+      timersAudio.current.push(tMadera);
+    }
+  }, [esMar]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Precarga ambas imágenes de fondo para que estén en caché antes del hover
   useEffect(() => {
     ['fondo-menu.png', 'fondo-menu-feed-the-kraken.png'].forEach(src => {
@@ -115,6 +175,7 @@ export default function MenuPrincipal() {
   }, [escuchar, navigate]);
 
   const crearSala = () => {
+    playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.55);
     if (!conectado) return setError('Conectando al servidor...');
     setError(''); setCreando(true);
     emitir('crear-sala', { nombre: 'Tablero', esSoloTablero: true });
@@ -375,7 +436,7 @@ export default function MenuPrincipal() {
                       creando={creando}
                       conectado={conectado}
                       esHover={esEste}
-                      onHover={() => setHover('feed-the-kraken')}
+                      onHover={() => { setHover('feed-the-kraken'); playSFX('sfx-hover', '/sonidos/sfx-hover.mp3', 0.30); }}
                       onLeave={() => setHover(null)}
                     />
                   </div>
@@ -466,7 +527,7 @@ export default function MenuPrincipal() {
           {error && <p style={{ color: '#ff8a8a', fontSize: '12px', marginBottom: '8px' }}>{error}</p>}
           <button
             className="btn-secundario"
-            onClick={() => navigate('/unirse')}
+            onClick={() => { playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.45); navigate('/unirse'); }}
             style={{
               fontSize: 'clamp(9px,1vw,12px)',
               padding: 'clamp(8px,0.9vh,11px) clamp(16px,1.8vw,26px)',

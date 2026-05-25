@@ -3,6 +3,7 @@
 // ============================================================
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider } from './SocketContext';
+import { AudioProvider } from './contextos/AudioContexto';
 import MenuPrincipal from './vistas/MenuPrincipal';
 import Lobby from './vistas/Lobby';
 import UnirseConQR from './vistas/UnirseConQR';
@@ -45,6 +46,7 @@ function Tablero() {
 
 export default function App() {
   return (
+    <AudioProvider>
     <SocketProvider>
       <BrowserRouter>
         <Routes>
@@ -57,5 +59,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </SocketProvider>
+    </AudioProvider>
   );
 }
