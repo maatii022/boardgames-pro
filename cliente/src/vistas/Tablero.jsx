@@ -200,25 +200,25 @@ export default function Tablero() {
             }}>
               <img src="/sala-espera/pergamino.png" alt=""
                 style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none', filter:'brightness(0.90)' }}/>
-              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 18% 10%' }}>
+              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 16% 8%' }}>
 
                 {/* Cabecera */}
-                <div style={{ flexShrink:0, marginBottom:'3%' }}>
+                <div style={{ flexShrink:0, marginBottom:'4%' }}>
                   <h2 style={{
                     fontFamily:'var(--fuente-pirata)',
-                    fontSize:'clamp(15px,1.45vw,21px)',
-                    color:'#0a0300',
-                    letterSpacing:'1px',
+                    fontSize:'clamp(16px,1.52vw,22px)',
+                    color:'#080200',
+                    letterSpacing:'1.5px',
                     textAlign:'center',
-                    marginBottom:'3%',
+                    marginBottom:'4%',
                   }}>Tripulación</h2>
-                  <div style={{ height:'1px', background:'linear-gradient(to right, transparent, rgba(45,15,2,0.50) 30%, rgba(45,15,2,0.50) 70%, transparent)' }}/>
-                  <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'2%' }}>
+                  <div style={{ height:'1px', background:'linear-gradient(to right, transparent, rgba(35,10,2,0.45) 30%, rgba(35,10,2,0.45) 70%, transparent)' }}/>
+                  <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'3%' }}>
                     <span style={{
                       fontFamily:'var(--fuente-subtitulo)',
-                      fontSize:'clamp(7px,0.65vw,9px)',
-                      color: numJugadores >= 5 ? '#174a14' : '#4a1e04',
-                      letterSpacing:'1.5px', fontWeight:700, opacity:0.90,
+                      fontSize:'clamp(10px,0.88vw,13px)',
+                      color:'#1a0800',
+                      letterSpacing:'1px', fontWeight:700, opacity:0.78,
                     }}>{numJugadores} / 11</span>
                   </div>
                 </div>
@@ -226,51 +226,80 @@ export default function Tablero() {
                 {/* Lista */}
                 <div style={{
                   flex:1, display:'flex', flexDirection:'column',
-                  gap:'clamp(1px,0.30vh,3px)', overflow:'hidden',
+                  gap:'clamp(2px,0.38vh,5px)', overflow:'hidden',
                 }}>
                   {jugadores.length === 0 ? (
                     <p style={{
-                      fontFamily:'var(--fuente-pirata)',
-                      color:'rgba(10,4,0,0.68)',
-                      fontSize:'clamp(9px,0.86vw,12px)',
+                      fontFamily:'var(--fuente-subtitulo)',
+                      color:'rgba(8,3,0,0.65)',
+                      fontSize:'clamp(10px,0.95vw,13px)',
                       textAlign:'center',
-                      marginTop:'18%',
-                      fontStyle:'italic',
+                      marginTop:'20%',
+                      letterSpacing:'1px',
                     }}>
                       Esperando tripulantes…
                     </p>
                   ) : jugadores.map((j, i) => (
                     <div key={j.id || i} style={{
                       display:'flex', alignItems:'center', gap:'5px',
-                      padding:'2px 3px',
-                      borderBottom: i < jugadores.length - 1 ? '1px solid rgba(40,15,2,0.08)' : 'none',
+                      padding:'2px 1px',
+                      borderBottom: i < jugadores.length - 1 ? '1px solid rgba(35,10,2,0.10)' : 'none',
                       animation:`aparecer 0.3s ease ${i * 0.05}s both`,
                     }}>
+                      {/* Gutter fijo: ⚓ si es host, vacío si no */}
                       <span style={{
-                        flexShrink:0, width:'11px', textAlign:'center',
-                        fontSize: j.id === sala.hostId ? 'clamp(7px,0.64vw,8px)' : 'clamp(10px,0.90vw,12px)',
-                        color: j.id === sala.hostId ? '#2a0e02' : 'rgba(50,20,5,0.45)',
-                        lineHeight:1,
+                        flexShrink:0, width:'14px', textAlign:'center',
+                        fontSize:'clamp(8px,0.72vw,11px)',
+                        color:'#250c02', opacity:0.82, lineHeight:1,
                       }}>
-                        {j.id === sala.hostId ? '⚓' : '·'}
+                        {j.id === sala.hostId ? '⚓' : ''}
                       </span>
+
+                      {/* Nombre */}
                       <span style={{
                         fontFamily:'var(--fuente-subtitulo)',
-                        fontSize:'clamp(8px,0.82vw,11.5px)',
-                        color: j.id === sala.hostId ? '#080100' : '#130600',
+                        fontSize:'clamp(11px,1.02vw,15px)',
+                        color:'#0c0200',
                         lineHeight:1.2, flex:1,
                         overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                        letterSpacing:'0.9px',
-                        fontWeight: j.id === sala.hostId ? 700 : 500,
+                        letterSpacing:'0.8px',
+                        fontWeight: j.id === sala.hostId ? 700 : 600,
                         textTransform:'uppercase',
                       }}>
                         {j.nombre}
                       </span>
-                      <div style={{
-                        flexShrink:0, width:'4px', height:'4px', borderRadius:'50%',
-                        background: j.conectado !== false ? '#175017' : '#601717',
-                        opacity:0.70,
-                      }}/>
+
+                      {/* Botón ceder mando (solo visible para el host actual) */}
+                      {socketId === sala.hostId && j.id !== sala.hostId && (
+                        <button
+                          onClick={() => cambiarHost(j.id)}
+                          title="Ceder el mando"
+                          style={{
+                            flexShrink:0,
+                            background:'none',
+                            border:'1px solid rgba(35,10,2,0.22)',
+                            borderRadius:'3px',
+                            fontSize:'clamp(7px,0.62vw,9px)',
+                            color:'rgba(35,10,2,0.50)',
+                            cursor:'pointer',
+                            padding:'1px 4px',
+                            lineHeight:1,
+                          }}
+                        >⚓</button>
+                      )}
+
+                      {/* Indicador conexión */}
+                      <div
+                        title={j.conectado !== false ? 'Conectado' : 'Desconectado'}
+                        style={{
+                          flexShrink:0, width:'7px', height:'7px', borderRadius:'50%',
+                          background: j.conectado !== false ? '#1a5a1a' : '#7a1a1a',
+                          opacity:0.88,
+                          boxShadow: j.conectado !== false
+                            ? '0 0 5px rgba(30,110,30,0.55)'
+                            : '0 0 5px rgba(130,30,30,0.55)',
+                        }}
+                      />
                     </div>
                   ))}
                 </div>
