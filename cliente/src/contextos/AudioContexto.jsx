@@ -29,11 +29,12 @@ export function AudioProvider({ children }) {
   const timersRandom = useRef([]);
 
   // ── Música principal: play con fade in ─────────────────────
+  // html5: false → Web Audio API → Howler gestiona el autoUnlock automáticamente
   const playMusica = useCallback((key, src, { vol = 0.55, fadeIn = 3000 } = {}) => {
-    const h = getPista(key, src, { loop: true, volume: 0, html5: true });
+    const h = getPista(key, src, { loop: true, volume: 0, html5: false });
     if (!h.playing()) {
-      h.play();
-      h.fade(0, vol, fadeIn);
+      const id = h.play();
+      h.fade(0, vol, fadeIn, id);
     }
   }, []);
 

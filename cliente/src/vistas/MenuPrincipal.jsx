@@ -119,33 +119,34 @@ export default function MenuPrincipal() {
     timersAudio.current.push(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Música: arranca en la PRIMERA interacción del usuario ─
-  // (los navegadores bloquean el autoplay sin gesto previo)
+  // ── Música: arranca al montar; usa Web Audio API (html5:false) para que
+  //    Howler gestione el autoUnlock automáticamente sin necesitar gesto previo.
   useEffect(() => {
-    const iniciarAudio = () => {
+    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
+    return () => { stopMusica('musica-menu', 2500); pararTimers(); stopAmbiente('amb-fogata'); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Ambientes (HTML5 Audio): necesitan un gesto real del usuario.
+  //    pointerdown/keydown/touchstart son "user activations" reconocidas por el navegador.
+  useEffect(() => {
+    const iniciarAmbiente = () => {
       if (audioStarted.current) return;
       audioStarted.current = true;
       setAudioListo(true);
-      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
     };
-
-    document.addEventListener('mousemove',  iniciarAudio, { once: true });
-    document.addEventListener('click',      iniciarAudio, { once: true });
-    document.addEventListener('touchstart', iniciarAudio, { once: true });
-
+    document.addEventListener('pointerdown', iniciarAmbiente, { once: true });
+    document.addEventListener('keydown',     iniciarAmbiente, { once: true });
+    document.addEventListener('touchstart',  iniciarAmbiente, { once: true });
     return () => {
-      stopMusica('musica-menu', 2500);
-      pararTimers();
-      stopAmbiente('amb-fogata');
-      document.removeEventListener('mousemove',  iniciarAudio);
-      document.removeEventListener('click',      iniciarAudio);
-      document.removeEventListener('touchstart', iniciarAudio);
+      document.removeEventListener('pointerdown', iniciarAmbiente);
+      document.removeEventListener('keydown',     iniciarAmbiente);
+      document.removeEventListener('touchstart',  iniciarAmbiente);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ambientes: solo activos cuando NO hay hover de carta ──
   useEffect(() => {
-    if (!audioListo) return; // esperar primera interacción
+    if (!audioListo) return; // esperar primera interacción real
 
     if (esMar) {
       // Carta FTK en hover → apagar todo lo ambiental
