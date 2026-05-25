@@ -123,7 +123,15 @@ export default function MenuPrincipal() {
   //    Howler gestione el autoUnlock automáticamente sin necesitar gesto previo.
   useEffect(() => {
     playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.38, fadeIn: 3000 });
-    return () => { stopMusica('musica-menu', 2500); pararTimers(); stopAmbiente('amb-fogata'); };
+    return () => {
+      pararTimers();
+      stopMusica('musica-menu', 1200);
+      stopMusica('musica-ftk',  1200);
+      stopAmbiente('amb-fogata');
+      stopAmbiente('amb-olas');
+      stopAmbiente('amb-barco');
+      stopAmbiente('amb-lluvia');
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Ambientes (HTML5 Audio): necesitan un gesto real del usuario.
@@ -144,28 +152,100 @@ export default function MenuPrincipal() {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Ambientes: solo activos cuando NO hay hover de carta ──
+  // ── Transición entre escena menú ↔ escena FTK ───────────────
   useEffect(() => {
-    if (!audioListo) return; // esperar primera interacción real
+    if (!audioListo) return;
 
     if (esMar) {
-      // Carta FTK en hover → apagar todo lo ambiental rápido (nueva música entrará)
+      /* ── ENTRAR en hover FTK ── */
       pararTimers();
+
+      // Apagar menú rápido
       stopAmbiente('amb-fogata', 350);
+      stopMusica('musica-menu', 700);
+
+      // Música FTK con fade-in
+      playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 2200 });
+
+      // Ambientes continuos (loops) con fade-in escalonado
+      const tOlas   = setTimeout(() => playAmbiente('amb-olas',   '/sonidos/amb-olas.mp3',   0.30), 200);
+      const tBarco  = setTimeout(() => playAmbiente('amb-barco',  '/sonidos/amb-barco.mp3',  0.20), 400);
+      const tLluvia = setTimeout(() => playAmbiente('amb-lluvia', '/sonidos/amb-lluvia.mp3', 0.16), 600);
+      timersAudio.current.push(tOlas, tBarco, tLluvia);
+
+      // ── Truenos sincronizados con rayo-tormenta ──────────────
+      // El flash ocurre al 79% del ciclo; el trueno suena 700 ms después.
+      // Rayo 1: ciclo 11 s, delay 1.5 s  → primer flash ≈ 10 200 ms → trueno ≈ 10 900 ms
+      // Rayo 2: ciclo 14 s, delay 6.3 s  → primer flash ≈ 17 400 ms → trueno ≈ 18 100 ms
+      const RETARDO = 700;
+      const tTrueno1 = setTimeout(() => {
+        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.55);
+        const iv1 = setInterval(
+          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.55), 11000
+        );
+        timersAudio.current.push(iv1);
+      }, Math.round(1500 + 11000 * 0.79 + RETARDO));
+      timersAudio.current.push(tTrueno1);
+
+      const tTrueno2 = setTimeout(() => {
+        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.42);
+        const iv2 = setInterval(
+          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.42), 14000
+        );
+        timersAudio.current.push(iv2);
+      }, Math.round(6300 + 14000 * 0.79 + RETARDO));
+      timersAudio.current.push(tTrueno2);
+
+      // Gaviotas: primera vez 4–9 s, luego cada 12–35 s
+      const tGaviotas = setTimeout(() => {
+        programar(() => playSFX('sfx-gaviotas', '/sonidos/sfx-gaviotas.mp3', 0.38), 12000, 35000);
+      }, 4000 + Math.random() * 5000);
+      timersAudio.current.push(tGaviotas);
+
+      // Madera de barco: primera vez 3–7 s, luego cada 10–28 s
+      const tMaderaBarco = setTimeout(() => {
+        programar(() => playSFX('sfx-madera-barco', '/sonidos/sfx-madera-barco.mp3', 0.22), 10000, 28000);
+      }, 3000 + Math.random() * 4000);
+      timersAudio.current.push(tMaderaBarco);
+
+      // Velas: primera vez 6–14 s, luego cada 18–45 s
+      const tVelas = setTimeout(() => {
+        programar(() => playSFX('sfx-velas', '/sonidos/sfx-velas.mp3', 0.20), 18000, 45000);
+      }, 6000 + Math.random() * 8000);
+      timersAudio.current.push(tVelas);
+
+      // Cadenas: primera vez 8–18 s, luego cada 22–55 s
+      const tCadenas = setTimeout(() => {
+        programar(() => playSFX('sfx-cadenas', '/sonidos/sfx-cadenas.mp3', 0.24), 22000, 55000);
+      }, 8000 + Math.random() * 10000);
+      timersAudio.current.push(tCadenas);
+
     } else {
-      // Sin hover → encender ambiente
+      /* ── SALIR de hover FTK / estado inicial de menú ── */
+      pararTimers();
+
+      // Apagar FTK con fade-out suave
+      stopAmbiente('amb-olas',   500);
+      stopAmbiente('amb-barco',  500);
+      stopAmbiente('amb-lluvia', 500);
+      stopMusica('musica-ftk', 700);
+
+      // Reiniciar/continuar música menú
+      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.38, fadeIn: 1800 });
+
+      // Fogata
       const tFogata = setTimeout(() => {
         playAmbiente('amb-fogata', '/sonidos/ambiente-fogata.mp3', 0.22);
       }, 300);
       timersAudio.current.push(tFogata);
 
-      // Búho: primera vez entre 4–9 s, luego cada 15–50 s
+      // Búho: primera vez 4–9 s, luego cada 15–50 s
       const tBuho = setTimeout(() => {
         programar(() => playSFX('sfx-buho', '/sonidos/sfx-buho.mp3', 0.30), 15000, 50000);
       }, 4000 + Math.random() * 5000);
       timersAudio.current.push(tBuho);
 
-      // Crujidos alternando madera1 / madera2: primera vez 6–12 s, luego 15–50 s
+      // Crujidos madera1/madera2 alternados: primera vez 6–12 s, luego cada 15–50 s
       const MADERAS = [
         { key: 'sfx-madera1', src: '/sonidos/sfx-madera1.mp3' },
         { key: 'sfx-madera2', src: '/sonidos/sfx-madera2.mp3' },
