@@ -69,28 +69,37 @@ export function AudioProvider({ children }) {
   }, []);
 
   // ── Ambientes ──────────────────────────────────────────────
-  // Cancela cualquier stop pendiente y siempre reinicia limpio,
-  // evitando la carrera: "fade-out en curso → playAmbiente llega antes del stop()".
+  // html5:true → play() es asíncrono: el fade() DEBE dispararse desde el
+  // evento 'play', no sincrónicamente después de h.play(), o Howler lo ignora.
   const playAmbiente = useCallback((key, src, vol = 0.18) => {
     BASE_VOLS[key] = vol;
     const target = vol * volAmbSFXRef.current;
 
-    // Cancelar stop pendiente si lo hubiera
+    // Cancelar stop pendiente para esta key
     if (STOP_TIMERS[key]) {
       clearTimeout(STOP_TIMERS[key]);
       delete STOP_TIMERS[key];
     }
 
     const h = getPista(key, src, { loop: true, volume: 0, html5: true });
-    if (h.playing()) h.stop();       // cortar cualquier fade-out en curso
+
+    // Limpiar cualquier listener 'play' previo para no acumular fade-ins
+    h.off('play');
+
+    if (h.playing()) h.stop();  // cortar fade-out en curso
     h.volume(0);
+
+    // El fade arranca DESPUÉS de que el audio empieza de verdad
+    h.once('play', () => h.fade(0, target, 2200));
     h.play();
-    h.fade(0, target, 2200);
   }, []);
 
   const stopAmbiente = useCallback((key, fadeOut = 1500) => {
     const h = PISTAS[key];
     if (!h?.playing()) return;
+
+    // Cancelar cualquier fade-in pendiente
+    h.off('play');
 
     // Cancelar stop anterior si ya había uno programado
     if (STOP_TIMERS[key]) {
