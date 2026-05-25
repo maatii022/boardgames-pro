@@ -99,7 +99,7 @@ export default function MenuPrincipal() {
 
   const esMar = hover === 'feed-the-kraken';
 
-  const { playMusica, stopMusica, playAmbiente, stopAmbiente, playSFX } = useAudio();
+  const { playMusica, stopMusica, playAmbiente, stopAmbiente, playSFX, stopSFX } = useAudio();
 
   // ── Refs para la gestión local de timers de audio ─────────
   const timersAudio  = useRef([]);
@@ -122,7 +122,7 @@ export default function MenuPrincipal() {
   // ── Música: arranca al montar; usa Web Audio API (html5:false) para que
   //    Howler gestione el autoUnlock automáticamente sin necesitar gesto previo.
   useEffect(() => {
-    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.38, fadeIn: 3000 });
+    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.30, fadeIn: 3000 });
     return () => {
       pararTimers();
       stopMusica('musica-menu', 1200);
@@ -160,37 +160,38 @@ export default function MenuPrincipal() {
       /* ── ENTRAR en hover FTK ── */
       pararTimers();
 
-      // Apagar menú rápido
+      // Apagar menú: ambiente rápido, música con fade-out largo
       stopAmbiente('amb-fogata', 350);
-      stopMusica('musica-menu', 700);
+      stopMusica('musica-menu', 1600);
 
       // Música FTK con fade-in
       playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 2200 });
 
       // Ambientes continuos (loops) con fade-in escalonado
-      const tOlas   = setTimeout(() => playAmbiente('amb-olas',   '/sonidos/amb-olas.mp3',   0.30), 200);
-      const tBarco  = setTimeout(() => playAmbiente('amb-barco',  '/sonidos/amb-barco.mp3',  0.20), 400);
+      const tOlas   = setTimeout(() => playAmbiente('amb-olas',   '/sonidos/amb-olas.mp3',   0.40), 200);
+      const tBarco  = setTimeout(() => playAmbiente('amb-barco',  '/sonidos/amb-barco.mp3',  0.30), 400);
       const tLluvia = setTimeout(() => playAmbiente('amb-lluvia', '/sonidos/amb-lluvia.mp3', 0.16), 600);
       timersAudio.current.push(tOlas, tBarco, tLluvia);
 
       // ── Truenos sincronizados con rayo-tormenta ──────────────
-      // El flash ocurre al 79% del ciclo; el trueno suena 700 ms después.
-      // Rayo 1: ciclo 11 s, delay 1.5 s  → primer flash ≈ 10 200 ms → trueno ≈ 10 900 ms
-      // Rayo 2: ciclo 14 s, delay 6.3 s  → primer flash ≈ 17 400 ms → trueno ≈ 18 100 ms
-      const RETARDO = 700;
+      // CSS: flash al 79% del ciclo (opacity 0.18 en ese frame).
+      // Trueno 350 ms después del flash (tormenta cerca, sonido casi inmediato).
+      // Rayo 1: ciclo 11 s, delay 1.5 s  → flash ≈ 10 190 ms → trueno ≈ 10 540 ms
+      // Rayo 2: ciclo 14 s, delay 6.3 s  → flash ≈ 17 360 ms → trueno ≈ 17 710 ms
+      const RETARDO = 350;
       const tTrueno1 = setTimeout(() => {
-        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.55);
+        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.58);
         const iv1 = setInterval(
-          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.55), 11000
+          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.58), 11000
         );
         timersAudio.current.push(iv1);
       }, Math.round(1500 + 11000 * 0.79 + RETARDO));
       timersAudio.current.push(tTrueno1);
 
       const tTrueno2 = setTimeout(() => {
-        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.42);
+        playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.44);
         const iv2 = setInterval(
-          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.42), 14000
+          () => playSFX('sfx-trueno', '/sonidos/sfx-trueno.mp3', 0.44), 14000
         );
         timersAudio.current.push(iv2);
       }, Math.round(6300 + 14000 * 0.79 + RETARDO));
@@ -224,14 +225,20 @@ export default function MenuPrincipal() {
       /* ── SALIR de hover FTK / estado inicial de menú ── */
       pararTimers();
 
-      // Apagar FTK con fade-out suave
-      stopAmbiente('amb-olas',   500);
-      stopAmbiente('amb-barco',  500);
-      stopAmbiente('amb-lluvia', 500);
-      stopMusica('musica-ftk', 700);
+      // Cortar SFX largos con fade-out antes de que el silencio sea brusco
+      stopSFX('sfx-gaviotas', 400);
+      stopSFX('sfx-trueno',   300);
 
-      // Reiniciar/continuar música menú
-      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.38, fadeIn: 1800 });
+      // Apagar ambientes FTK con fade-out suave
+      stopAmbiente('amb-olas',   600);
+      stopAmbiente('amb-barco',  600);
+      stopAmbiente('amb-lluvia', 600);
+
+      // Música FTK: fade-out largo para que no acabe repentinamente
+      stopMusica('musica-ftk', 1600);
+
+      // Reiniciar música menú (fade-in moderado)
+      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.30, fadeIn: 1800 });
 
       // Fogata
       const tFogata = setTimeout(() => {
