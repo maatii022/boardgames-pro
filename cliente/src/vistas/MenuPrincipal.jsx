@@ -34,17 +34,38 @@ const DESTELLOS = [
 /* ─── Luces escena FTK (barco + kraken + tormenta) ─────────── */
 // Posiciones aproximadas sobre fondo-menu-feed-the-kraken.png
 const LUCES_FTK = [
-  // Luna difusa en la tormenta (centro-arriba, muy grande y tenue)
-  { x:52, y:18, sz:700, col:'rgba(100,120,200,0.07)', dur:7,   del:0,   anim:'luna-pulsar'    },
-  // Linterna izquierda del barco (cabina)
-  { x:33, y:47, sz:180, col:'rgba(255,160,50,0.22)',  dur:1.8, del:0.2, anim:'vela-parpadeo-1' },
-  { x:36, y:45, sz:110, col:'rgba(255,130,20,0.17)',  dur:2.2, del:0.7, anim:'vela-parpadeo-2' },
+  // Luna difusa en la tormenta
+  { x:52, y:18, sz:700, col:'rgba(100,120,200,0.10)', dur:7,   del:0,   anim:'luna-pulsar'    },
+  // Reflejo de luna en el agua (franja media-baja)
+  { x:55, y:68, sz:420, col:'rgba(80,100,180,0.08)',  dur:9,   del:2.5, anim:'luna-pulsar'    },
+  // Linterna izquierda del barco — cabina
+  { x:33, y:47, sz:220, col:'rgba(255,160,50,0.28)',  dur:1.8, del:0.2, anim:'vela-parpadeo-1' },
+  { x:36, y:45, sz:130, col:'rgba(255,130,20,0.20)',  dur:2.2, del:0.7, anim:'vela-parpadeo-2' },
+  // Segunda linterna — popa del barco
+  { x:43, y:52, sz:120, col:'rgba(255,145,40,0.16)',  dur:2.0, del:1.1, anim:'vela-parpadeo-1' },
   // Bioluminiscencia tentáculo izquierdo
-  { x:10, y:38, sz:260, col:'rgba(60,40,160,0.13)',   dur:4.5, del:0.8, anim:'bio-kraken'      },
-  { x:14, y:52, sz:180, col:'rgba(80,50,180,0.10)',   dur:5.8, del:2.0, anim:'bio-kraken'      },
+  { x:10, y:38, sz:320, col:'rgba(60,40,180,0.17)',   dur:4.5, del:0.8, anim:'bio-kraken'      },
+  { x:14, y:52, sz:230, col:'rgba(80,50,200,0.13)',   dur:5.8, del:2.0, anim:'bio-kraken'      },
+  { x:5,  y:60, sz:180, col:'rgba(50,30,160,0.10)',   dur:6.5, del:1.5, anim:'bio-kraken'      },
   // Bioluminiscencia tentáculo derecho
-  { x:87, y:35, sz:240, col:'rgba(60,40,160,0.12)',   dur:5.2, del:1.2, anim:'bio-kraken'      },
-  { x:83, y:50, sz:160, col:'rgba(80,50,180,0.09)',   dur:4.8, del:0.3, anim:'bio-kraken'      },
+  { x:87, y:35, sz:300, col:'rgba(60,40,180,0.16)',   dur:5.2, del:1.2, anim:'bio-kraken'      },
+  { x:83, y:50, sz:210, col:'rgba(80,50,200,0.12)',   dur:4.8, del:0.3, anim:'bio-kraken'      },
+  { x:92, y:57, sz:160, col:'rgba(50,30,160,0.09)',   dur:6.8, del:3.0, anim:'bio-kraken'      },
+  // Espray oleaje en la proa
+  { x:27, y:60, sz:150, col:'rgba(100,180,220,0.08)', dur:3.5, del:1.8, anim:'luna-pulsar'     },
+];
+// Focos de tormenta — iluminación difusa de nubes desde dentro (equivalente a FOCOS_AMBAR)
+const FOCOS_TORMENTA = [
+  { x:50, y:22, sz:950, dur:6.5, del:0.0 },
+  { x:28, y:17, sz:600, dur:8.2, del:1.8 },
+  { x:74, y:19, sz:540, dur:7.0, del:3.5 },
+  { x:50, y:36, sz:720, dur:9.0, del:0.8 },
+];
+// Reflejos del mar — superficie del agua (franja inferior)
+const REFLEJOS_MAR = [
+  { x:50, y:80, sz:1200, dur:5.5, del:0.0 },
+  { x:22, y:86, sz: 720, dur:7.0, del:2.2 },
+  { x:80, y:83, sz: 660, dur:6.2, del:1.0 },
 ];
 // Pociones azules en la mesa del primer plano
 const POCIONES_FTK = [
@@ -400,6 +421,30 @@ export default function MenuPrincipal() {
             linear-gradient(180deg, rgba(4,8,20,0.40) 0%, rgba(6,10,25,0.15) 40%, rgba(4,8,18,0.55) 100%)
           `,
         }}/>
+        {/* Focos de tormenta — nubes iluminadas desde dentro */}
+        {FOCOS_TORMENTA.map((f,i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${f.x}%`, top: `${f.y}%`,
+            width: `${f.sz}px`, height: `${f.sz}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(70,90,200,0.09) 0%, rgba(40,55,160,0.04) 45%, transparent 70%)',
+            transform: 'translate(-50%,-50%)',
+            animation: `luna-pulsar ${f.dur}s ease-in-out ${f.del}s infinite`,
+          }}/>
+        ))}
+        {/* Reflejos del mar — superficie del agua */}
+        {REFLEJOS_MAR.map((r,i) => (
+          <div key={i} style={{
+            position: 'absolute',
+            left: `${r.x}%`, top: `${r.y}%`,
+            width: `${r.sz}px`, height: `${Math.round(r.sz * 0.35)}px`,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(10,80,150,0.13) 0%, rgba(5,50,110,0.05) 50%, transparent 70%)',
+            transform: 'translate(-50%,-50%)',
+            animation: `bio-kraken ${r.dur}s ease-in-out ${r.del}s infinite`,
+          }}/>
+        ))}
         {/* Luna y luces de escena */}
         {LUCES_FTK.map((l,i) => (
           <div key={i} style={{
@@ -644,6 +689,15 @@ export default function MenuPrincipal() {
             }}>
             🚪 Unirme a una sala
           </button>
+          <p style={{
+            fontFamily:    'var(--fuente-subtitulo)',
+            fontSize:      'clamp(7px,0.65vw,9px)',
+            letterSpacing: '1.5px',
+            marginTop:     'clamp(10px,1.4vh,18px)',
+            fontStyle:     'italic',
+            color: esMar ? 'rgba(10,147,150,0.30)' : 'rgba(245,230,200,0.22)',
+            transition:    'color 1.4s ease',
+          }}>by Mati y Ema</p>
         </div>
 
       </div>
