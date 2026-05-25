@@ -235,6 +235,22 @@ button {
   40%     { opacity: 0.20; transform: scale(1.10); }
   70%     { opacity: 0.07; transform: scale(0.95); }
 }
+/* ── FTK scene — iluminación dinámica ───────────────────────── */
+@keyframes foco-tormenta {
+  0%,100% { opacity: 0.50; transform: scale(1)    translate(0px,  0px);  }
+  35%     { opacity: 0.78; transform: scale(1.10) translate(-4px,-3px);  }
+  68%     { opacity: 0.38; transform: scale(0.93) translate( 3px, 2px);  }
+}
+@keyframes shimmer-mar {
+  0%,100% { opacity: 0.35; transform: scaleX(1)    scaleY(1);    }
+  45%     { opacity: 0.60; transform: scaleX(1.07) scaleY(1.12); }
+  80%     { opacity: 0.24; transform: scaleX(0.96) scaleY(0.92); }
+}
+@keyframes bio-fx {
+  0%,100% { opacity: 0.32; transform: scale(1);    }
+  40%     { opacity: 0.58; transform: scale(1.14); }
+  72%     { opacity: 0.22; transform: scale(0.95); }
+}
 
 /* ── Niebla del tablero ──────────────────────────────────── */
 @keyframes niebla-deriva-1 {

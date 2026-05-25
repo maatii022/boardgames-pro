@@ -33,39 +33,42 @@ const DESTELLOS = [
 
 /* ─── Luces escena FTK (barco + kraken + tormenta) ─────────── */
 // Posiciones aproximadas sobre fondo-menu-feed-the-kraken.png
+// Nota: luna-pulsar (0.06-0.12) y bio-kraken (0.07-0.20) aplican su propio opacity
+// al elemento, multiplicando el alpha del color → resultado invisible.
+// Usamos las animaciones dedicadas: foco-tormenta, shimmer-mar, bio-fx (rangos útiles).
 const LUCES_FTK = [
-  // Luna difusa en la tormenta
-  { x:52, y:18, sz:700, col:'rgba(100,120,200,0.10)', dur:7,   del:0,   anim:'luna-pulsar'    },
-  // Reflejo de luna en el agua (franja media-baja)
-  { x:55, y:68, sz:420, col:'rgba(80,100,180,0.08)',  dur:9,   del:2.5, anim:'luna-pulsar'    },
+  // Luna difusa — usa foco-tormenta para que sea visible
+  { x:52, y:18, sz:700, col:'rgba(110,130,220,0.28)',  dur:7,   del:0,   anim:'foco-tormenta'  },
+  // Reflejo de luna en el agua
+  { x:55, y:68, sz:420, col:'rgba(80,105,195,0.22)',   dur:9,   del:2.5, anim:'foco-tormenta'  },
   // Linterna izquierda del barco — cabina
-  { x:33, y:47, sz:220, col:'rgba(255,160,50,0.28)',  dur:1.8, del:0.2, anim:'vela-parpadeo-1' },
-  { x:36, y:45, sz:130, col:'rgba(255,130,20,0.20)',  dur:2.2, del:0.7, anim:'vela-parpadeo-2' },
+  { x:33, y:47, sz:220, col:'rgba(255,160,50,0.28)',   dur:1.8, del:0.2, anim:'vela-parpadeo-1' },
+  { x:36, y:45, sz:130, col:'rgba(255,130,20,0.20)',   dur:2.2, del:0.7, anim:'vela-parpadeo-2' },
   // Segunda linterna — popa del barco
-  { x:43, y:52, sz:120, col:'rgba(255,145,40,0.16)',  dur:2.0, del:1.1, anim:'vela-parpadeo-1' },
-  // Bioluminiscencia tentáculo izquierdo
-  { x:10, y:38, sz:320, col:'rgba(60,40,180,0.17)',   dur:4.5, del:0.8, anim:'bio-kraken'      },
-  { x:14, y:52, sz:230, col:'rgba(80,50,200,0.13)',   dur:5.8, del:2.0, anim:'bio-kraken'      },
-  { x:5,  y:60, sz:180, col:'rgba(50,30,160,0.10)',   dur:6.5, del:1.5, anim:'bio-kraken'      },
+  { x:43, y:52, sz:120, col:'rgba(255,145,40,0.18)',   dur:2.0, del:1.1, anim:'vela-parpadeo-1' },
+  // Bioluminiscencia tentáculo izquierdo — usa bio-fx para opacidad real
+  { x:10, y:38, sz:320, col:'rgba(70,45,210,0.32)',    dur:4.5, del:0.8, anim:'bio-fx'          },
+  { x:14, y:52, sz:230, col:'rgba(90,55,225,0.26)',    dur:5.8, del:2.0, anim:'bio-fx'          },
+  { x:5,  y:60, sz:180, col:'rgba(55,35,180,0.20)',    dur:6.5, del:1.5, anim:'bio-fx'          },
   // Bioluminiscencia tentáculo derecho
-  { x:87, y:35, sz:300, col:'rgba(60,40,180,0.16)',   dur:5.2, del:1.2, anim:'bio-kraken'      },
-  { x:83, y:50, sz:210, col:'rgba(80,50,200,0.12)',   dur:4.8, del:0.3, anim:'bio-kraken'      },
-  { x:92, y:57, sz:160, col:'rgba(50,30,160,0.09)',   dur:6.8, del:3.0, anim:'bio-kraken'      },
-  // Espray oleaje en la proa
-  { x:27, y:60, sz:150, col:'rgba(100,180,220,0.08)', dur:3.5, del:1.8, anim:'luna-pulsar'     },
+  { x:87, y:35, sz:300, col:'rgba(70,45,210,0.30)',    dur:5.2, del:1.2, anim:'bio-fx'          },
+  { x:83, y:50, sz:210, col:'rgba(90,55,225,0.24)',    dur:4.8, del:0.3, anim:'bio-fx'          },
+  { x:92, y:57, sz:160, col:'rgba(55,35,180,0.18)',    dur:6.8, del:3.0, anim:'bio-fx'          },
+  // Espray del oleaje en la proa
+  { x:27, y:60, sz:150, col:'rgba(120,195,235,0.22)',  dur:3.5, del:1.8, anim:'foco-tormenta'   },
 ];
-// Focos de tormenta — iluminación difusa de nubes desde dentro (equivalente a FOCOS_AMBAR)
+// Focos de tormenta — nubes iluminadas desde dentro (usa foco-tormenta: 0.38-0.78)
 const FOCOS_TORMENTA = [
-  { x:50, y:22, sz:950, dur:6.5, del:0.0 },
-  { x:28, y:17, sz:600, dur:8.2, del:1.8 },
-  { x:74, y:19, sz:540, dur:7.0, del:3.5 },
-  { x:50, y:36, sz:720, dur:9.0, del:0.8 },
+  { x:50, y:22, sz:950, col:'rgba(65,85,195,0.26)', dur:6.5, del:0.0 },
+  { x:28, y:17, sz:600, col:'rgba(55,75,180,0.22)', dur:8.2, del:1.8 },
+  { x:74, y:19, sz:540, col:'rgba(60,80,190,0.20)', dur:7.0, del:3.5 },
+  { x:50, y:36, sz:720, col:'rgba(50,70,175,0.18)', dur:9.0, del:0.8 },
 ];
-// Reflejos del mar — superficie del agua (franja inferior)
+// Reflejos del mar — superficie del agua (usa shimmer-mar: 0.24-0.60)
 const REFLEJOS_MAR = [
-  { x:50, y:80, sz:1200, dur:5.5, del:0.0 },
-  { x:22, y:86, sz: 720, dur:7.0, del:2.2 },
-  { x:80, y:83, sz: 660, dur:6.2, del:1.0 },
+  { x:50, y:80, sz:1200, col:'rgba(8,65,140,0.32)',  dur:5.5, del:0.0 },
+  { x:22, y:86, sz: 720, col:'rgba(6,55,125,0.28)',  dur:7.0, del:2.2 },
+  { x:80, y:83, sz: 660, col:'rgba(7,60,135,0.26)',  dur:6.2, del:1.0 },
 ];
 // Pociones azules en la mesa del primer plano
 const POCIONES_FTK = [
@@ -428,9 +431,9 @@ export default function MenuPrincipal() {
             left: `${f.x}%`, top: `${f.y}%`,
             width: `${f.sz}px`, height: `${f.sz}px`,
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(70,90,200,0.09) 0%, rgba(40,55,160,0.04) 45%, transparent 70%)',
+            background: `radial-gradient(circle, ${f.col} 0%, transparent 70%)`,
             transform: 'translate(-50%,-50%)',
-            animation: `luna-pulsar ${f.dur}s ease-in-out ${f.del}s infinite`,
+            animation: `foco-tormenta ${f.dur}s ease-in-out ${f.del}s infinite`,
           }}/>
         ))}
         {/* Reflejos del mar — superficie del agua */}
@@ -440,9 +443,9 @@ export default function MenuPrincipal() {
             left: `${r.x}%`, top: `${r.y}%`,
             width: `${r.sz}px`, height: `${Math.round(r.sz * 0.35)}px`,
             borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(10,80,150,0.13) 0%, rgba(5,50,110,0.05) 50%, transparent 70%)',
+            background: `radial-gradient(ellipse, ${r.col} 0%, transparent 70%)`,
             transform: 'translate(-50%,-50%)',
-            animation: `bio-kraken ${r.dur}s ease-in-out ${r.del}s infinite`,
+            animation: `shimmer-mar ${r.dur}s ease-in-out ${r.del}s infinite`,
           }}/>
         ))}
         {/* Luna y luces de escena */}
@@ -695,7 +698,7 @@ export default function MenuPrincipal() {
             letterSpacing: '1.5px',
             marginTop:     'clamp(10px,1.4vh,18px)',
             fontStyle:     'italic',
-            color: esMar ? 'rgba(10,147,150,0.30)' : 'rgba(245,230,200,0.22)',
+            color: esMar ? 'rgba(10,147,150,0.50)' : 'rgba(245,230,200,0.38)',
             transition:    'color 1.4s ease',
           }}>by Mati y Ema</p>
         </div>
