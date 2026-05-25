@@ -197,10 +197,10 @@ export default function MenuPrincipal() {
       }, Math.round(6300 + 14000 * 0.79 + RETARDO));
       timersAudio.current.push(tTrueno2);
 
-      // Gaviotas: primera vez 4–9 s, luego cada 12–35 s
+      // Gaviotas: primera vez 1.5–3.5 s, luego cada 10–28 s
       const tGaviotas = setTimeout(() => {
-        programar(() => playSFX('sfx-gaviotas', '/sonidos/sfx-gaviotas.mp3', 0.38), 12000, 35000);
-      }, 4000 + Math.random() * 5000);
+        programar(() => playSFX('sfx-gaviotas', '/sonidos/sfx-gaviotas.mp3', 0.38), 10000, 28000);
+      }, 1500 + Math.random() * 2000);
       timersAudio.current.push(tGaviotas);
 
       // Madera de barco: primera vez 3–7 s, luego cada 10–28 s

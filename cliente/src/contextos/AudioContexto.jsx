@@ -6,10 +6,11 @@ import { Howl, Howler } from 'howler';
 
 const AudioCtx = createContext(null);
 
-// Singleton de instancias Howl
-const PISTAS    = {};
-// Volumen base por key (antes de aplicar el multiplicador de categoría)
-const BASE_VOLS = {};
+// ── Singletons de módulo (persisten mientras la página esté abierta) ─
+const PISTAS      = {};   // instancias Howl por key
+const BASE_VOLS   = {};   // volumen base por key (antes del multiplicador)
+const LOOP_FLAGS  = {};   // música: true = seguir en loop, false = parar
+const STOP_TIMERS = {};   // ambientes: ID del setTimeout pendiente de stop
 
 function getPista(key, src, opts = {}) {
   if (!PISTAS[key]) {
@@ -33,15 +34,26 @@ export function AudioProvider({ children }) {
   const [mostrarControl, setMostrarControl] = useState(false);
   const timersRandom = useRef([]);
 
-  // Refs para que los callbacks lean siempre el valor actual
+  // Refs para leer el valor actual dentro de callbacks sin dependencias
   const volMusicaRef = useRef(1.0);
   const volAmbSFXRef = useRef(1.0);
 
-  // ── Música (Web Audio API — Howler gestiona autoUnlock) ────
+  // ── Música ─────────────────────────────────────────────────
+  // Loop manual (loop:false) para poder hacer fade-in en cada ciclo.
   const playMusica = useCallback((key, src, { vol = 0.55, fadeIn = 3000 } = {}) => {
-    BASE_VOLS[key] = vol;
+    BASE_VOLS[key]  = vol;
+    LOOP_FLAGS[key] = true;
     const target = vol * volMusicaRef.current;
-    const h = getPista(key, src, { loop: true, volume: 0, html5: false });
+    const h = getPista(key, src, { loop: false, volume: 0, html5: false });
+
+    // Re-registrar el handler de fin para que cada ciclo haga fade-in
+    h.off('end');
+    h.on('end', () => {
+      if (!LOOP_FLAGS[key]) return;          // fue parado intencionalmente
+      const id = h.play();
+      h.fade(0, vol * volMusicaRef.current, fadeIn, id);
+    });
+
     if (!h.playing()) {
       const id = h.play();
       h.fade(0, target, fadeIn, id);
@@ -49,28 +61,48 @@ export function AudioProvider({ children }) {
   }, []);
 
   const stopMusica = useCallback((key, fadeOut = 2500) => {
+    LOOP_FLAGS[key] = false;                 // desactivar loop manual
     const h = PISTAS[key];
     if (!h || !h.playing()) return;
     h.fade(h.volume(), 0, fadeOut);
     setTimeout(() => h.stop(), fadeOut + 100);
   }, []);
 
-  // ── Ambientes (loops continuos) ────────────────────────────
+  // ── Ambientes ──────────────────────────────────────────────
+  // Cancela cualquier stop pendiente y siempre reinicia limpio,
+  // evitando la carrera: "fade-out en curso → playAmbiente llega antes del stop()".
   const playAmbiente = useCallback((key, src, vol = 0.18) => {
     BASE_VOLS[key] = vol;
     const target = vol * volAmbSFXRef.current;
-    const h = getPista(key, src, { loop: true, volume: 0, html5: true });
-    if (!h.playing()) {
-      h.play();
-      h.fade(0, target, 2200);
+
+    // Cancelar stop pendiente si lo hubiera
+    if (STOP_TIMERS[key]) {
+      clearTimeout(STOP_TIMERS[key]);
+      delete STOP_TIMERS[key];
     }
+
+    const h = getPista(key, src, { loop: true, volume: 0, html5: true });
+    if (h.playing()) h.stop();       // cortar cualquier fade-out en curso
+    h.volume(0);
+    h.play();
+    h.fade(0, target, 2200);
   }, []);
 
   const stopAmbiente = useCallback((key, fadeOut = 1500) => {
     const h = PISTAS[key];
     if (!h?.playing()) return;
+
+    // Cancelar stop anterior si ya había uno programado
+    if (STOP_TIMERS[key]) {
+      clearTimeout(STOP_TIMERS[key]);
+      delete STOP_TIMERS[key];
+    }
+
     h.fade(h.volume(), 0, fadeOut);
-    setTimeout(() => h.stop(), fadeOut + 100);
+    STOP_TIMERS[key] = setTimeout(() => {
+      h.stop();
+      delete STOP_TIMERS[key];
+    }, fadeOut + 100);
   }, []);
 
   // ── SFX puntual ────────────────────────────────────────────
@@ -82,7 +114,7 @@ export function AudioProvider({ children }) {
     h.play();
   }, []);
 
-  // ── SFX con fade-out (para sonidos largos que hay que cortar) ─
+  // ── SFX con fade-out (para sonidos largos: gaviotas, trueno…) ─
   const stopSFX = useCallback((key, fadeOut = 400) => {
     const h = PISTAS[key];
     if (!h?.playing()) return;
@@ -173,7 +205,6 @@ export function AudioProvider({ children }) {
           boxShadow:      '0 4px 24px rgba(0,0,0,0.6)',
         }}>
 
-          {/* Título */}
           <span style={{
             fontFamily:    'var(--fuente-subtitulo)',
             fontSize:      '9px',
@@ -183,53 +214,31 @@ export function AudioProvider({ children }) {
             textAlign:     'center',
           }}>Volumen</span>
 
-          {/* Slider música */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <span style={{
-              fontFamily:    'var(--fuente-subtitulo)',
-              fontSize:      '10px',
-              color:         'rgba(201,168,76,0.75)',
-              letterSpacing: '1px',
-              display:       'flex',
-              justifyContent:'space-between',
-            }}>
-              <span>🎵 Música</span>
-              <span style={{ color: 'rgba(245,230,200,0.4)' }}>
-                {Math.round(volMusica * 100)}%
+          {[
+            { label: '🎵 Música',          val: volMusica, fn: aplicarVolMusica },
+            { label: '🌊 Efectos / Ambiente', val: volAmbSFX, fn: aplicarVolAmbSFX },
+          ].map(({ label, val, fn }) => (
+            <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <span style={{
+                fontFamily:    'var(--fuente-subtitulo)',
+                fontSize:      '10px',
+                color:         'rgba(201,168,76,0.75)',
+                letterSpacing: '1px',
+                display:       'flex',
+                justifyContent:'space-between',
+              }}>
+                <span>{label}</span>
+                <span style={{ color: 'rgba(245,230,200,0.4)' }}>{Math.round(val * 100)}%</span>
               </span>
-            </span>
-            <input
-              type="range" min="0" max="1" step="0.01"
-              value={volMusica}
-              onChange={e => aplicarVolMusica(Number(e.target.value))}
-              style={{ accentColor: '#c9a84c', width: '100%', cursor: 'pointer' }}
-            />
-          </label>
+              <input
+                type="range" min="0" max="1" step="0.01"
+                value={val}
+                onChange={e => fn(Number(e.target.value))}
+                style={{ accentColor: '#c9a84c', width: '100%', cursor: 'pointer' }}
+              />
+            </label>
+          ))}
 
-          {/* Slider efectos/ambiente */}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-            <span style={{
-              fontFamily:    'var(--fuente-subtitulo)',
-              fontSize:      '10px',
-              color:         'rgba(201,168,76,0.75)',
-              letterSpacing: '1px',
-              display:       'flex',
-              justifyContent:'space-between',
-            }}>
-              <span>🌊 Efectos</span>
-              <span style={{ color: 'rgba(245,230,200,0.4)' }}>
-                {Math.round(volAmbSFX * 100)}%
-              </span>
-            </span>
-            <input
-              type="range" min="0" max="1" step="0.01"
-              value={volAmbSFX}
-              onChange={e => aplicarVolAmbSFX(Number(e.target.value))}
-              style={{ accentColor: '#c9a84c', width: '100%', cursor: 'pointer' }}
-            />
-          </label>
-
-          {/* Botón silenciar todo */}
           <button
             onClick={toggleSilencio}
             style={{
@@ -242,7 +251,6 @@ export function AudioProvider({ children }) {
               letterSpacing: '1px',
               padding:       '6px 0',
               cursor:        'pointer',
-              transition:    'all 0.2s ease',
             }}
           >
             {silenciado ? '🔇  Activar sonido' : '🔊  Silenciar todo'}
@@ -250,7 +258,7 @@ export function AudioProvider({ children }) {
         </div>
       )}
 
-      {/* ── Botón flotante (abre/cierra el panel) ─────────────── */}
+      {/* ── Botón flotante ────────────────────────────────────── */}
       <button
         onClick={() => setMostrarControl(prev => !prev)}
         title="Control de volumen"
@@ -262,11 +270,9 @@ export function AudioProvider({ children }) {
           background:     'rgba(6,4,12,0.72)',
           backdropFilter: 'blur(10px)',
           border:         `1px solid ${
-            mostrarControl
-              ? 'rgba(201,168,76,0.60)'
-              : silenciado
-                ? 'rgba(201,168,76,0.12)'
-                : 'rgba(201,168,76,0.30)'
+            mostrarControl        ? 'rgba(201,168,76,0.60)'
+            : silenciado          ? 'rgba(201,168,76,0.12)'
+            :                       'rgba(201,168,76,0.30)'
           }`,
           borderRadius:   '50%',
           width:          '40px',
