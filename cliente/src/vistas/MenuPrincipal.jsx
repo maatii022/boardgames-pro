@@ -149,9 +149,9 @@ export default function MenuPrincipal() {
     if (!audioListo) return; // esperar primera interacción real
 
     if (esMar) {
-      // Carta FTK en hover → apagar todo lo ambiental
+      // Carta FTK en hover → apagar todo lo ambiental rápido (nueva música entrará)
       pararTimers();
-      stopAmbiente('amb-fogata', 1200);
+      stopAmbiente('amb-fogata', 350);
     } else {
       // Sin hover → encender ambiente
       const tFogata = setTimeout(() => {
@@ -159,10 +159,10 @@ export default function MenuPrincipal() {
       }, 300);
       timersAudio.current.push(tFogata);
 
-      // Búho: primera vez entre 10–20 s, luego cada 28–90 s
+      // Búho: primera vez entre 4–9 s, luego cada 15–50 s
       const tBuho = setTimeout(() => {
-        programar(() => playSFX('sfx-buho', '/sonidos/sfx-buho.mp3', 0.30), 28000, 90000);
-      }, 10000 + Math.random() * 10000);
+        programar(() => playSFX('sfx-buho', '/sonidos/sfx-buho.mp3', 0.30), 15000, 50000);
+      }, 4000 + Math.random() * 5000);
       timersAudio.current.push(tBuho);
 
       // Crujidos alternando madera1 / madera2: primera vez 6–12 s, luego 15–50 s
