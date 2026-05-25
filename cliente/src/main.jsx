@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import './index.css';
+import { AudioProvider } from './contextos/AudioContexto';
 import { SalaProvider } from './contextos/SalaContexto';
 import MenuPrincipal   from './vistas/MenuPrincipal';
 import LobbyCrear      from './vistas/LobbyCrear';
@@ -12,6 +13,7 @@ import EntradaTablero  from './vistas/EntradaTablero';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
+    <AudioProvider>
     <BrowserRouter>
       <SalaProvider>
         <Routes>
@@ -25,5 +27,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </Routes>
       </SalaProvider>
     </BrowserRouter>
+    </AudioProvider>
   </React.StrictMode>
 );
