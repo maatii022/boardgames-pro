@@ -116,14 +116,7 @@ export default function Tablero() {
           background:'linear-gradient(to left, rgba(1,0,0,0.55) 0%, transparent 24%)',
         }}/>
 
-        {/* ═══ CAPA 5 — Luz ambiental: contraste alrededor de la vela + calidez difusa ═══ */}
-
-        {/* Halo oscuro alrededor de la vela: la llama de la foto brilla por contraste */}
-        <div style={{
-          position:'absolute', inset:0, zIndex:3, pointerEvents:'none',
-          background:'radial-gradient(circle at 19.5% 22%, transparent 5%, rgba(0,0,0,0.30) 22%, rgba(0,0,0,0.10) 42%, transparent 62%)',
-          animation:'luz-ambar 5.5s ease-in-out infinite',
-        }}/>
+        {/* ═══ CAPA 5 — Calidez ambiental sutil ═══ */}
 
         {/* Calidez ambiental muy sutil sobre el centro de la mesa */}
         <div style={{
@@ -171,26 +164,28 @@ export default function Tablero() {
 
           {/* ── Código de sala ── */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', justifyContent:'center', paddingRight:'6%' }}>
-            {/* Decoración ornamental */}
-            <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'8px' }}>
-              <div style={{ width:'52px', height:'1px', background:'linear-gradient(to left, rgba(201,168,76,0.60), transparent)' }}/>
-              <span style={{ color:'rgba(201,168,76,0.68)', fontSize:'11px' }}>⚓</span>
-            </div>
-            <p style={{
-              fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
-              fontSize:'clamp(8px,0.72vw,10px)',
-              color:'rgba(245,218,162,0.92)',
-              textShadow:'0 1px 6px rgba(0,0,0,0.98)',
-              marginBottom:'5px',
-            }}>Código de sala</p>
-            <div style={{
-              fontFamily:'var(--fuente-titulo)',
-              fontSize:'clamp(32px,3.6vw,56px)',
-              letterSpacing:'0.32em',
-              color:'var(--oro-claro)',
-              textShadow:'0 0 38px rgba(255,215,100,0.55), 0 2px 14px rgba(0,0,0,0.96)',
-            }}>
-              {codigo}
+            {/* Todo el bloque se centra internamente entre sí */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
+              {/* Decoración ornamental */}
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'2px' }}>
+                <div style={{ width:'44px', height:'1px', background:'linear-gradient(to left, rgba(201,168,76,0.55), transparent)' }}/>
+                <span style={{ color:'rgba(201,168,76,0.65)', fontSize:'11px' }}>⚓</span>
+              </div>
+              <p style={{
+                fontFamily:'var(--fuente-subtitulo)', letterSpacing:'4px', textTransform:'uppercase',
+                fontSize:'clamp(8px,0.72vw,10px)',
+                color:'rgba(245,218,162,0.92)',
+                textShadow:'0 1px 6px rgba(0,0,0,0.98)',
+              }}>Código de sala</p>
+              <div style={{
+                fontFamily:'var(--fuente-titulo)',
+                fontSize:'clamp(32px,3.6vw,56px)',
+                letterSpacing:'0.32em',
+                color:'var(--oro-claro)',
+                textShadow:'0 0 38px rgba(255,215,100,0.55), 0 2px 14px rgba(0,0,0,0.96)',
+              }}>
+                {codigo}
+              </div>
             </div>
           </div>
 
@@ -207,46 +202,90 @@ export default function Tablero() {
             }}>
               <img src="/sala-espera/pergamino.png" alt=""
                 style={{ display:'block', width:'100%', height:'auto', userSelect:'none', pointerEvents:'none' }}/>
-              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'17% 19% 12%' }}>
+              <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', padding:'16% 18% 10%' }}>
 
-                {/* Cabecera */}
-                <div style={{ flexShrink:0, marginBottom:'5%' }}>
-                  <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
-                    <h2 style={{ fontFamily:'var(--fuente-pirata)', fontSize:'clamp(14px,1.42vw,20px)', color:'#0f0500', letterSpacing:'0.5px' }}>
-                      Tripulación
-                    </h2>
+                {/* ── Cabecera del pergamino ── */}
+                <div style={{ flexShrink:0, marginBottom:'3%' }}>
+                  {/* Título centrado */}
+                  <h2 style={{
+                    fontFamily:'var(--fuente-pirata)',
+                    fontSize:'clamp(15px,1.45vw,21px)',
+                    color:'#0a0300',
+                    letterSpacing:'1px',
+                    textAlign:'center',
+                    marginBottom:'3%',
+                  }}>Tripulación</h2>
+                  {/* Línea decorativa */}
+                  <div style={{ height:'1px', background:'linear-gradient(to right, transparent, rgba(45,15,2,0.50) 30%, rgba(45,15,2,0.50) 70%, transparent)' }}/>
+                  {/* Contador derecha */}
+                  <div style={{ display:'flex', justifyContent:'flex-end', marginTop:'2%' }}>
                     <span style={{
-                      fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.72vw,11px)',
-                      color: numJugadores >= 5 ? '#1a4a1a' : '#5a2c05',
-                      letterSpacing:'1px', fontWeight:600,
-                    }}>{numJugadores}/11</span>
+                      fontFamily:'var(--fuente-subtitulo)',
+                      fontSize:'clamp(7px,0.65vw,9px)',
+                      color: numJugadores >= 5 ? '#1a4a18' : '#5a2a04',
+                      letterSpacing:'1.5px', fontWeight:700,
+                    }}>{numJugadores} / 11</span>
                   </div>
-                  <div style={{ height:'1px', marginTop:'5%', background:'linear-gradient(to right, rgba(50,18,4,0.40), rgba(50,18,4,0.18), transparent)' }}/>
                 </div>
 
-                {/* Lista */}
-                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:'clamp(3px,0.55vh,7px)', overflow:'hidden' }}>
+                {/* ── Lista de tripulantes ── */}
+                <div style={{
+                  flex:1,
+                  display:'flex',
+                  flexDirection:'column',
+                  gap:'clamp(2px,0.38vh,4px)',
+                  overflow:'hidden',
+                }}>
                   {jugadores.length === 0 ? (
                     <p style={{
-                      fontFamily:'var(--fuente-pirata)', color:'rgba(18,7,0,0.38)',
-                      fontSize:'clamp(9px,0.88vw,12px)', textAlign:'center', marginTop:'14%',
+                      fontFamily:'var(--fuente-pirata)',
+                      color:'rgba(16,6,0,0.36)',
+                      fontSize:'clamp(9px,0.86vw,12px)',
+                      textAlign:'center',
+                      marginTop:'18%',
+                      fontStyle:'italic',
                     }}>
-                      Esperando tripulantes...
+                      Esperando tripulantes…
                     </p>
                   ) : jugadores.map((j, i) => (
-                    <div key={j.id || i} style={{ display:'flex', alignItems:'center', gap:'5px', animation:`aparecer 0.35s ease ${i*0.05}s both` }}>
-                      <span style={{ fontSize:'clamp(8px,0.76vw,11px)', flexShrink:0, opacity:0.50, minWidth:'13px', textAlign:'center' }}>
-                        {j.id === sala.hostId ? '⚓' : '›'}
+                    <div
+                      key={j.id || i}
+                      style={{
+                        display:'flex', alignItems:'center', gap:'5px',
+                        padding:'1px 2px',
+                        animation:`aparecer 0.3s ease ${i * 0.05}s both`,
+                      }}
+                    >
+                      {/* Indicador host / miembro */}
+                      <span style={{
+                        flexShrink:0, minWidth:'14px', textAlign:'center',
+                        fontSize:'clamp(7px,0.68vw,9px)',
+                        color: j.id === sala.hostId ? '#180600' : '#3a1a06',
+                        opacity: j.id === sala.hostId ? 0.70 : 0.28,
+                      }}>
+                        {j.id === sala.hostId ? '⚓' : '—'}
                       </span>
+
+                      {/* Nombre */}
                       <span style={{
                         fontFamily:'var(--fuente-pirata)',
-                        fontSize:'clamp(10px,1.02vw,15px)',
-                        color:'#0c0400',
-                        lineHeight:1.2,
-                        flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                        letterSpacing:'0.4px',
-                      }}>{j.nombre}</span>
-                      <div style={{ width:'5px', height:'5px', borderRadius:'50%', flexShrink:0, background: j.conectado !== false ? '#285828' : '#782828', opacity:0.62 }}/>
+                        fontSize:'clamp(9px,0.92vw,13px)',
+                        color:'#080200',
+                        lineHeight:1.25,
+                        flex:1,
+                        overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                        letterSpacing:'0.35px',
+                      }}>
+                        {j.nombre}
+                      </span>
+
+                      {/* Punto de conexión */}
+                      <div style={{
+                        flexShrink:0,
+                        width:'4px', height:'4px', borderRadius:'50%',
+                        background: j.conectado !== false ? '#226022' : '#722222',
+                        opacity:0.55,
+                      }}/>
                     </div>
                   ))}
                 </div>
@@ -291,22 +330,27 @@ export default function Tablero() {
 
           {/* ── QR en el tablón junto al pergamino ── */}
           <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', justifyContent:'center', paddingLeft:'10px' }}>
+            {/* Label centrado respecto al QR */}
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'3px', textTransform:'uppercase',
-              fontSize:'clamp(9px,0.82vw,12px)',
-              color:'rgba(245,218,162,0.94)',
+              fontSize:'clamp(9px,0.84vw,12px)',
+              color:'rgba(245,218,162,0.96)',
               textShadow:'0 1px 7px rgba(0,0,0,0.98)',
               marginBottom:'10px',
+              width:'185px', textAlign:'center',
             }}>Únete escaneando</p>
             <div style={{ filter:'drop-shadow(0 0 5px rgba(255,255,255,0.10)) drop-shadow(0 5px 14px rgba(0,0,0,0.80))' }}>
               <QRCodeSVG value={urlUnirse} size={185} level="M" bgColor="transparent" fgColor="#ffffff"/>
             </div>
+            {/* URL en una sola línea, centrada, más legible */}
             <p style={{
               fontFamily:'var(--fuente-subtitulo)',
-              fontSize:'clamp(6px,0.55vw,8px)',
-              color:'rgba(245,218,162,0.62)',
+              fontSize:'clamp(7px,0.62vw,9px)',
+              color:'rgba(245,218,162,0.72)',
               textShadow:'0 1px 5px rgba(0,0,0,0.96)',
-              marginTop:'8px', wordBreak:'break-all', maxWidth:'185px',
+              marginTop:'8px',
+              width:'185px', textAlign:'center',
+              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
             }}>{urlUnirse}</p>
           </div>
 
