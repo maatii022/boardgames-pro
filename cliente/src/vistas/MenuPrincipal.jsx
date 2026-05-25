@@ -122,7 +122,7 @@ export default function MenuPrincipal() {
   // ── Música: arranca al montar; usa Web Audio API (html5:false) para que
   //    Howler gestione el autoUnlock automáticamente sin necesitar gesto previo.
   useEffect(() => {
-    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.52, fadeIn: 3000 });
+    playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.38, fadeIn: 3000 });
     return () => { stopMusica('musica-menu', 2500); pararTimers(); stopAmbiente('amb-fogata'); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
