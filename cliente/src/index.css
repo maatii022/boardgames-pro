@@ -324,3 +324,9 @@ button {
 .tag-rol.marinero { background: rgba(26, 58, 92, 0.8); border: 1px solid #4a9bc7; color: #7ec8e3; }
 .tag-rol.pirata { background: rgba(139, 26, 26, 0.8); border: 1px solid #c0392b; color: #ff8a8a; }
 .tag-rol.cultista { background: rgba(45, 106, 79, 0.8); border: 1px solid #4caf50; color: #98e4a5; }
+
+/* ── Lobby — animación de entrada de jugadores ───────────────── */
+@keyframes playerJoin {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
