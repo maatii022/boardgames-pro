@@ -254,12 +254,12 @@ export default function MenuPrincipal() {
       stopSFX('sfx-trueno',   300);
 
       // Apagar ambientes FTK con fade-out suave
-      stopAmbiente('amb-olas',   600);
-      stopAmbiente('amb-barco',  600);
-      stopAmbiente('amb-lluvia', 600);
+      stopAmbiente('amb-olas',   1800);
+      stopAmbiente('amb-barco',  1800);
+      stopAmbiente('amb-lluvia', 1800);
 
       // Música FTK: fade-out largo para que no acabe repentinamente
-      stopMusica('musica-ftk', 1600);
+      stopMusica('musica-ftk', 3000);
 
       // Reiniciar música menú (fade-in moderado)
       playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.30, fadeIn: 1800 });

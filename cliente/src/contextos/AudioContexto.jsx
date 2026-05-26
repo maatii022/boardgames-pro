@@ -72,8 +72,9 @@ export function AudioProvider({ children }) {
       if (!loop) {
         const programarFadeOut = () => {
           const durMs = h.duration() * 1000;
-          if (durMs > fadeOutFin) {
-            const delay = durMs - fadeOutFin;
+          // Margen de 600 ms para compensar derivas de timing del decodificador
+          const delay = Math.max(0, durMs - fadeOutFin - 600);
+          if (delay > 0) {
             if (FADE_TIMERS[key]) clearTimeout(FADE_TIMERS[key]);
             FADE_TIMERS[key] = setTimeout(() => {
               delete FADE_TIMERS[key];
