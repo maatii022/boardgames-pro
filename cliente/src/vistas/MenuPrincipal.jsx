@@ -189,7 +189,7 @@ export default function MenuPrincipal() {
       stopMusica('musica-menu', 1600);
 
       // Música FTK: una sola reproducción con fade-in al inicio y fade-out al final
-      playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 2200, loop: false, fadeOut: 2200 });
+      playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 2200, loop: false, fadeOut: 4200 });
 
       // Ambientes continuos (loops) con fade-in escalonado
       const tOlas   = setTimeout(() => playAmbiente('amb-olas',   '/sonidos/amb-olas.mp3',   0.40), 200);
