@@ -159,32 +159,32 @@ export default function Tablero() {
           ══════════════════════════════════════════ */}
           <div style={{
             position:'absolute',
-            left:'20%', top:'9%',
+            left:'20%', top:'13%',
             width:'clamp(220px, 44%, 520px)',
             transform:'rotate(-2deg)',
             transformOrigin:'50% 0%',
           }}>
 
             {/* ── Código de sala ── */}
-            <div style={{ textAlign:'center', marginBottom:'clamp(14px,2.0vh,26px)' }}>
+            <div style={{ textAlign:'center', marginBottom:'clamp(10px,1.4vh,18px)' }}>
               <p style={{
                 fontFamily:'var(--fuente-subtitulo)',
                 fontSize:'clamp(7px,0.58vw,9px)',
                 letterSpacing:'6px', textTransform:'uppercase',
-                color:'rgba(245,218,162,0.48)',
-                marginBottom:'6px',
+                color:'rgba(245,218,162,0.44)',
+                marginBottom:'5px',
               }}>⚓ &nbsp;Código de sala&nbsp; ⚓</p>
               <div style={{
                 fontFamily:'var(--fuente-titulo)',
-                fontSize:'clamp(52px,7.0vw,100px)',
-                letterSpacing:'0.25em',
+                fontSize:'clamp(38px,5.2vw,76px)',
+                letterSpacing:'0.22em',
                 lineHeight:1,
                 color:'#faefd4',
                 textShadow:`
-                  0 0 40px rgba(255,210,90,0.65),
-                  0 0 90px rgba(255,175,40,0.28),
+                  0 0 32px rgba(255,210,90,0.58),
+                  0 0 70px rgba(255,175,40,0.22),
                   0 3px 0 rgba(55,24,4,0.95),
-                  0 8px 28px rgba(0,0,0,0.98)
+                  0 7px 22px rgba(0,0,0,0.98)
                 `,
               }}>{codigo}</div>
             </div>
@@ -210,15 +210,15 @@ export default function Tablero() {
               <div style={{ flex:1, height:'1px', background:'linear-gradient(to left, transparent, rgba(201,168,76,0.38))' }}/>
             </div>
 
-            {/* ── Lista de jugadores ── */}
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            {/* ── Lista de jugadores — estilo party MMO ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:'clamp(2px,0.3vh,5px)' }}>
               {jugadores.length === 0 ? (
                 <p style={{
                   fontFamily:'var(--fuente-ui)',
-                  color:'rgba(245,218,162,0.26)',
+                  color:'rgba(245,218,162,0.22)',
                   fontSize:'clamp(11px,1.0vw,14px)',
                   letterSpacing:'0.3px',
-                  padding:'18px 6px',
+                  padding:'22px 6px',
                   fontStyle:'italic',
                 }}>Esperando tripulantes…</p>
               ) : jugadores.map((j, i) => {
@@ -227,47 +227,51 @@ export default function Tablero() {
                 return (
                   <div key={j.id || i} style={{
                     display:'flex', alignItems:'center',
-                    gap:'clamp(8px,0.8vw,14px)',
-                    padding:'clamp(6px,0.68vh,11px) clamp(4px,0.5vw,8px)',
-                    borderBottom:`1px solid rgba(245,218,162,${esHost ? '0.20' : '0.08'})`,
+                    gap:'clamp(8px,0.9vw,14px)',
+                    padding:'clamp(7px,0.78vh,12px) clamp(8px,0.7vw,12px)',
+                    borderRadius:'4px',
+                    background: esHost ? 'rgba(200,165,70,0.08)' : 'transparent',
+                    borderBottom:`1px solid rgba(245,218,162,${esHost ? '0.20' : '0.07'})`,
+                    borderLeft: esHost ? '2px solid rgba(201,168,76,0.50)' : '2px solid transparent',
                     animation: esNuevo
                       ? `playerJoin 0.5s cubic-bezier(.22,.68,0,1.2) ${i * 0.06}s both`
                       : 'none',
                   }}>
-                    {/* Número / ancla host */}
+                    {/* Badge numérico */}
                     <span style={{
-                      flexShrink:0, width:'clamp(20px,1.9vw,28px)', textAlign:'center',
+                      flexShrink:0, minWidth:'20px', textAlign:'center',
                       fontFamily:'var(--fuente-subtitulo)',
                       fontSize:'clamp(8px,0.72vw,11px)',
-                      color: esHost ? '#e8c97a' : 'rgba(245,218,162,0.28)',
+                      color: esHost ? 'rgba(232,201,122,0.90)' : 'rgba(245,218,162,0.28)',
                       fontWeight:700,
                     }}>
                       {esHost ? '⚓' : String(i + 1).padStart(2, '0')}
                     </span>
-                    {/* Nombre — Montserrat */}
+                    {/* Nombre */}
                     <span style={{
                       fontFamily:'var(--fuente-ui)',
-                      fontSize:'clamp(13px,1.42vw,21px)',
-                      color: esHost ? '#f7e5bc' : '#f0d8ac',
+                      fontSize:'clamp(14px,1.52vw,22px)',
+                      color: esHost ? '#f7e5bc' : '#edd5a0',
                       fontWeight: esHost ? 700 : 500,
                       lineHeight:1.15, flex:1,
                       overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                      textShadow:'0 1px 8px rgba(0,0,0,0.82)',
+                      letterSpacing:'0.3px',
+                      textShadow:'0 1px 10px rgba(0,0,0,0.88)',
                     }}>{j.nombre}</span>
-                    {/* Ceder mando (solo host ve este botón) */}
+                    {/* Ceder mando */}
                     {socketId === sala.hostId && !esHost && (
                       <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{
                         flexShrink:0, background:'transparent',
-                        border:'1px solid rgba(201,168,76,0.18)', borderRadius:'4px',
-                        fontSize:'clamp(7px,0.60vw,9px)', color:'rgba(245,218,162,0.36)',
-                        cursor:'pointer', padding:'2px 6px', lineHeight:1,
+                        border:'1px solid rgba(201,168,76,0.18)', borderRadius:'3px',
+                        fontSize:'clamp(7px,0.60vw,9px)', color:'rgba(245,218,162,0.32)',
+                        cursor:'pointer', padding:'2px 5px', lineHeight:1,
                       }}>⚓</button>
                     )}
                     {/* Dot conexión */}
                     <div title={j.conectado !== false ? 'Conectado' : 'Desconectado'} style={{
                       flexShrink:0, width:'7px', height:'7px', borderRadius:'50%',
                       background: j.conectado !== false ? '#5cb85c' : '#d9534f',
-                      boxShadow: j.conectado !== false ? '0 0 5px rgba(92,184,92,0.60)' : '0 0 4px rgba(217,83,79,0.55)',
+                      boxShadow: j.conectado !== false ? '0 0 6px rgba(92,184,92,0.72)' : '0 0 4px rgba(217,83,79,0.60)',
                     }}/>
                   </div>
                 );
@@ -278,61 +282,63 @@ export default function Tablero() {
 
           {/* ══════════════════════════════════════════
               BLOQUE MARCO DORADO — QR code
-              left/top calibrados sobre fondo.png
+              top:42% calibrado al interior del marco
+              (frame interior empieza ~y=36% del contenido)
           ══════════════════════════════════════════ */}
           <div style={{
             position:'absolute',
-            left:'62%', top:'18%',
-            width:'clamp(115px, 17%, 205px)',
-            transform:'rotate(4deg)',
+            left:'63%', top:'42%',
+            width:'clamp(110px, 16%, 190px)',
+            transform:'rotate(5deg)',
             transformOrigin:'50% 0%',
             display:'flex', flexDirection:'column', alignItems:'center',
-            gap:'clamp(7px,1.0vh,13px)',
+            gap:'clamp(6px,0.9vh,11px)',
           }}>
             <p style={{
               fontFamily:'var(--fuente-subtitulo)', letterSpacing:'2.5px', textTransform:'uppercase',
-              fontSize:'clamp(6px,0.54vw,8px)', color:'rgba(245,218,162,0.50)', margin:0,
-              textShadow:'0 1px 6px rgba(0,0,0,0.90)',
+              fontSize:'clamp(6px,0.52vw,8px)', color:'rgba(245,218,162,0.44)', margin:0,
+              textShadow:'0 1px 6px rgba(0,0,0,0.96)',
             }}>Únete escaneando</p>
 
-            {/* QR — fondo blanco para máxima escaneabilidad */}
+            {/* QR — crema suave para integrar con el arte */}
             <div style={{
-              padding:'clamp(8px,1.0vw,14px)', borderRadius:'8px',
-              background:'#fdf8ee',
+              padding:'clamp(7px,0.9vw,12px)', borderRadius:'7px',
+              background:'#fdf9f0',
               boxShadow:`
-                0 6px 28px rgba(0,0,0,0.65),
-                0 0 0 1px rgba(195,155,70,0.20),
-                inset 0 0 12px rgba(200,160,60,0.06)
+                0 6px 32px rgba(0,0,0,0.70),
+                0 0 0 1px rgba(185,148,60,0.22),
+                inset 0 0 10px rgba(185,148,50,0.06)
               `,
             }}>
-              <QRCodeSVG value={urlUnirse} size={140} level="M" bgColor="#fdf8ee" fgColor="#0a0200"/>
+              <QRCodeSVG value={urlUnirse} size={128} level="M" bgColor="#fdf9f0" fgColor="#0a0200"/>
             </div>
 
             <p style={{
               fontFamily:'var(--fuente-subtitulo)',
-              fontSize:'clamp(5px,0.46vw,7px)',
-              color:'rgba(245,218,162,0.28)',
-              textAlign:'center', margin:0, maxWidth:'155px',
+              fontSize:'clamp(5px,0.44vw,6px)',
+              color:'rgba(245,218,162,0.22)',
+              textAlign:'center', margin:0, maxWidth:'148px',
               whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-              textShadow:'0 1px 4px rgba(0,0,0,0.82)',
+              textShadow:'0 1px 4px rgba(0,0,0,0.90)',
             }}>{urlUnirse}</p>
           </div>
 
           {/* ══════════════════════════════════════════
-              BOTÓN INICIAR PARTIDA — centrado inferior
+              BOTÓN INICIAR PARTIDA
+              centrado sobre el pergamino, fondo inferior
           ══════════════════════════════════════════ */}
           <div style={{
             position:'absolute',
-            bottom:'10%', left:'50%',
+            bottom:'9%', left:'42%',
             transform:'translateX(-50%)',
             textAlign:'center',
-            width:'clamp(210px, 24vw, 290px)',
+            width:'clamp(230px, 28vw, 340px)',
           }}>
             {!listo && (
               <p style={{
-                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.70vw,11px)',
-                color:'rgba(245,218,162,0.48)',
-                textShadow:'0 1px 10px rgba(0,0,0,0.95)',
+                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.72vw,11px)',
+                color:'rgba(245,218,162,0.42)',
+                textShadow:'0 1px 12px rgba(0,0,0,0.99)',
                 marginBottom:'8px', letterSpacing:'1.5px', lineHeight:1.5,
               }}>
                 Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
@@ -343,29 +349,29 @@ export default function Tablero() {
               disabled={!listo}
               style={{
                 width:'100%',
-                height:'clamp(48px,5.2vh,62px)',
+                height:'clamp(50px,5.5vh,66px)',
                 borderRadius:'10px',
                 border: listo
-                  ? '1px solid rgba(255,215,110,0.30)'
-                  : '1px solid rgba(100,64,14,0.18)',
+                  ? '1px solid rgba(255,215,110,0.38)'
+                  : '1px solid rgba(95,60,14,0.22)',
                 background: listo
-                  ? 'linear-gradient(180deg, #8a5c24 0%, #3e2408 60%, #2a1704 100%)'
-                  : 'rgba(10,5,1,0.62)',
-                color: listo ? '#f6e2b0' : 'rgba(165,118,30,0.30)',
+                  ? 'linear-gradient(180deg, #9a6828 0%, #4a2c0a 55%, #2e1a06 100%)'
+                  : 'rgba(8,4,1,0.66)',
+                color: listo ? '#f7e4b2' : 'rgba(155,108,22,0.28)',
                 fontFamily:'var(--fuente-ui)',
-                fontSize:'clamp(10px,0.96vw,13px)',
+                fontSize:'clamp(11px,1.0vw,14px)',
                 fontWeight:700, letterSpacing:'3px', textTransform:'uppercase',
                 cursor: listo ? 'pointer' : 'not-allowed',
                 transition:'all 0.22s ease',
                 boxShadow: listo
-                  ? '0 8px 32px rgba(130,82,14,0.55), inset 0 1px 0 rgba(255,225,140,0.14)'
+                  ? '0 10px 40px rgba(140,88,16,0.62), inset 0 1px 0 rgba(255,228,145,0.20)'
                   : 'none',
               }}
             >
               ⚓&nbsp;&nbsp;Iniciar Partida
             </button>
             {error && (
-              <p style={{ color:'#ffccaa', fontSize:'10px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', letterSpacing:'0.5px', textShadow:'0 1px 4px rgba(0,0,0,0.88)' }}>
+              <p style={{ color:'#ffccaa', fontSize:'10px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', letterSpacing:'0.5px', textShadow:'0 1px 4px rgba(0,0,0,0.92)' }}>
                 {error}
               </p>
             )}
