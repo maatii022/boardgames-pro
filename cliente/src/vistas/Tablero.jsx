@@ -28,6 +28,7 @@ export default function Tablero() {
   const [error, setError]   = useState('');
   const [motin, setMotin]   = useState(null);
   const [kraken, setKraken] = useState(null);
+  const [copiado, setCopiado] = useState(false);
 
   // Tracking de jugadores ya vistos para animación de entrada
   const seenPlayerIds = useRef(new Set());
@@ -85,41 +86,104 @@ export default function Tablero() {
   // ── SALA DE ESPERA (LOBBY) ──
   if (fase === 'lobby') {
     const urlUnirse = `${urlBase}/unirse/${codigo}`;
-    const listo     = numJugadores >= 5;
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  🎛️  CONFIGURACIÓN VISUAL — ajusta estos valores para mover
+    //      y escalar cada elemento sin tocar el resto del código.
+    //      Activa debug:true para ver los contenedores en color.
+    // ═══════════════════════════════════════════════════════════════════
+    const C = {
+      debug: false,   // ← pon true para mostrar bordes de depuración
+
+      // ── Jugadores ficticios (solo visibles cuando debug:true) ──────
+      //    Útil para previsualizar la lista sin jugadores reales.
+      //    Pon [] para usar los jugadores reales siempre.
+      mockJugadores: [
+        { id: 'mock-1', nombre: 'Capitán Barbossa',  conectado: true  },
+        { id: 'mock-2', nombre: 'Jack Sparrow',       conectado: true  },
+        { id: 'mock-3', nombre: 'Will Turner',        conectado: false },
+        { id: 'mock-4', nombre: 'Elizabeth Swann',    conectado: true  },
+        { id: 'mock-5', nombre: 'Davy Jones',         conectado: true  },
+        { id: 'mock-6', nombre: 'Hector el Corsario', conectado: true  },
+        { id: 'mock-7', nombre: 'Mati', conectado: true  },
+        { id: 'mock-8', nombre: 'Ema', conectado: true  },
+        { id: 'mock-9', nombre: 'Simón', conectado: true  },
+        { id: 'mock-10', nombre: 'Tomy', conectado: true  },
+        { id: 'mock-11', nombre: 'Iolhm', conectado: true  },
+      ],
+
+      // ── Pergamino completo (contiene código + lista) ───────────────
+      pergamino: {
+        left:   '25.5%',  // desde borde izquierdo del canvas 16:9
+        top:    '19%',  // desde borde superior del canvas 16:9
+        width:  '25%',  // ancho relativo al canvas 16:9
+        rotate: -10.5,  // grados (negativo = inclina a la izquierda)
+      },
+
+      // ── Código de sala ─────────────────────────────────────────────
+      codigo: {
+        min:  38,        // px mínimo (pantallas pequeñas)
+        pref: 5.2,       // vw preferido (se escala fluidamente)
+        max:  76,        // px máximo (pantallas grandes)
+        mb:   18,        // margen inferior hacia el separador (px)
+      },
+
+      // ── Filas de jugadores ─────────────────────────────────────────
+      jugadores: {
+        gap:      4,     // separación vertical entre filas (px)
+        padV:     5,     // padding vertical por fila (px)
+        padH:     10,    // padding horizontal por fila (px)
+        nameMin:  14,    // font-size nombre — mínimo (px)
+        namePref: 1.52,  // font-size nombre — preferido (vw)
+        nameMax:  22,    // font-size nombre — máximo (px)
+      },
+
+      // ── QR dentro del marco dorado ─────────────────────────────────
+      qr: {
+        left:    '70.19%',  // desde borde izquierdo del canvas 16:9
+        top:     '28%',  // desde borde superior del canvas 16:9
+        width:   '16%',  // ancho del bloque contenedor
+        rotate:  15.2,      // grados (positivo = inclina a la derecha)
+        svgSize: 340,    // tamaño del código QR en px
+      },
+
+      // ── Botón iniciar partida ──────────────────────────────────────
+      boton: {
+        left:   '44.8%',   // centro horizontal (usa translateX -50%)
+        bottom: '4.5%',    // distancia desde el borde inferior
+        width:  '20%',   // ancho relativo al canvas 16:9 (escala con la pantalla)
+        rotate:  -11,   // grados
+      },
+    };
+
+    // Jugadores a mostrar: mock cuando debug:true y hay mocks, reales si no
+    const usandoMocks = C.debug && C.mockJugadores.length > 0;
+    const jugadoresMostrados = usandoMocks ? C.mockJugadores : jugadores;
+    // Para los mocks, el primero actúa como host
+    const hostIdEfectivo = usandoMocks ? 'mock-1' : sala.hostId;
+    // listo: usa conteo de mockJugadores en modo debug
+    const listo = usandoMocks
+      ? C.mockJugadores.length >= 5
+      : numJugadores >= 5;
+
+    // Helper: aplica borde de depuración si debug=true
+    const dbg = (color) => C.debug
+      ? { outline: `2px dashed ${color}`, outlineOffset: '3px' }
+      : {};
+
+    // Helper: etiqueta de sección visible solo en modo debug
+    const DbgTag = ({ color, label }) => C.debug ? (
+      <div style={{
+        position:'absolute', top:0, left:0, zIndex:999,
+        background:color, color:'#fff',
+        fontSize:'9px', fontFamily:'monospace', fontWeight:700,
+        padding:'1px 5px', borderRadius:'0 0 3px 0', lineHeight:1.5,
+        pointerEvents:'none', whiteSpace:'nowrap',
+      }}>{label}</div>
+    ) : null;
 
     return (
-      <div style={{ width:'100%', height:'100%', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', background:'#060300' }}>
-
-        {/* ═══ FONDO — el scroll está pintado en la imagen ═══ */}
-        <div style={{
-          position:'absolute', inset:'-6px', zIndex:0,
-          backgroundImage:"url('/sala-espera/fondo.png')",
-          backgroundSize:'cover', backgroundPosition:'center',
-          filter:'brightness(0.72) saturate(1.20)',
-          transform:'scale(1.005)',
-        }}/>
-
-        {/* ═══ Viñeta — bordes oscuros, zona central visible ═══ */}
-        <div style={{
-          position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
-          background:`
-            radial-gradient(ellipse 85% 85% at 45% 52%,
-              transparent 5%,
-              rgba(0,0,0,0.30) 52%,
-              rgba(0,0,0,0.88) 100%
-            ),
-            linear-gradient(180deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.08) 13%, rgba(0,0,0,0.08) 85%, rgba(0,0,0,0.65) 100%)
-          `,
-        }}/>
-
-        {/* ═══ Calidez ambiental sobre la mesa ═══ */}
-        <div style={{
-          position:'absolute', left:'38%', top:'52%', zIndex:2, pointerEvents:'none',
-          width:'820px', height:'680px', borderRadius:'50%',
-          transform:'translate(-50%,-50%)',
-          background:'radial-gradient(ellipse, rgba(200,130,18,0.10) 0%, transparent 65%)',
-          animation:'luz-ambar 9.5s ease-in-out 1.8s infinite',
-        }}/>
+      <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#060300' }}>
 
         {/* ═══ HEADER ═══ */}
         <div style={{
@@ -146,37 +210,89 @@ export default function Tablero() {
           </div>
         </div>
 
-        {/* ═══ CONTENIDO PRINCIPAL ═══ */}
+        {/* ═══ CONTENIDO PRINCIPAL ═══════════════════════════════════
+            Wrapper centra el canvas. Canvas 16:9 contiene el fondo y
+            todos los elementos: así fondo + UI siempre alinean igual
+            independientemente del tamaño de pantalla.
+        ══════════════════════════════════════════════════════════════ */}
+        <div style={{ flex:1, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{
-          position:'relative', zIndex:10, flex:1,
-          overflow:'hidden',
+          position:'relative', overflow:'hidden',
+          aspectRatio: '16/9',
+          height: '100%',
+          maxWidth: '100%',
           animation:'aparecer 0.7s ease 0.1s both',
+          ...dbg('rgba(255,255,255,0.12)'),
         }}>
 
-          {/* ══════════════════════════════════════════
-              BLOQUE PERGAMINO — código + tripulación
-              left/top calibrados sobre fondo.png
-          ══════════════════════════════════════════ */}
+          {/* ── Fondo dentro del canvas (alinea con los elementos UI) ── */}
           <div style={{
-            position:'absolute',
-            left:'20%', top:'13%',
-            width:'clamp(220px, 44%, 520px)',
-            transform:'rotate(-2deg)',
-            transformOrigin:'50% 0%',
-          }}>
+            position:'absolute', inset:'-6px', zIndex:0,
+            backgroundImage:"url('/sala-espera/fondo.png')",
+            backgroundSize:'cover', backgroundPosition:'center',
+            filter:'brightness(0.72) saturate(1.20)',
+            transform:'scale(1.005)',
+          }}/>
 
-            {/* ── Código de sala ── */}
-            <div style={{ textAlign:'center', marginBottom:'clamp(10px,1.4vh,18px)' }}>
+          {/* ── Viñeta ── */}
+          <div style={{
+            position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
+            background:`
+              radial-gradient(ellipse 85% 85% at 45% 52%,
+                transparent 5%,
+                rgba(0,0,0,0.30) 52%,
+                rgba(0,0,0,0.88) 100%
+              ),
+              linear-gradient(180deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.08) 13%, rgba(0,0,0,0.08) 85%, rgba(0,0,0,0.65) 100%)
+            `,
+          }}/>
+
+          {/* ── Calidez ambiental ── */}
+          <div style={{
+            position:'absolute', left:'38%', top:'52%', zIndex:2, pointerEvents:'none',
+            width:'820px', height:'680px', borderRadius:'50%',
+            transform:'translate(-50%,-50%)',
+            background:'radial-gradient(ellipse, rgba(200,130,18,0.10) 0%, transparent 65%)',
+            animation:'luz-ambar 9.5s ease-in-out 1.8s infinite',
+          }}/>
+
+          {/* ┌─────────────────────────────────────────────────────┐
+              │  PERGAMINO  (parchmentContainer)                    │
+              │  Mueve todo el bloque cambiando C.pergamino.*       │
+              └─────────────────────────────────────────────────────┘ */}
+          <div style={{
+            position:'absolute', zIndex:10,
+            left:   C.pergamino.left,
+            top:    C.pergamino.top,
+            width:  C.pergamino.width,
+            transform: `rotate(${C.pergamino.rotate}deg)`,
+            transformOrigin: '50% 0%',
+            ...dbg('rgba(255,165,0,0.75)'),
+          }}>
+            <DbgTag color="rgba(200,110,0,0.90)" label="pergamino" />
+
+            {/* ┌─────────────────────────────────────────────────┐
+                │  CÓDIGO DE SALA  (roomCodeContainer)            │
+                │  Tamaño → C.codigo.{min,pref,max}               │
+                │  Separación inferior → C.codigo.mb              │
+                └─────────────────────────────────────────────────┘ */}
+            <div style={{
+              textAlign:'center',
+              marginBottom: C.codigo.mb,
+              ...dbg('rgba(74,144,226,0.75)'),
+            }}>
+              <DbgTag color="rgba(50,120,210,0.90)" label="roomCode" />
               <p style={{
-                fontFamily:'var(--fuente-subtitulo)',
-                fontSize:'clamp(7px,0.58vw,9px)',
+                fontFamily:'var(--fuente-ui)',
+                fontSize:'clamp(14px,0.58vw,9px)',
+                fontWeight: 700,
                 letterSpacing:'6px', textTransform:'uppercase',
                 color:'rgba(245,218,162,0.44)',
                 marginBottom:'5px',
               }}>⚓ &nbsp;Código de sala&nbsp; ⚓</p>
               <div style={{
                 fontFamily:'var(--fuente-titulo)',
-                fontSize:'clamp(38px,5.2vw,76px)',
+                fontSize:`clamp(${C.codigo.min}px, ${C.codigo.pref}vw, ${C.codigo.max}px)`,
                 letterSpacing:'0.22em',
                 lineHeight:1,
                 color:'#faefd4',
@@ -189,30 +305,40 @@ export default function Tablero() {
               }}>{codigo}</div>
             </div>
 
-            {/* ── Separador náutico ── */}
+            {/* Separador náutico */}
             <div style={{
               display:'flex', alignItems:'center', gap:'10px',
-              marginBottom:'clamp(12px,1.6vh,20px)',
+              marginBottom: C.codigo.mb,
             }}>
               <div style={{ flex:1, height:'1px', background:'linear-gradient(to right, transparent, rgba(201,168,76,0.38))' }}/>
               <span style={{
                 fontFamily:'var(--fuente-pirata)',
-                fontSize:'clamp(12px,1.1vw,16px)',
-                color:'rgba(245,218,162,0.65)',
+                fontSize:'clamp(22px,1.1vw,16px)',
+                color:'rgba(245,218,162,0.62)',
                 letterSpacing:'3px', textTransform:'uppercase',
               }}>Tripulación</span>
               <span style={{
                 fontFamily:'var(--fuente-subtitulo)',
-                fontSize:'clamp(9px,0.80vw,12px)',
-                color:'rgba(245,218,162,0.38)',
+                fontSize:'clamp(20px,0.80vw,12px)',
+                color:'rgba(245,218,162,0.36)',
                 fontWeight:600,
-              }}>{numJugadores}/11</span>
+              }}>{jugadoresMostrados.length}/11</span>
               <div style={{ flex:1, height:'1px', background:'linear-gradient(to left, transparent, rgba(201,168,76,0.38))' }}/>
             </div>
 
-            {/* ── Lista de jugadores — estilo party MMO ── */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'clamp(2px,0.3vh,5px)' }}>
-              {jugadores.length === 0 ? (
+            {/* ┌─────────────────────────────────────────────────┐
+                │  LISTA DE JUGADORES  (playersContainer)         │
+                │  Espaciado entre filas → C.jugadores.gap        │
+                │  Padding fila → C.jugadores.{padV, padH}        │
+                │  Tamaño nombre → C.jugadores.{nameMin/Pref/Max} │
+                └─────────────────────────────────────────────────┘ */}
+            <div style={{
+              display:'flex', flexDirection:'column',
+              gap: C.jugadores.gap,
+              ...dbg('rgba(60,190,100,0.70)'),
+            }}>
+              <DbgTag color="rgba(40,160,80,0.90)" label="players" />
+              {jugadoresMostrados.length === 0 ? (
                 <p style={{
                   fontFamily:'var(--fuente-ui)',
                   color:'rgba(245,218,162,0.22)',
@@ -221,14 +347,15 @@ export default function Tablero() {
                   padding:'22px 6px',
                   fontStyle:'italic',
                 }}>Esperando tripulantes…</p>
-              ) : jugadores.map((j, i) => {
-                const esHost = j.id === sala.hostId;
+              ) : jugadoresMostrados.map((j, i) => {
+                const esHost = j.id === hostIdEfectivo;
                 const esNuevo = !seenPlayerIds.current.has(j.id);
                 return (
                   <div key={j.id || i} style={{
+                    position:'relative',
                     display:'flex', alignItems:'center',
                     gap:'clamp(8px,0.9vw,14px)',
-                    padding:'clamp(7px,0.78vh,12px) clamp(8px,0.7vw,12px)',
+                    padding:`${C.jugadores.padV}px ${C.jugadores.padH}px`,
                     borderRadius:'4px',
                     background: esHost ? 'rgba(200,165,70,0.08)' : 'transparent',
                     borderBottom:`1px solid rgba(245,218,162,${esHost ? '0.20' : '0.07'})`,
@@ -237,7 +364,6 @@ export default function Tablero() {
                       ? `playerJoin 0.5s cubic-bezier(.22,.68,0,1.2) ${i * 0.06}s both`
                       : 'none',
                   }}>
-                    {/* Badge numérico */}
                     <span style={{
                       flexShrink:0, minWidth:'20px', textAlign:'center',
                       fontFamily:'var(--fuente-subtitulo)',
@@ -247,10 +373,9 @@ export default function Tablero() {
                     }}>
                       {esHost ? '⚓' : String(i + 1).padStart(2, '0')}
                     </span>
-                    {/* Nombre */}
                     <span style={{
                       fontFamily:'var(--fuente-ui)',
-                      fontSize:'clamp(14px,1.52vw,22px)',
+                      fontSize:`clamp(${C.jugadores.nameMin}px, ${C.jugadores.namePref}vw, ${C.jugadores.nameMax}px)`,
                       color: esHost ? '#f7e5bc' : '#edd5a0',
                       fontWeight: esHost ? 700 : 500,
                       lineHeight:1.15, flex:1,
@@ -258,7 +383,6 @@ export default function Tablero() {
                       letterSpacing:'0.3px',
                       textShadow:'0 1px 10px rgba(0,0,0,0.88)',
                     }}>{j.nombre}</span>
-                    {/* Ceder mando */}
                     {socketId === sala.hostId && !esHost && (
                       <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{
                         flexShrink:0, background:'transparent',
@@ -267,7 +391,6 @@ export default function Tablero() {
                         cursor:'pointer', padding:'2px 5px', lineHeight:1,
                       }}>⚓</button>
                     )}
-                    {/* Dot conexión */}
                     <div title={j.conectado !== false ? 'Conectado' : 'Desconectado'} style={{
                       flexShrink:0, width:'7px', height:'7px', borderRadius:'50%',
                       background: j.conectado !== false ? '#5cb85c' : '#d9534f',
@@ -278,65 +401,132 @@ export default function Tablero() {
               })}
             </div>
 
-          </div>
+          </div>{/* /pergamino */}
 
-          {/* ══════════════════════════════════════════
-              BLOQUE MARCO DORADO — QR code
-              top:42% calibrado al interior del marco
-              (frame interior empieza ~y=36% del contenido)
-          ══════════════════════════════════════════ */}
+          {/* ┌─────────────────────────────────────────────────────┐
+              │  QR  (qrContainer)                                  │
+              │  Posición → C.qr.{left, top}                        │
+              │  Rotación → C.qr.rotate                             │
+              │  Ancho bloque → C.qr.width                          │
+              │  Tamaño SVG → C.qr.svgSize                          │
+              └─────────────────────────────────────────────────────┘ */}
           <div style={{
             position:'absolute',
-            left:'63%', top:'42%',
-            width:'clamp(110px, 16%, 190px)',
-            transform:'rotate(5deg)',
-            transformOrigin:'50% 0%',
+            left:   C.qr.left,
+            top:    C.qr.top,
+            width:  C.qr.width,
+            transform: `rotate(${C.qr.rotate}deg)`,
+            transformOrigin: '50% 0%',
             display:'flex', flexDirection:'column', alignItems:'center',
             gap:'clamp(6px,0.9vh,11px)',
+            ...dbg('rgba(220,50,50,0.75)'),
           }}>
-            <p style={{
-              fontFamily:'var(--fuente-subtitulo)', letterSpacing:'2.5px', textTransform:'uppercase',
-              fontSize:'clamp(6px,0.52vw,8px)', color:'rgba(245,218,162,0.44)', margin:0,
-              textShadow:'0 1px 6px rgba(0,0,0,0.96)',
-            }}>Únete escaneando</p>
-
-            {/* QR — crema suave para integrar con el arte */}
+            <DbgTag color="rgba(200,30,30,0.90)" label="QR" />
+            {/* Papel del QR — luz desde esquina superior-izquierda */}
             <div style={{
-              padding:'clamp(7px,0.9vw,12px)', borderRadius:'7px',
-              background:'#fdf9f0',
-              boxShadow:`
+              position: 'relative',
+              width: '100%',          /* se estira al 100 % del contenedor (C.qr.width) */
+              padding: '21.5% 3% 21.5%', /* % del ancho → escala proporcional con el canvas */
+              borderRadius: '7px',
+              background: '#fdf9f0',
+              boxShadow: `
                 0 6px 32px rgba(0,0,0,0.70),
                 0 0 0 1px rgba(185,148,60,0.22),
-                inset 0 0 10px rgba(185,148,50,0.06)
+                inset 0 0 14px rgba(0,0,0,0.42),
+                inset 11px 0 12px -4px rgba(0,0,0,0.52),
+                inset 0 12px 12px -2px rgba(0,0,0,0.52),
+                inset 12px 0 12px rgba(0,0,0,0.38),
+                inset -8px -8px 10px -3px rgba(255,228,155,0.07)
               `,
             }}>
-              <QRCodeSVG value={urlUnirse} size={128} level="M" bgColor="#fdf9f0" fgColor="#0a0200"/>
+              {/* Gradiente direccional: luz desde arriba-izquierda entra, sombra abajo-derecha */}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '7px', zIndex: 1,
+                pointerEvents: 'none',
+                background: `linear-gradient(-138deg, rgba(255,238,190,0.10) 0%, transparent 42%, rgba(0,0,0,0.16) 78%, rgba(0,0,0,0.26) 100%)`,
+              }}/>
+
+              {/* SVG con width:100% → se escala al ancho del papel, que escala al canvas */}
+              <QRCodeSVG
+                value={urlUnirse}
+                size={C.qr.svgSize}
+                level="M"
+                bgColor="#fdf9f0"
+                fgColor="#0a0200"
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+
+              {/* ── "Únete escaneando" — banda superior sobre el QR ── */}
+              <div style={{
+                position: 'absolute', top: 0, left: 0, right: 0,
+                zIndex: 3, pointerEvents: 'none',
+                padding: '8.5% 6% 11%',
+                borderRadius: '7px 7px 0 0',
+                background: 'linear-gradient(to bottom, rgba(253,249,240,0.97) 0%, transparent 0%)',
+                textAlign: 'center',
+              }}>
+                <p style={{
+                  fontFamily: 'var(--fuente-ui)',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  fontSize: 'clamp(7px, 0.75vw, 12px)',
+                  color: 'rgba(10,2,0,0.52)',
+                  margin: 0,
+                  fontWeight: 700,
+                }}>Únete escaneando</p>
+              </div>
+
+              {/* ── "Copiar link" — banda inferior sobre el QR, clickeable ── */}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(urlUnirse).then(() => {
+                    setCopiado(true);
+                    setTimeout(() => setCopiado(false), 2500);
+                  });
+                }}
+                style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  zIndex: 3,
+                  padding: '11% 6% 8.5%',
+                  borderRadius: '0 0 7px 7px',
+                  background: 'linear-gradient(to top, rgba(253,249,240,0.97) 0%, transparent 0%)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  fontFamily: 'var(--fuente-ui)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  fontSize: 'clamp(6px, 0.65vw, 11px)',
+                  color: copiado ? 'rgba(50,130,50,0.80)' : 'rgba(10,2,0,0.38)',
+                  fontWeight: 700,
+                  transition: 'color 0.3s ease',
+                }}
+              >
+                {copiado ? '✓ ¡Copiado!' : 'Copiar link'}
+              </button>
             </div>
+          </div>{/* /qr */}
 
-            <p style={{
-              fontFamily:'var(--fuente-subtitulo)',
-              fontSize:'clamp(5px,0.44vw,6px)',
-              color:'rgba(245,218,162,0.22)',
-              textAlign:'center', margin:0, maxWidth:'148px',
-              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-              textShadow:'0 1px 4px rgba(0,0,0,0.90)',
-            }}>{urlUnirse}</p>
-          </div>
-
-          {/* ══════════════════════════════════════════
-              BOTÓN INICIAR PARTIDA
-              centrado sobre el pergamino, fondo inferior
-          ══════════════════════════════════════════ */}
+          {/* ┌─────────────────────────────────────────────────────┐
+              │  BOTÓN  (buttonContainer)                           │
+              │  Centro horizontal → C.boton.left (+ translateX)   │
+              │  Altura desde fondo → C.boton.bottom                │
+              │  Ancho → C.boton.{minW, maxW}                       │
+              └─────────────────────────────────────────────────────┘ */}
           <div style={{
             position:'absolute',
-            bottom:'9%', left:'42%',
-            transform:'translateX(-50%)',
+            left:   C.boton.left,
+            bottom: C.boton.bottom,
+            width:  `${C.boton.width ?? '100%'}`,   /* % del canvas → escala con la pantalla */
+            transform:`translateX(-50%) rotate(${C.boton.rotate ?? 0}deg)`,
+            transformOrigin: '50% 50%',
             textAlign:'center',
-            width:'clamp(230px, 28vw, 340px)',
+            ...dbg('rgba(160,60,220,0.75)'),
           }}>
+            <DbgTag color="rgba(130,40,200,0.90)" label="botón" />
             {!listo && (
               <p style={{
-                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(8px,0.72vw,11px)',
+                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(12px,0.72vw,11px)',
                 color:'rgba(245,218,162,0.42)',
                 textShadow:'0 1px 12px rgba(0,0,0,0.99)',
                 marginBottom:'8px', letterSpacing:'1.5px', lineHeight:1.5,
@@ -344,40 +534,30 @@ export default function Tablero() {
                 Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
               </p>
             )}
-            <button
+            <img
+              src="/sala-espera/inciar-partida.png"
+              alt="Iniciar Partida"
               onClick={listo ? iniciarPartida : undefined}
-              disabled={!listo}
+              draggable={false}
               style={{
-                width:'100%',
-                height:'clamp(50px,5.5vh,66px)',
-                borderRadius:'10px',
-                border: listo
-                  ? '1px solid rgba(255,215,110,0.38)'
-                  : '1px solid rgba(95,60,14,0.22)',
-                background: listo
-                  ? 'linear-gradient(180deg, #9a6828 0%, #4a2c0a 55%, #2e1a06 100%)'
-                  : 'rgba(8,4,1,0.66)',
-                color: listo ? '#f7e4b2' : 'rgba(155,108,22,0.28)',
-                fontFamily:'var(--fuente-ui)',
-                fontSize:'clamp(11px,1.0vw,14px)',
-                fontWeight:700, letterSpacing:'3px', textTransform:'uppercase',
+                width: '100%',
+                display: 'block',
                 cursor: listo ? 'pointer' : 'not-allowed',
-                transition:'all 0.22s ease',
-                boxShadow: listo
-                  ? '0 10px 40px rgba(140,88,16,0.62), inset 0 1px 0 rgba(255,228,145,0.20)'
-                  : 'none',
+                opacity: listo ? 1 : 0.35,
+                filter: listo ? 'none' : 'grayscale(0.5)',
+                transition: 'opacity 0.22s ease, filter 0.22s ease',
+                userSelect: 'none',
               }}
-            >
-              ⚓&nbsp;&nbsp;Iniciar Partida
-            </button>
+            />
             {error && (
               <p style={{ color:'#ffccaa', fontSize:'10px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', letterSpacing:'0.5px', textShadow:'0 1px 4px rgba(0,0,0,0.92)' }}>
                 {error}
               </p>
             )}
-          </div>
+          </div>{/* /botón */}
 
-        </div>
+        </div>{/* /canvas 16:9 */}
+        </div>{/* /contenido */}
       </div>
     );
   }

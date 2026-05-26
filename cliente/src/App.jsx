@@ -7,6 +7,7 @@ import { AudioProvider } from './contextos/AudioContexto';
 import MenuPrincipal from './vistas/MenuPrincipal';
 import Lobby from './vistas/Lobby';
 import UnirseConQR from './vistas/UnirseConQR';
+import TableroVista from './vistas/Tablero';
 import './estilos.css';
 
 // Placeholders para vistas aún no construidas
@@ -27,23 +28,6 @@ function Juego() {
   );
 }
 
-function Tablero() {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100%', flexDirection: 'column', gap: 16,
-    }}>
-      <div style={{ fontSize: 48 }}>🗺️</div>
-      <p style={{ fontFamily: 'var(--fuente-titulo)', color: 'var(--color-oro)', fontSize: 24 }}>
-        Vista de tablero (pantalla grande)
-      </p>
-      <p style={{ fontFamily: 'var(--fuente-ui)', color: 'var(--color-texto-dim)' }}>
-        Sprint 3 →
-      </p>
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <AudioProvider>
@@ -54,7 +38,7 @@ export default function App() {
           <Route path="/lobby/:juegoId" element={<Lobby />} />
           <Route path="/unirse/:codigo" element={<UnirseConQR />} />
           <Route path="/juego/:codigo" element={<Juego />} />
-          <Route path="/tablero/:codigo" element={<Tablero />} />
+          <Route path="/tablero/:codigo" element={<TableroVista />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>

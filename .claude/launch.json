@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "feed-the-kraken",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd cliente && npm run dev"],
+      "port": 5173
+    }
+  ]
+}
