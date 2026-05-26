@@ -156,9 +156,9 @@ export default function Tablero() {
           {/* ── PERGAMINO — lista de jugadores + código ── */}
           <div style={{
             position:'absolute',
-            left:'9%', top:'6%',
-            width:'clamp(220px, 43%, 520px)',
-            transform:'rotate(-1deg)',
+            left:'20%', top:'10%',
+            width:'clamp(220px, 44%, 520px)',
+            transform:'rotate(-2deg)',
             transformOrigin:'50% 0%',
           }}>
 
@@ -284,9 +284,9 @@ export default function Tablero() {
           {/* ── MARCO DORADO — QR ── */}
           <div style={{
             position:'absolute',
-            left:'62%', top:'8%',
-            width:'clamp(110px, 22%, 240px)',
-            transform:'rotate(1deg)',
+            left:'62%', top:'20%',
+            width:'clamp(120px, 18%, 220px)',
+            transform:'rotate(4deg)',
             transformOrigin:'50% 0%',
             display:'flex', flexDirection:'column', alignItems:'center',
             gap:'clamp(6px,0.9vh,10px)',
@@ -317,10 +317,10 @@ export default function Tablero() {
           {/* ── CTA — iniciar partida ── */}
           <div style={{
             position:'absolute',
-            bottom:'4%', left:'50%',
+            bottom:'8%', left:'50%',
             transform:'translateX(-50%)',
             textAlign:'center',
-            width:'clamp(200px, 28vw, 320px)',
+            width:'clamp(200px, 26vw, 300px)',
           }}>
             {!listo && (
               <p style={{
