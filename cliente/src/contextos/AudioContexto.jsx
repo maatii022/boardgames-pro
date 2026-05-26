@@ -11,6 +11,7 @@ const PISTAS      = {};   // instancias Howl por key
 const BASE_VOLS   = {};   // volumen base por key (antes del multiplicador)
 const LOOP_FLAGS  = {};   // música: true = seguir en loop, false = parar
 const STOP_TIMERS = {};   // ambientes: ID del setTimeout pendiente de stop
+const FADE_TIMERS = {};   // música sin loop: ID del setTimeout de fade-out final
 
 function getPista(key, src, opts = {}) {
   if (!PISTAS[key]) {
@@ -39,29 +40,62 @@ export function AudioProvider({ children }) {
   const volAmbSFXRef = useRef(1.0);
 
   // ── Música ─────────────────────────────────────────────────
-  // Loop manual (loop:false) para poder hacer fade-in en cada ciclo.
-  const playMusica = useCallback((key, src, { vol = 0.55, fadeIn = 3000 } = {}) => {
+  // loop:false en Howler para hacer fade-in manual en cada ciclo.
+  // Si se pasa loop:false en opciones → reproduce una sola vez con fade-out al final.
+  const playMusica = useCallback((key, src, { vol = 0.55, fadeIn = 3000, loop = true, fadeOut: fadeOutFin = 2000 } = {}) => {
     BASE_VOLS[key]  = vol;
     LOOP_FLAGS[key] = true;
     const target = vol * volMusicaRef.current;
     const h = getPista(key, src, { loop: false, volume: 0, html5: false });
 
-    // Re-registrar el handler de fin para que cada ciclo haga fade-in
+    // Cancelar fade-out final pendiente de una reproducción anterior
+    if (FADE_TIMERS[key]) { clearTimeout(FADE_TIMERS[key]); delete FADE_TIMERS[key]; }
+
     h.off('end');
     h.on('end', () => {
       if (!LOOP_FLAGS[key]) return;          // fue parado intencionalmente
-      const id = h.play();
-      h.fade(0, vol * volMusicaRef.current, fadeIn, id);
+      if (loop) {
+        // Loop manual con fade-in
+        const id = h.play();
+        h.fade(0, vol * volMusicaRef.current, fadeIn, id);
+      } else {
+        // Sin loop: la pista ya terminó (el fade-out se programó antes de que acabara)
+        LOOP_FLAGS[key] = false;
+      }
     });
 
     if (!h.playing()) {
       const id = h.play();
       h.fade(0, target, fadeIn, id);
+
+      // Sin loop: programar fade-out antes de que acabe la pista
+      if (!loop) {
+        const programarFadeOut = () => {
+          const durMs = h.duration() * 1000;
+          if (durMs > fadeOutFin) {
+            const delay = durMs - fadeOutFin;
+            if (FADE_TIMERS[key]) clearTimeout(FADE_TIMERS[key]);
+            FADE_TIMERS[key] = setTimeout(() => {
+              delete FADE_TIMERS[key];
+              if (!LOOP_FLAGS[key]) return; // fue parado manualmente antes
+              h.fade(h.volume(), 0, fadeOutFin);
+            }, delay);
+          }
+        };
+        // duration() puede ser 0 hasta que carga; esperamos el evento si hace falta
+        if (h.state() === 'loaded') {
+          programarFadeOut();
+        } else {
+          h.once('load', programarFadeOut);
+        }
+      }
     }
   }, []);
 
   const stopMusica = useCallback((key, fadeOut = 2500) => {
     LOOP_FLAGS[key] = false;                 // desactivar loop manual
+    // Cancelar fade-out final programado (si existía para pistas sin loop)
+    if (FADE_TIMERS[key]) { clearTimeout(FADE_TIMERS[key]); delete FADE_TIMERS[key]; }
     const h = PISTAS[key];
     if (!h || !h.playing()) return;
     h.fade(h.volume(), 0, fadeOut);
