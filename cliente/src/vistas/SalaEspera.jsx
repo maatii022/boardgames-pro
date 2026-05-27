@@ -104,6 +104,12 @@ export default function SalaEspera({
 }) {
   const [copiado, setCopiado] = useState(false);
 
+  /* ── Hover / press de los botones de imagen ── */
+  const [hoverSalir,   setHoverSalir]   = useState(false);
+  const [pressSalir,   setPressSalir]   = useState(false);
+  const [hoverIniciar, setHoverIniciar] = useState(false);
+  const [pressIniciar, setPressIniciar] = useState(false);
+
   /* ── scene: posición y escala del lienzo 1920×1080 ── */
   const [scene, setScene] = useState({ x: 0, y: 0, s: 1 });
 
@@ -282,6 +288,10 @@ export default function SalaEspera({
         <div
           className="elem-boton-salir"
           onClick={onSalir}
+          onMouseEnter={() => setHoverSalir(true)}
+          onMouseLeave={() => { setHoverSalir(false); setPressSalir(false); }}
+          onMouseDown={() => setPressSalir(true)}
+          onMouseUp={() => setPressSalir(false)}
           style={{
             position:        'absolute',
             left:            `${POS.botonSalir.left}px`,
@@ -298,7 +308,18 @@ export default function SalaEspera({
             src="/sala-espera/boton-salir.png"
             alt="Salir"
             draggable={false}
-            style={{ width: '100%', display: 'block', userSelect: 'none' }}
+            style={{
+              width: '100%', display: 'block', userSelect: 'none',
+              transform: pressSalir
+                ? 'scale(0.91)'
+                : hoverSalir ? 'scale(1.07)' : 'scale(1)',
+              filter: pressSalir
+                ? 'brightness(0.80)'
+                : hoverSalir
+                ? 'brightness(1.18) drop-shadow(0 6px 20px rgba(201,168,76,0.65)) drop-shadow(0 0 14px rgba(255,210,90,0.40))'
+                : 'drop-shadow(0 3px 12px rgba(0,0,0,0.50))',
+              transition: 'transform 0.14s cubic-bezier(0.25,0.8,0.25,1), filter 0.16s ease',
+            }}
           />
         </div>{/* /elem-boton-salir */}
 
@@ -467,6 +488,10 @@ export default function SalaEspera({
         ══════════════════════════════════════════════════════════════ */}
         <div
           className="elem-boton"
+          onMouseEnter={() => listo && setHoverIniciar(true)}
+          onMouseLeave={() => { setHoverIniciar(false); setPressIniciar(false); }}
+          onMouseDown={() => listo && setPressIniciar(true)}
+          onMouseUp={() => setPressIniciar(false)}
           style={{
             position:        'absolute',
             left:            `${POS.boton.left}px`,
@@ -489,7 +514,22 @@ export default function SalaEspera({
             alt="Iniciar Partida"
             onClick={listo ? onIniciar : undefined}
             draggable={false}
-            style={{ width: '100%', display: 'block', cursor: listo ? 'pointer' : 'not-allowed', opacity: listo ? 1 : 0.35, filter: listo ? 'none' : 'grayscale(0.5)', transition: 'opacity 0.22s ease, filter 0.22s ease', userSelect: 'none' }}
+            style={{
+              width: '100%', display: 'block', userSelect: 'none',
+              cursor:   listo ? 'pointer' : 'not-allowed',
+              opacity:  listo ? 1 : 0.35,
+              transform: listo
+                ? pressIniciar ? 'scale(0.93)' : hoverIniciar ? 'scale(1.05)' : 'scale(1)'
+                : 'scale(1)',
+              filter: !listo
+                ? 'grayscale(0.5)'
+                : pressIniciar
+                ? 'brightness(0.84)'
+                : hoverIniciar
+                ? 'brightness(1.12) drop-shadow(0 8px 28px rgba(201,168,76,0.58)) drop-shadow(0 0 16px rgba(255,200,80,0.32))'
+                : 'drop-shadow(0 4px 18px rgba(0,0,0,0.40))',
+              transition: 'opacity 0.22s ease, transform 0.14s cubic-bezier(0.25,0.8,0.25,1), filter 0.17s ease',
+            }}
           />
           {error && (
             <p style={{ color: '#ffccaa', fontSize: '10px', marginTop: '8px', fontFamily: 'var(--fuente-subtitulo)', letterSpacing: '0.5px', textShadow: '0 1px 4px rgba(0,0,0,0.92)' }}>

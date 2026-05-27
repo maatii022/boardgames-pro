@@ -48,6 +48,8 @@ export function AudioProvider({ children }) {
     const target = vol * volMusicaRef.current;
     const h = getPista(key, src, { loop: false, volume: 0, html5: false });
 
+    // Cancelar pause programado (de pauseMusica) si el usuario vuelve antes del fade
+    if (STOP_TIMERS[key]) { clearTimeout(STOP_TIMERS[key]); delete STOP_TIMERS[key]; }
     // Cancelar fade-out final pendiente de una reproducción anterior
     if (FADE_TIMERS[key]) { clearTimeout(FADE_TIMERS[key]); delete FADE_TIMERS[key]; }
 
@@ -64,7 +66,13 @@ export function AudioProvider({ children }) {
       }
     });
 
-    if (!h.playing()) {
+    if (h.playing()) {
+      // Ya está sonando (posiblemente en mitad de un fade-out de pauseMusica):
+      // redirige el fade hacia arriba sin interrumpir la reproducción.
+      h.fade(h.volume(), target, fadeIn);
+    } else {
+      // Parada o en pausa: arrancar / reanudar (play() preserva la posición si estaba pausada)
+      h.volume(0);
       const id = h.play();
       h.fade(0, target, fadeIn, id);
 
@@ -94,13 +102,45 @@ export function AudioProvider({ children }) {
   }, []);
 
   const stopMusica = useCallback((key, fadeOut = 2500) => {
-    LOOP_FLAGS[key] = false;                 // desactivar loop manual
-    // Cancelar fade-out final programado (si existía para pistas sin loop)
+    LOOP_FLAGS[key] = false;
+    // Cancelar pause/stop anterior y fade-out final pendiente
+    if (STOP_TIMERS[key]) { clearTimeout(STOP_TIMERS[key]); delete STOP_TIMERS[key]; }
     if (FADE_TIMERS[key]) { clearTimeout(FADE_TIMERS[key]); delete FADE_TIMERS[key]; }
     const h = PISTAS[key];
-    if (!h || !h.playing()) return;
+    if (!h?.playing()) return;
     h.fade(h.volume(), 0, fadeOut);
-    setTimeout(() => h.stop(), fadeOut + 100);
+    // Guardar el timer en STOP_TIMERS para que playMusica pueda cancelarlo
+    // si el usuario vuelve a activar la música antes de que el stop se ejecute.
+    STOP_TIMERS[key] = setTimeout(() => {
+      h.stop();
+      delete STOP_TIMERS[key];
+    }, fadeOut + 100);
+  }, []);
+
+  // ── Pausa con fade (o instantánea) — preserva posición para reanudar ──
+  // fadeOut = 0  → silencia y pausa en el mismo tick (sin animación)
+  // fadeOut > 0  → fade-out y luego h.pause() (preserva posición)
+  // A diferencia de stopMusica usa h.pause() en vez de h.stop(),
+  // así playMusica reanuda desde donde se quedó.
+  const pauseMusica = useCallback((key, fadeOut = 2500) => {
+    LOOP_FLAGS[key] = false;
+    if (FADE_TIMERS[key]) { clearTimeout(FADE_TIMERS[key]); delete FADE_TIMERS[key]; }
+    if (STOP_TIMERS[key]) { clearTimeout(STOP_TIMERS[key]); delete STOP_TIMERS[key]; }
+    const h = PISTAS[key];
+    if (!h) return;
+
+    if (fadeOut <= 0) {
+      // Pausa instantánea: silencio inmediato + pause (que también detiene fades internos)
+      h.volume(0);
+      if (h.playing()) h.pause();
+    } else {
+      if (!h.playing()) return;
+      h.fade(h.volume(), 0, fadeOut);
+      STOP_TIMERS[key] = setTimeout(() => {
+        h.pause();
+        delete STOP_TIMERS[key];
+      }, fadeOut + 100);
+    }
   }, []);
 
   // ── Ambientes ──────────────────────────────────────────────
@@ -188,6 +228,10 @@ export function AudioProvider({ children }) {
   }, []);
 
   // ── Ajustar volumen por categoría ─────────────────────────
+  // IMPORTANTE: se usa h.fade(current, target, 80) en lugar de h.volume(target)
+  // porque Howler.js ignora h.volume() mientras hay un fade en curso.
+  // Un fade de 80 ms sobreescribe cualquier fade activo y llega al nuevo
+  // valor casi de inmediato, sin producir un salto audible.
   const aplicarVolMusica = useCallback((v) => {
     volMusicaRef.current = v;
     setVolMusica(v);
@@ -195,7 +239,7 @@ export function AudioProvider({ children }) {
       .filter(k => k.startsWith('musica-'))
       .forEach(k => {
         const h = PISTAS[k];
-        if (h?.playing()) h.volume((BASE_VOLS[k] ?? 0.5) * v);
+        if (h?.playing()) h.fade(h.volume(), (BASE_VOLS[k] ?? 0.5) * v, 80);
       });
   }, []);
 
@@ -206,7 +250,7 @@ export function AudioProvider({ children }) {
       .filter(k => !k.startsWith('musica-'))
       .forEach(k => {
         const h = PISTAS[k];
-        if (h?.playing()) h.volume((BASE_VOLS[k] ?? 0.5) * v);
+        if (h?.playing()) h.fade(h.volume(), (BASE_VOLS[k] ?? 0.5) * v, 80);
       });
   }, []);
 
@@ -217,7 +261,7 @@ export function AudioProvider({ children }) {
 
   const value = {
     silenciado,
-    playMusica, stopMusica,
+    playMusica, stopMusica, pauseMusica,
     playAmbiente, stopAmbiente,
     playSFX, stopSFX,
     startRandom, stopAllRandom,

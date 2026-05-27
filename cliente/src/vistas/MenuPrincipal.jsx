@@ -123,7 +123,7 @@ export default function MenuPrincipal() {
 
   const esMar = hover === 'feed-the-kraken';
 
-  const { playMusica, stopMusica, playAmbiente, stopAmbiente, playSFX, stopSFX } = useAudio();
+  const { playMusica, stopMusica, pauseMusica, playAmbiente, stopAmbiente, playSFX, stopSFX } = useAudio();
 
   const timersAudio  = useRef([]);
   const maderaIdx    = useRef(0);
@@ -180,8 +180,8 @@ export default function MenuPrincipal() {
     if (esMar) {
       pararTimers();
       stopAmbiente('amb-fogata', 350);
-      stopMusica('musica-menu', 1600);
-      playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 2200, loop: true, fadeOut: 2200 });
+      pauseMusica('musica-menu', 0);      // pausa instantánea — preserva posición en el track
+      playMusica('musica-ftk', '/sonidos/ftk-musica.mp3', { vol: 0.45, fadeIn: 1800, loop: true, fadeOut: 1800 });
       const tOlas   = setTimeout(() => playAmbiente('amb-olas',   '/sonidos/amb-olas.mp3',   0.40), 200);
       const tBarco  = setTimeout(() => playAmbiente('amb-barco',  '/sonidos/amb-barco.mp3',  0.30), 400);
       const tLluvia = setTimeout(() => playAmbiente('amb-lluvia', '/sonidos/amb-lluvia.mp3', 0.16), 600);
@@ -226,11 +226,11 @@ export default function MenuPrincipal() {
       pararTimers();
       stopSFX('sfx-gaviotas', 400);
       stopSFX('sfx-trueno',   300);
-      stopAmbiente('amb-olas',   1800);
-      stopAmbiente('amb-barco',  1800);
-      stopAmbiente('amb-lluvia', 1800);
-      stopMusica('musica-ftk', 3000);
-      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.30, fadeIn: 1800 });
+      stopAmbiente('amb-olas',   1400);
+      stopAmbiente('amb-barco',  1400);
+      stopAmbiente('amb-lluvia', 1400);
+      stopMusica('musica-ftk', 700);      // fade out corto al salir de FTK
+      playMusica('musica-menu', '/sonidos/menu.mp3', { vol: 0.30, fadeIn: 1600 });
 
       const tFogata = setTimeout(() => {
         playAmbiente('amb-fogata', '/sonidos/ambiente-fogata.mp3', 0.22);
