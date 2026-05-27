@@ -103,7 +103,7 @@ export default function Tablero() {
     //      gracias al stage transform. Activa debug:true para bordes.
     // ═══════════════════════════════════════════════════════════════════
     const C = {
-      debug: false,
+      debug: true,
 
       // ── Jugadores ficticios ────────────────────────────────────────
       mockJugadores: [
@@ -306,13 +306,13 @@ export default function Tablero() {
                     animation: esNuevo ? `playerJoin 0.5s cubic-bezier(.22,.68,0,1.2) ${i * 0.06}s both` : 'none',
                   }}>
                     <span style={{ flexShrink: 0, minWidth: '20px', textAlign: 'center', fontFamily: 'var(--fuente-subtitulo)', fontSize: `${C.jugadores.numSize}px`, color: esHost ? 'rgba(232,201,122,0.90)' : 'rgba(245,218,162,0.28)', fontWeight: 700 }}>
-                      {esHost ? '⚓' : String(i + 1).padStart(2, '0')}
+                      {esHost ? 'Host' : String(i + 1).padStart(2, '0')}
                     </span>
                     <span style={{ fontFamily: 'var(--fuente-ui)', fontSize: `${C.jugadores.nameSize}px`, color: esHost ? '#f7e5bc' : '#edd5a0', fontWeight: esHost ? 700 : 500, lineHeight: 1.15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.3px', textShadow: '0 1px 10px rgba(0,0,0,0.88)' }}>
                       {j.nombre}
                     </span>
                     {socketId === sala.hostId && !esHost && (
-                      <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{ flexShrink: 0, background: 'transparent', border: '1px solid rgba(201,168,76,0.18)', borderRadius: '3px', fontSize: '9px', color: 'rgba(245,218,162,0.32)', cursor: 'pointer', padding: '2px 5px', lineHeight: 1 }}>⚓</button>
+                      <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{ flexShrink: 0, background: 'transparent', border: '1px solid rgba(201,168,76,0.18)', borderRadius: '3px', fontSize: '9px', color: 'rgba(245,218,162,0.32)', cursor: 'pointer', padding: '2px 5px', lineHeight: 1 }}>Host</button>
                     )}
                     <div title={j.conectado !== false ? 'Conectado' : 'Desconectado'} style={{ flexShrink: 0, width: '7px', height: '7px', borderRadius: '50%', background: j.conectado !== false ? '#5cb85c' : '#d9534f', boxShadow: j.conectado !== false ? '0 0 6px rgba(92,184,92,0.72)' : '0 0 4px rgba(217,83,79,0.60)' }}/>
                   </div>
