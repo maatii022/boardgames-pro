@@ -95,6 +95,12 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Variante sin transform — para elementos que ya tienen su propio transform (ej. stage 1920×1080) */
+@keyframes aparecer-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 @keyframes destello {
   0%, 90%, 100% { opacity: 1; }
   95% { opacity: 0.3; }

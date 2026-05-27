@@ -610,60 +610,23 @@ export default function MenuPrincipal() {
                 );
               }
 
-              /* ── Carta genérica (Próximamente) ── */
+              /* ── Carta Próximamente ── */
               return (
-                <div
-                  key={j.id}
-                  style={{
-                    background: 'rgba(6,5,16,0.74)',
-                    border: '1px solid rgba(201,168,76,0.14)',
-                    borderRadius: 'clamp(8px,1vw,14px)',
-                    padding: 'clamp(16px,2.2vw,28px) clamp(14px,1.8vw,24px)',
-                    opacity: 0.36,
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.45)',
-                    backdropFilter: 'blur(18px)',
-                    animation: `aparecer 0.6s ease ${idx * 0.14}s both`,
-                    display: 'flex', flexDirection: 'column',
-                    position: 'relative', overflow: 'hidden',
-                    cursor: 'not-allowed',
-                  }}>
-
-                  <div style={{
-                    position: 'absolute', top: '10px', right: '10px',
-                    background: 'rgba(201,168,76,0.09)',
-                    border: '1px solid rgba(201,168,76,0.22)',
-                    borderRadius: '20px', padding: '2px 8px',
-                    fontFamily: 'var(--fuente-subtitulo)', fontSize: '8px',
-                    color: 'rgba(201,168,76,0.6)', letterSpacing: '1.5px',
-                    textTransform: 'uppercase',
-                  }}>Próximamente</div>
-
-                  <div style={{ fontSize: 'clamp(26px,3.5vw,42px)', marginBottom: 'clamp(8px,1.2vh,14px)' }}>{j.ico}</div>
-
-                  <h2 style={{
-                    fontFamily: 'var(--fuente-subtitulo)',
-                    fontSize: 'clamp(13px,1.6vw,19px)',
-                    color: 'rgba(245,230,200,0.45)',
-                    marginBottom: 'clamp(6px,0.8vh,10px)', letterSpacing: '0.8px',
-                  }}>{j.nombre}</h2>
-
-                  <p style={{
-                    fontFamily: 'var(--fuente-cuerpo)',
-                    color: 'rgba(245,230,200,0.55)',
-                    fontSize: 'clamp(11px,1.1vw,14px)',
-                    lineHeight: 1.55, flex: 1,
-                    marginBottom: 'clamp(10px,1.2vh,16px)',
-                  }}>{j.desc}</p>
-
-                  <div style={{ display:'flex', gap:'clamp(12px,1.8vw,22px)', marginBottom:'clamp(10px,1.2vh,16px)' }}>
-                    {[{ico:'👥',val:j.jugadores,lbl:'jugadores'},{ico:'⏱️',val:j.duracion,lbl:'duración'}].map(s => (
-                      <div key={s.lbl}>
-                        <div style={{fontSize:'13px',marginBottom:'1px'}}>{s.ico}</div>
-                        <div style={{fontFamily:'var(--fuente-subtitulo)',fontSize:'clamp(9px,0.9vw,11px)',color:'var(--oro-dorado)',letterSpacing:'0.4px'}}>{s.val}</div>
-                        <div style={{fontSize:'8px',color:'rgba(245,230,200,0.3)',textTransform:'uppercase',letterSpacing:'1px'}}>{s.lbl}</div>
-                      </div>
-                    ))}
-                  </div>
+                <div key={j.id} style={{ animation: `aparecer 0.6s ease ${idx * 0.14}s both` }}>
+                  <img
+                    src="/cartas/prox/carta-prox.png"
+                    alt="Próximamente"
+                    draggable={false}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      height: 'auto',
+                      userSelect: 'none',
+                      cursor: 'not-allowed',
+                      opacity: 0.45,
+                      filter: 'drop-shadow(0 8px 28px rgba(0,0,0,0.55)) grayscale(0.25)',
+                    }}
+                  />
                 </div>
               );
             })}

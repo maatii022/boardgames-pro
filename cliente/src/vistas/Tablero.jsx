@@ -29,6 +29,8 @@ export default function Tablero() {
   const [motin, setMotin]   = useState(null);
   const [kraken, setKraken] = useState(null);
   const [copiado, setCopiado] = useState(false);
+  // Escala del stage: ajusta 1920×1080 al viewport manteniendo proporción
+  const [escala, setEscala] = useState(1);
 
   // Tracking de jugadores ya vistos para animación de entrada
   const seenPlayerIds = useRef(new Set());
@@ -68,6 +70,14 @@ export default function Tablero() {
     jugadores.forEach(j => { if (j.id) seenPlayerIds.current.add(j.id); });
   }); // sin deps: corre en cada render, justo después de que el DOM se actualiza
 
+  // Escala del stage: recalcula cuando cambia el tamaño de la ventana
+  useEffect(() => {
+    const calc = () => setEscala(Math.min(window.innerWidth / 1920, window.innerHeight / 1080));
+    calc();
+    window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, []);
+
   // ── Cargando ──
   if (!sala) {
     return (
@@ -88,16 +98,14 @@ export default function Tablero() {
     const urlUnirse = `${urlBase}/unirse/${codigo}`;
 
     // ═══════════════════════════════════════════════════════════════════
-    //  🎛️  CONFIGURACIÓN VISUAL — ajusta estos valores para mover
-    //      y escalar cada elemento sin tocar el resto del código.
-    //      Activa debug:true para ver los contenedores en color.
+    //  🎛️  CONFIGURACIÓN VISUAL — espacio de diseño 1920×1080 px.
+    //      Todos los valores px escalan automáticamente con la pantalla
+    //      gracias al stage transform. Activa debug:true para bordes.
     // ═══════════════════════════════════════════════════════════════════
     const C = {
-      debug: false,   // ← pon true para mostrar bordes de depuración
+      debug: true,
 
-      // ── Jugadores ficticios (solo visibles cuando debug:true) ──────
-      //    Útil para previsualizar la lista sin jugadores reales.
-      //    Pon [] para usar los jugadores reales siempre.
+      // ── Jugadores ficticios ────────────────────────────────────────
       mockJugadores: [
         { id: 'mock-1', nombre: 'Capitán Barbossa',  conectado: true  },
         { id: 'mock-2', nombre: 'Jack Sparrow',       conectado: true  },
@@ -105,54 +113,52 @@ export default function Tablero() {
         { id: 'mock-4', nombre: 'Elizabeth Swann',    conectado: true  },
         { id: 'mock-5', nombre: 'Davy Jones',         conectado: true  },
         { id: 'mock-6', nombre: 'Hector el Corsario', conectado: true  },
-        { id: 'mock-7', nombre: 'Mati', conectado: true  },
-        { id: 'mock-8', nombre: 'Ema', conectado: true  },
-        { id: 'mock-9', nombre: 'Simón', conectado: true  },
-        { id: 'mock-10', nombre: 'Tomy', conectado: true  },
-        { id: 'mock-11', nombre: 'Iolhm', conectado: true  },
+        { id: 'mock-7', nombre: 'Mati',               conectado: true  },
+        { id: 'mock-8', nombre: 'Ema',                conectado: true  },
+        { id: 'mock-9', nombre: 'Simón',              conectado: true  },
+        { id: 'mock-10', nombre: 'Tomy',              conectado: true  },
+        { id: 'mock-11', nombre: 'Iolhm',             conectado: true  },
       ],
 
-      // ── Pergamino completo (contiene código + lista) ───────────────
+      // ── Pergamino (%  del stage 1920×1080) ────────────────────────
       pergamino: {
-        left:   '25.5%',  // desde borde izquierdo del canvas 16:9
-        top:    '19%',  // desde borde superior del canvas 16:9
-        width:  '25%',  // ancho relativo al canvas 16:9
-        rotate: -10.5,  // grados (negativo = inclina a la izquierda)
+        left:   '26.5%',
+        top:    '24%',
+        width:  '22%',
+        rotate: -11.7,
       },
 
-      // ── Código de sala ─────────────────────────────────────────────
+      // ── Código de sala (px en espacio 1920×1080) ──────────────────
       codigo: {
-        min:  38,        // px mínimo (pantallas pequeñas)
-        pref: 5.2,       // vw preferido (se escala fluidamente)
-        max:  76,        // px máximo (pantallas grandes)
-        mb:   18,        // margen inferior hacia el separador (px)
+        size:      70,   // font-size del código de sala
+        labelSize: 11,   // font-size de "Código de sala"
+        mb:        18,   // margen inferior al separador
       },
 
-      // ── Filas de jugadores ─────────────────────────────────────────
+      // ── Jugadores (px en espacio 1920×1080) ───────────────────────
       jugadores: {
-        gap:      4,     // separación vertical entre filas (px)
-        padV:     5,     // padding vertical por fila (px)
-        padH:     10,    // padding horizontal por fila (px)
-        nameMin:  14,    // font-size nombre — mínimo (px)
-        namePref: 1.52,  // font-size nombre — preferido (vw)
-        nameMax:  22,    // font-size nombre — máximo (px)
+        gap:      4,
+        padV:     4,
+        padH:     10,
+        nameSize: 20,    // font-size nombre
+        numSize:  11,    // font-size número / ancla
       },
 
-      // ── QR dentro del marco dorado ─────────────────────────────────
+      // ── QR (% del stage) ──────────────────────────────────────────
       qr: {
-        left:    '70.19%',  // desde borde izquierdo del canvas 16:9
-        top:     '28%',  // desde borde superior del canvas 16:9
-        width:   '16%',  // ancho del bloque contenedor
-        rotate:  15.2,      // grados (positivo = inclina a la derecha)
-        svgSize: 340,    // tamaño del código QR en px
+        left:    '68%',
+        top:     '31.2%',
+        width:   '12.4%',
+        rotate:  15.2,
+        svgSize: 340,
       },
 
-      // ── Botón iniciar partida ──────────────────────────────────────
+      // ── Botón (% del stage) ───────────────────────────────────────
       boton: {
-        left:   '44.8%',   // centro horizontal (usa translateX -50%)
-        bottom: '4.5%',    // distancia desde el borde inferior
-        width:  '20%',   // ancho relativo al canvas 16:9 (escala con la pantalla)
-        rotate:  -11,   // grados
+        left:   '44%',
+        bottom: '9%',
+        width:  '20%',
+        rotate: -11.5,
       },
     };
 
@@ -183,65 +189,38 @@ export default function Tablero() {
     ) : null;
 
     return (
-      <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', background:'#060300' }}>
+      // ── Wrapper: viewport completo ───────────────────────────────────
+      <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative', background: '#050300' }}>
 
-        {/* ═══ HEADER ═══ */}
+        {/* Fondo pantalla completa — independiente del stage, sin bandas */}
         <div style={{
-          position:'relative', zIndex:10, flexShrink:0,
-          display:'flex', alignItems:'center', justifyContent:'space-between',
-          padding:'11px 32px',
-          background:'rgba(4,2,1,0.80)', backdropFilter:'blur(16px)',
-          borderBottom:'1px solid rgba(201,168,76,0.13)',
-        }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
-            <span style={{ fontSize:'22px', animation:'flotar 5s ease-in-out infinite', filter:'drop-shadow(0 0 10px rgba(255,140,30,0.55))' }}>🐙</span>
-            <div>
-              <h1 style={{ fontFamily:'var(--fuente-titulo)', color:'var(--oro-dorado)', fontSize:'17px', letterSpacing:'3px', textShadow:'0 0 22px rgba(201,168,76,0.38)' }}>Feed The Kraken</h1>
-              <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'rgba(245,220,170,0.36)', fontSize:'9px', letterSpacing:'3px', textTransform:'uppercase' }}>Sala de Espera</p>
-            </div>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: conectado ? '#6abf6a' : '#cc4444', boxShadow: conectado ? '0 0 8px rgba(106,191,106,0.65)' : 'none' }}/>
-            <button onClick={() => navigate('/')} style={{
-              background:'none', border:'1px solid rgba(201,168,76,0.20)',
-              color:'rgba(201,168,76,0.48)', padding:'5px 14px', borderRadius:'4px',
-              cursor:'pointer', fontFamily:'var(--fuente-subtitulo)', fontSize:'10px', letterSpacing:'1px', transition:'all 0.3s ease',
-            }}>Salir</button>
-          </div>
-        </div>
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: "url('/sala-espera/fondo.png')",
+          backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: 'brightness(0.72) saturate(1.20)',
+        }}/>
 
-        {/* ═══ CONTENIDO PRINCIPAL ═══════════════════════════════════
-            Wrapper centra el canvas. Canvas 16:9 contiene el fondo y
-            todos los elementos: así fondo + UI siempre alinean igual
-            independientemente del tamaño de pantalla.
-        ══════════════════════════════════════════════════════════════ */}
-        <div style={{ flex:1, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {/* ══ STAGE 1920×1080 ═══════════════════════════════════════════
+            Coordenadas fijas de diseño, escalado CSS puro para cualquier
+            resolución/aspect ratio. Math.min → todo el contenido visible.
+            Ajustá posiciones desde el bloque C de arriba.
+        ═══════════════════════════════════════════════════════════════ */}
         <div style={{
-          position:'relative', overflow:'hidden',
-          aspectRatio: '16/9',
-          height: '100%',
-          maxWidth: '100%',
-          animation:'aparecer 0.7s ease 0.1s both',
-          ...dbg('rgba(255,255,255,0.12)'),
+          position: 'absolute',
+          width: '1920px', height: '1080px',
+          left: '50%', top: '50%',
+          transformOrigin: 'center center',
+          transform: `translate(-50%, -50%) scale(${escala})`,
+          zIndex: 1,
+          animation: 'aparecer-fade 0.7s ease 0.1s both',
         }}>
 
-          {/* ── Fondo dentro del canvas (alinea con los elementos UI) ── */}
+          {/* ── Viñeta (cubre todo el stage) ── */}
           <div style={{
-            position:'absolute', inset:'-6px', zIndex:0,
-            backgroundImage:"url('/sala-espera/fondo.png')",
-            backgroundSize:'cover', backgroundPosition:'center',
-            filter:'brightness(0.72) saturate(1.20)',
-            transform:'scale(1.005)',
-          }}/>
-
-          {/* ── Viñeta ── */}
-          <div style={{
-            position:'absolute', inset:0, zIndex:1, pointerEvents:'none',
-            background:`
+            position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none',
+            background: `
               radial-gradient(ellipse 85% 85% at 45% 52%,
-                transparent 5%,
-                rgba(0,0,0,0.30) 52%,
-                rgba(0,0,0,0.88) 100%
+                transparent 5%, rgba(0,0,0,0.30) 52%, rgba(0,0,0,0.88) 100%
               ),
               linear-gradient(180deg, rgba(0,0,0,0.80) 0%, rgba(0,0,0,0.08) 13%, rgba(0,0,0,0.08) 85%, rgba(0,0,0,0.65) 100%)
             `,
@@ -249,153 +228,93 @@ export default function Tablero() {
 
           {/* ── Calidez ambiental ── */}
           <div style={{
-            position:'absolute', left:'38%', top:'52%', zIndex:2, pointerEvents:'none',
-            width:'820px', height:'680px', borderRadius:'50%',
-            transform:'translate(-50%,-50%)',
-            background:'radial-gradient(ellipse, rgba(200,130,18,0.10) 0%, transparent 65%)',
-            animation:'luz-ambar 9.5s ease-in-out 1.8s infinite',
+            position: 'absolute', left: '38%', top: '52%', zIndex: 2, pointerEvents: 'none',
+            width: '820px', height: '680px', borderRadius: '50%',
+            transform: 'translate(-50%,-50%)',
+            background: 'radial-gradient(ellipse, rgba(200,130,18,0.10) 0%, transparent 65%)',
+            animation: 'luz-ambar 9.5s ease-in-out 1.8s infinite',
           }}/>
 
+          {/* ═══ HEADER (dentro del stage → escala con él) ════════════ */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: '52px',
+            zIndex: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 32px',
+            background: 'rgba(4,2,1,0.80)', backdropFilter: 'blur(16px)',
+            borderBottom: '1px solid rgba(201,168,76,0.13)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <span style={{ fontSize: '22px', animation: 'flotar 5s ease-in-out infinite', filter: 'drop-shadow(0 0 10px rgba(255,140,30,0.55))' }}>🐙</span>
+              <div>
+                <h1 style={{ fontFamily: 'var(--fuente-titulo)', color: 'var(--oro-dorado)', fontSize: '17px', letterSpacing: '3px', textShadow: '0 0 22px rgba(201,168,76,0.38)' }}>Feed The Kraken</h1>
+                <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,220,170,0.36)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase' }}>Sala de Espera</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: conectado ? '#6abf6a' : '#cc4444', boxShadow: conectado ? '0 0 8px rgba(106,191,106,0.65)' : 'none' }}/>
+              <button onClick={() => navigate('/')} style={{ background: 'none', border: '1px solid rgba(201,168,76,0.20)', color: 'rgba(201,168,76,0.48)', padding: '5px 14px', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--fuente-subtitulo)', fontSize: '10px', letterSpacing: '1px', transition: 'all 0.3s ease' }}>Salir</button>
+            </div>
+          </div>
+
           {/* ┌─────────────────────────────────────────────────────┐
-              │  PERGAMINO  (parchmentContainer)                    │
-              │  Mueve todo el bloque cambiando C.pergamino.*       │
+              │  PERGAMINO  — posición en C.pergamino               │
               └─────────────────────────────────────────────────────┘ */}
           <div style={{
-            position:'absolute', zIndex:10,
-            left:   C.pergamino.left,
-            top:    C.pergamino.top,
-            width:  C.pergamino.width,
+            position: 'absolute', zIndex: 10,
+            left: C.pergamino.left, top: C.pergamino.top, width: C.pergamino.width,
             transform: `rotate(${C.pergamino.rotate}deg)`,
             transformOrigin: '50% 0%',
             ...dbg('rgba(255,165,0,0.75)'),
           }}>
             <DbgTag color="rgba(200,110,0,0.90)" label="pergamino" />
 
-            {/* ┌─────────────────────────────────────────────────┐
-                │  CÓDIGO DE SALA  (roomCodeContainer)            │
-                │  Tamaño → C.codigo.{min,pref,max}               │
-                │  Separación inferior → C.codigo.mb              │
-                └─────────────────────────────────────────────────┘ */}
-            <div style={{
-              textAlign:'center',
-              marginBottom: C.codigo.mb,
-              ...dbg('rgba(74,144,226,0.75)'),
-            }}>
+            {/* Código de sala */}
+            <div style={{ textAlign: 'center', marginBottom: `${C.codigo.mb}px`, ...dbg('rgba(74,144,226,0.75)') }}>
               <DbgTag color="rgba(50,120,210,0.90)" label="roomCode" />
-              <p style={{
-                fontFamily:'var(--fuente-ui)',
-                fontSize:'clamp(14px,0.58vw,9px)',
-                fontWeight: 700,
-                letterSpacing:'6px', textTransform:'uppercase',
-                color:'rgba(245,218,162,0.44)',
-                marginBottom:'5px',
-              }}>⚓ &nbsp;Código de sala&nbsp; ⚓</p>
-              <div style={{
-                fontFamily:'var(--fuente-titulo)',
-                fontSize:`clamp(${C.codigo.min}px, ${C.codigo.pref}vw, ${C.codigo.max}px)`,
-                letterSpacing:'0.22em',
-                lineHeight:1,
-                color:'#faefd4',
-                textShadow:`
-                  0 0 32px rgba(255,210,90,0.58),
-                  0 0 70px rgba(255,175,40,0.22),
-                  0 3px 0 rgba(55,24,4,0.95),
-                  0 7px 22px rgba(0,0,0,0.98)
-                `,
-              }}>{codigo}</div>
+              <p style={{ fontFamily: 'var(--fuente-ui)', fontSize: `${C.codigo.labelSize}px`, fontWeight: 700, letterSpacing: '6px', textTransform: 'uppercase', color: 'rgba(245,218,162,0.44)', marginBottom: '5px' }}>
+                ⚓ &nbsp;Código de sala&nbsp; ⚓
+              </p>
+              <div style={{ fontFamily: 'var(--fuente-titulo)', fontSize: `${C.codigo.size}px`, letterSpacing: '0.22em', lineHeight: 1, color: '#faefd4', textShadow: '0 0 32px rgba(255,210,90,0.58), 0 0 70px rgba(255,175,40,0.22), 0 3px 0 rgba(55,24,4,0.95), 0 7px 22px rgba(0,0,0,0.98)' }}>
+                {codigo}
+              </div>
             </div>
 
             {/* Separador náutico */}
-            <div style={{
-              display:'flex', alignItems:'center', gap:'10px',
-              marginBottom: C.codigo.mb,
-            }}>
-              <div style={{ flex:1, height:'1px', background:'linear-gradient(to right, transparent, rgba(201,168,76,0.38))' }}/>
-              <span style={{
-                fontFamily:'var(--fuente-pirata)',
-                fontSize:'clamp(22px,1.1vw,16px)',
-                color:'rgba(245,218,162,0.62)',
-                letterSpacing:'3px', textTransform:'uppercase',
-              }}>Tripulación</span>
-              <span style={{
-                fontFamily:'var(--fuente-subtitulo)',
-                fontSize:'clamp(20px,0.80vw,12px)',
-                color:'rgba(245,218,162,0.36)',
-                fontWeight:600,
-              }}>{jugadoresMostrados.length}/11</span>
-              <div style={{ flex:1, height:'1px', background:'linear-gradient(to left, transparent, rgba(201,168,76,0.38))' }}/>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: `${C.codigo.mb}px` }}>
+              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(201,168,76,0.38))' }}/>
+              <span style={{ fontFamily: 'var(--fuente-pirata)', fontSize: '16px', color: 'rgba(245,218,162,0.62)', letterSpacing: '3px', textTransform: 'uppercase' }}>Tripulación</span>
+              <span style={{ fontFamily: 'var(--fuente-subtitulo)', fontSize: '12px', color: 'rgba(245,218,162,0.36)', fontWeight: 600 }}>{jugadoresMostrados.length}/11</span>
+              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(201,168,76,0.38))' }}/>
             </div>
 
-            {/* ┌─────────────────────────────────────────────────┐
-                │  LISTA DE JUGADORES  (playersContainer)         │
-                │  Espaciado entre filas → C.jugadores.gap        │
-                │  Padding fila → C.jugadores.{padV, padH}        │
-                │  Tamaño nombre → C.jugadores.{nameMin/Pref/Max} │
-                └─────────────────────────────────────────────────┘ */}
-            <div style={{
-              display:'flex', flexDirection:'column',
-              gap: C.jugadores.gap,
-              ...dbg('rgba(60,190,100,0.70)'),
-            }}>
+            {/* Lista de jugadores */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: `${C.jugadores.gap}px`, ...dbg('rgba(60,190,100,0.70)') }}>
               <DbgTag color="rgba(40,160,80,0.90)" label="players" />
               {jugadoresMostrados.length === 0 ? (
-                <p style={{
-                  fontFamily:'var(--fuente-ui)',
-                  color:'rgba(245,218,162,0.22)',
-                  fontSize:'clamp(11px,1.0vw,14px)',
-                  letterSpacing:'0.3px',
-                  padding:'22px 6px',
-                  fontStyle:'italic',
-                }}>Esperando tripulantes…</p>
+                <p style={{ fontFamily: 'var(--fuente-ui)', color: 'rgba(245,218,162,0.22)', fontSize: '14px', letterSpacing: '0.3px', padding: '22px 6px', fontStyle: 'italic' }}>Esperando tripulantes…</p>
               ) : jugadoresMostrados.map((j, i) => {
                 const esHost = j.id === hostIdEfectivo;
                 const esNuevo = !seenPlayerIds.current.has(j.id);
                 return (
                   <div key={j.id || i} style={{
-                    position:'relative',
-                    display:'flex', alignItems:'center',
-                    gap:'clamp(8px,0.9vw,14px)',
-                    padding:`${C.jugadores.padV}px ${C.jugadores.padH}px`,
-                    borderRadius:'4px',
+                    position: 'relative', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: `${C.jugadores.padV}px ${C.jugadores.padH}px`, borderRadius: '4px',
                     background: esHost ? 'rgba(200,165,70,0.08)' : 'transparent',
-                    borderBottom:`1px solid rgba(245,218,162,${esHost ? '0.20' : '0.07'})`,
+                    borderBottom: `1px solid rgba(245,218,162,${esHost ? '0.20' : '0.07'})`,
                     borderLeft: esHost ? '2px solid rgba(201,168,76,0.50)' : '2px solid transparent',
-                    animation: esNuevo
-                      ? `playerJoin 0.5s cubic-bezier(.22,.68,0,1.2) ${i * 0.06}s both`
-                      : 'none',
+                    animation: esNuevo ? `playerJoin 0.5s cubic-bezier(.22,.68,0,1.2) ${i * 0.06}s both` : 'none',
                   }}>
-                    <span style={{
-                      flexShrink:0, minWidth:'20px', textAlign:'center',
-                      fontFamily:'var(--fuente-subtitulo)',
-                      fontSize:'clamp(8px,0.72vw,11px)',
-                      color: esHost ? 'rgba(232,201,122,0.90)' : 'rgba(245,218,162,0.28)',
-                      fontWeight:700,
-                    }}>
+                    <span style={{ flexShrink: 0, minWidth: '20px', textAlign: 'center', fontFamily: 'var(--fuente-subtitulo)', fontSize: `${C.jugadores.numSize}px`, color: esHost ? 'rgba(232,201,122,0.90)' : 'rgba(245,218,162,0.28)', fontWeight: 700 }}>
                       {esHost ? '⚓' : String(i + 1).padStart(2, '0')}
                     </span>
-                    <span style={{
-                      fontFamily:'var(--fuente-ui)',
-                      fontSize:`clamp(${C.jugadores.nameMin}px, ${C.jugadores.namePref}vw, ${C.jugadores.nameMax}px)`,
-                      color: esHost ? '#f7e5bc' : '#edd5a0',
-                      fontWeight: esHost ? 700 : 500,
-                      lineHeight:1.15, flex:1,
-                      overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-                      letterSpacing:'0.3px',
-                      textShadow:'0 1px 10px rgba(0,0,0,0.88)',
-                    }}>{j.nombre}</span>
+                    <span style={{ fontFamily: 'var(--fuente-ui)', fontSize: `${C.jugadores.nameSize}px`, color: esHost ? '#f7e5bc' : '#edd5a0', fontWeight: esHost ? 700 : 500, lineHeight: 1.15, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.3px', textShadow: '0 1px 10px rgba(0,0,0,0.88)' }}>
+                      {j.nombre}
+                    </span>
                     {socketId === sala.hostId && !esHost && (
-                      <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{
-                        flexShrink:0, background:'transparent',
-                        border:'1px solid rgba(201,168,76,0.18)', borderRadius:'3px',
-                        fontSize:'clamp(7px,0.60vw,9px)', color:'rgba(245,218,162,0.32)',
-                        cursor:'pointer', padding:'2px 5px', lineHeight:1,
-                      }}>⚓</button>
+                      <button onClick={() => cambiarHost(j.id)} title="Ceder el mando" style={{ flexShrink: 0, background: 'transparent', border: '1px solid rgba(201,168,76,0.18)', borderRadius: '3px', fontSize: '9px', color: 'rgba(245,218,162,0.32)', cursor: 'pointer', padding: '2px 5px', lineHeight: 1 }}>⚓</button>
                     )}
-                    <div title={j.conectado !== false ? 'Conectado' : 'Desconectado'} style={{
-                      flexShrink:0, width:'7px', height:'7px', borderRadius:'50%',
-                      background: j.conectado !== false ? '#5cb85c' : '#d9534f',
-                      boxShadow: j.conectado !== false ? '0 0 6px rgba(92,184,92,0.72)' : '0 0 4px rgba(217,83,79,0.60)',
-                    }}/>
+                    <div title={j.conectado !== false ? 'Conectado' : 'Desconectado'} style={{ flexShrink: 0, width: '7px', height: '7px', borderRadius: '50%', background: j.conectado !== false ? '#5cb85c' : '#d9534f', boxShadow: j.conectado !== false ? '0 0 6px rgba(92,184,92,0.72)' : '0 0 4px rgba(217,83,79,0.60)' }}/>
                   </div>
                 );
               })}
@@ -404,160 +323,66 @@ export default function Tablero() {
           </div>{/* /pergamino */}
 
           {/* ┌─────────────────────────────────────────────────────┐
-              │  QR  (qrContainer)                                  │
-              │  Posición → C.qr.{left, top}                        │
-              │  Rotación → C.qr.rotate                             │
-              │  Ancho bloque → C.qr.width                          │
-              │  Tamaño SVG → C.qr.svgSize                          │
+              │  QR  — posición en C.qr                             │
               └─────────────────────────────────────────────────────┘ */}
           <div style={{
-            position:'absolute',
-            left:   C.qr.left,
-            top:    C.qr.top,
-            width:  C.qr.width,
+            position: 'absolute', zIndex: 10,
+            left: C.qr.left, top: C.qr.top, width: C.qr.width,
             transform: `rotate(${C.qr.rotate}deg)`,
             transformOrigin: '50% 0%',
-            display:'flex', flexDirection:'column', alignItems:'center',
-            gap:'clamp(6px,0.9vh,11px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
             ...dbg('rgba(220,50,50,0.75)'),
           }}>
             <DbgTag color="rgba(200,30,30,0.90)" label="QR" />
-            {/* Papel del QR — luz desde esquina superior-izquierda */}
             <div style={{
-              position: 'relative',
-              width: '100%',          /* se estira al 100 % del contenedor (C.qr.width) */
-              padding: '21.5% 3% 21.5%', /* % del ancho → escala proporcional con el canvas */
-              borderRadius: '7px',
-              background: '#fdf9f0',
+              position: 'relative', width: '100%',
+              padding: '13% 3% 10%',
+              borderRadius: '7px', background: '#fdf9f0',
               boxShadow: `
-                0 6px 32px rgba(0,0,0,0.70),
-                0 0 0 1px rgba(185,148,60,0.22),
-                inset 0 0 14px rgba(0,0,0,0.42),
-                inset 11px 0 12px -4px rgba(0,0,0,0.52),
-                inset 0 12px 12px -2px rgba(0,0,0,0.52),
-                inset 12px 0 12px rgba(0,0,0,0.38),
+                0 6px 32px rgba(0,0,0,0.70), 0 0 0 1px rgba(185,148,60,0.22),
+                inset 0 0 14px rgba(0,0,0,0.42), inset 11px 0 12px -4px rgba(0,0,0,0.52),
+                inset 0 12px 12px -2px rgba(0,0,0,0.52), inset 12px 0 12px rgba(0,0,0,0.38),
                 inset -8px -8px 10px -3px rgba(255,228,155,0.07)
               `,
             }}>
-              {/* Gradiente direccional: luz desde arriba-izquierda entra, sombra abajo-derecha */}
-              <div style={{
-                position: 'absolute', inset: 0, borderRadius: '7px', zIndex: 1,
-                pointerEvents: 'none',
-                background: `linear-gradient(-138deg, rgba(255,238,190,0.10) 0%, transparent 42%, rgba(0,0,0,0.16) 78%, rgba(0,0,0,0.26) 100%)`,
-              }}/>
-
-              {/* SVG con width:100% → se escala al ancho del papel, que escala al canvas */}
-              <QRCodeSVG
-                value={urlUnirse}
-                size={C.qr.svgSize}
-                level="M"
-                bgColor="#fdf9f0"
-                fgColor="#0a0200"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-
-              {/* ── "Únete escaneando" — banda superior sobre el QR ── */}
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0,
-                zIndex: 3, pointerEvents: 'none',
-                padding: '8.5% 6% 11%',
-                borderRadius: '7px 7px 0 0',
-                background: 'linear-gradient(to bottom, rgba(253,249,240,0.97) 0%, transparent 0%)',
-                textAlign: 'center',
-              }}>
-                <p style={{
-                  fontFamily: 'var(--fuente-ui)',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  fontSize: 'clamp(7px, 0.75vw, 12px)',
-                  color: 'rgba(10,2,0,0.52)',
-                  margin: 0,
-                  fontWeight: 700,
-                }}>Únete escaneando</p>
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '7px', zIndex: 1, pointerEvents: 'none', background: 'linear-gradient(-138deg, rgba(255,238,190,0.10) 0%, transparent 42%, rgba(0,0,0,0.16) 78%, rgba(0,0,0,0.26) 100%)' }}/>
+              <QRCodeSVG value={urlUnirse} size={C.qr.svgSize} level="M" bgColor="#fdf9f0" fgColor="#0a0200" style={{ width: '100%', height: 'auto', display: 'block' }}/>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3, pointerEvents: 'none', padding: '3% 6% 11%', borderRadius: '7px 7px 0 0', background: 'linear-gradient(to bottom, rgba(253,249,240,0.97) 48%, transparent 100%)', textAlign: 'center' }}>
+                <p style={{ fontFamily: 'var(--fuente-ui)', letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: '11px', color: 'rgba(10,2,0,0.52)', margin: 0, fontWeight: 700 }}>Únete escaneando</p>
               </div>
-
-              {/* ── "Copiar link" — banda inferior sobre el QR, clickeable ── */}
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(urlUnirse).then(() => {
-                    setCopiado(true);
-                    setTimeout(() => setCopiado(false), 2500);
-                  });
-                }}
-                style={{
-                  position: 'absolute', bottom: 0, left: 0, right: 0,
-                  zIndex: 3,
-                  padding: '11% 6% 8.5%',
-                  borderRadius: '0 0 7px 7px',
-                  background: 'linear-gradient(to top, rgba(253,249,240,0.97) 0%, transparent 0%)',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  fontFamily: 'var(--fuente-ui)',
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  fontSize: 'clamp(6px, 0.65vw, 11px)',
-                  color: copiado ? 'rgba(50,130,50,0.80)' : 'rgba(10,2,0,0.38)',
-                  fontWeight: 700,
-                  transition: 'color 0.3s ease',
-                }}
+                onClick={() => navigator.clipboard.writeText(urlUnirse).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); })}
+                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 3, padding: '11% 6% 3%', borderRadius: '0 0 7px 7px', background: 'linear-gradient(to top, rgba(253,249,240,0.97) 48%, transparent 100%)', border: 'none', cursor: 'pointer', textAlign: 'center', fontFamily: 'var(--fuente-ui)', letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: '10px', color: copiado ? 'rgba(50,130,50,0.80)' : 'rgba(10,2,0,0.38)', fontWeight: 700, transition: 'color 0.3s ease' }}
               >
-                {copiado ? '✓ ¡Copiado!' : 'Copiar link'}
+                {copiado ? '✓ ¡Copiado!' : '🔗 Copiar link'}
               </button>
             </div>
           </div>{/* /qr */}
 
           {/* ┌─────────────────────────────────────────────────────┐
-              │  BOTÓN  (buttonContainer)                           │
-              │  Centro horizontal → C.boton.left (+ translateX)   │
-              │  Altura desde fondo → C.boton.bottom                │
-              │  Ancho → C.boton.{minW, maxW}                       │
+              │  BOTÓN  — posición en C.boton                       │
               └─────────────────────────────────────────────────────┘ */}
           <div style={{
-            position:'absolute',
-            left:   C.boton.left,
-            bottom: C.boton.bottom,
-            width:  `${C.boton.width ?? '100%'}`,   /* % del canvas → escala con la pantalla */
-            transform:`translateX(-50%) rotate(${C.boton.rotate ?? 0}deg)`,
+            position: 'absolute', zIndex: 10,
+            left: C.boton.left, bottom: C.boton.bottom, width: C.boton.width,
+            transform: `translateX(-50%) rotate(${C.boton.rotate ?? 0}deg)`,
             transformOrigin: '50% 50%',
-            textAlign:'center',
+            textAlign: 'center',
             ...dbg('rgba(160,60,220,0.75)'),
           }}>
             <DbgTag color="rgba(130,40,200,0.90)" label="botón" />
             {!listo && (
-              <p style={{
-                fontFamily:'var(--fuente-subtitulo)', fontSize:'clamp(12px,0.72vw,11px)',
-                color:'rgba(245,218,162,0.42)',
-                textShadow:'0 1px 12px rgba(0,0,0,0.99)',
-                marginBottom:'8px', letterSpacing:'1.5px', lineHeight:1.5,
-              }}>
+              <p style={{ fontFamily: 'var(--fuente-subtitulo)', fontSize: '11px', color: 'rgba(245,218,162,0.42)', textShadow: '0 1px 12px rgba(0,0,0,0.99)', marginBottom: '8px', letterSpacing: '1.5px', lineHeight: 1.5 }}>
                 Faltan {5 - numJugadores} jugador{5 - numJugadores !== 1 ? 'es' : ''} para iniciar
               </p>
             )}
-            <img
-              src="/sala-espera/inciar-partida.png"
-              alt="Iniciar Partida"
-              onClick={listo ? iniciarPartida : undefined}
-              draggable={false}
-              style={{
-                width: '100%',
-                display: 'block',
-                cursor: listo ? 'pointer' : 'not-allowed',
-                opacity: listo ? 1 : 0.35,
-                filter: listo ? 'none' : 'grayscale(0.5)',
-                transition: 'opacity 0.22s ease, filter 0.22s ease',
-                userSelect: 'none',
-              }}
+            <img src="/sala-espera/inciar-partida.png" alt="Iniciar Partida" onClick={listo ? iniciarPartida : undefined} draggable={false}
+              style={{ width: '100%', display: 'block', cursor: listo ? 'pointer' : 'not-allowed', opacity: listo ? 1 : 0.35, filter: listo ? 'none' : 'grayscale(0.5)', transition: 'opacity 0.22s ease, filter 0.22s ease', userSelect: 'none' }}
             />
-            {error && (
-              <p style={{ color:'#ffccaa', fontSize:'10px', marginTop:'8px', fontFamily:'var(--fuente-subtitulo)', letterSpacing:'0.5px', textShadow:'0 1px 4px rgba(0,0,0,0.92)' }}>
-                {error}
-              </p>
-            )}
+            {error && <p style={{ color: '#ffccaa', fontSize: '10px', marginTop: '8px', fontFamily: 'var(--fuente-subtitulo)', letterSpacing: '0.5px', textShadow: '0 1px 4px rgba(0,0,0,0.92)' }}>{error}</p>}
           </div>{/* /botón */}
 
-        </div>{/* /canvas 16:9 */}
-        </div>{/* /contenido */}
+        </div>{/* /stage 1920×1080 */}
       </div>
     );
   }
