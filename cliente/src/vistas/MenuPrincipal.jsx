@@ -588,7 +588,7 @@ export default function MenuPrincipal() {
               /* ── Carta Feed The Kraken ── */
               if (j.id === 'feed-the-kraken') {
                 return (
-                  <div key={j.id} style={{ animation: `aparecer 0.6s ease 0s both` }}>
+                  <div key={j.id} style={{ animation: `aparecer-fade 0.6s ease 0s both` }}>
                     <CartaFeedTheKraken
                       onCrear={crearSala}
                       creando={creando}
@@ -604,7 +604,7 @@ export default function MenuPrincipal() {
               /* ── Carta Catán ── */
               if (j.id === 'catan') {
                 return (
-                  <div key={j.id} style={{ animation: `aparecer 0.6s ease ${idx * 0.14}s both` }}>
+                  <div key={j.id} style={{ animation: `aparecer-fade 0.6s ease ${idx * 0.14}s both` }}>
                     <CartaCatan />
                   </div>
                 );
@@ -612,7 +612,7 @@ export default function MenuPrincipal() {
 
               /* ── Carta Próximamente ── */
               return (
-                <div key={j.id} style={{ animation: `aparecer 0.6s ease ${idx * 0.14}s both` }}>
+                <div key={j.id} style={{ animation: `aparecer-fade 0.6s ease ${idx * 0.14}s both` }}>
                   <img
                     src="/cartas/prox/carta-prox.png"
                     alt="Próximamente"
