@@ -174,7 +174,7 @@ export default function MenuPrincipal() {
       document.removeEventListener('keydown',     iniciarAmbiente);
       document.removeEventListener('touchstart',  iniciarAmbiente);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-
 
   // ── Transición entre escena menú ↔ escena FTK ───────────────
   useEffect(() => {
@@ -412,7 +412,7 @@ export default function MenuPrincipal() {
           position: 'absolute', inset: '-12px',
           backgroundImage: "url('/fondo-menu-feed-the-kraken.png')",
           backgroundSize: 'cover',
-          backgroundPosition: 'center center',
+          backgroundPosition: 'center top',
           filter: 'blur(1px) brightness(0.30) saturate(1.2)',
           transform: 'scale(1.03)',
         }}/>
