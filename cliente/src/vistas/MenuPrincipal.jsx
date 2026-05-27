@@ -130,6 +130,10 @@ export default function MenuPrincipal() {
   const audioStarted = useRef(false);
   const [audioListo, setAudioListo] = useState(false);
 
+  // Resetea el gate en cada montaje para que HMR (o unmount/remount) no
+  // deje audioStarted.current=true y bloquee la activación del audio.
+  useEffect(() => { audioStarted.current = false; }, []);
+
   const pararTimers = useCallback(() => {
     timersAudio.current.forEach(clearTimeout);
     timersAudio.current = [];
