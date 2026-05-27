@@ -103,7 +103,7 @@ export default function Tablero() {
     //      gracias al stage transform. Activa debug:true para bordes.
     // ═══════════════════════════════════════════════════════════════════
     const C = {
-      debug: true,
+      debug: false,
 
       // ── Jugadores ficticios ────────────────────────────────────────
       mockJugadores: [
@@ -123,7 +123,7 @@ export default function Tablero() {
       // ── Pergamino (%  del stage 1920×1080) ────────────────────────
       pergamino: {
         left:   '26.5%',
-        top:    '24%',
+        top:    '26.5%',
         width:  '22%',
         rotate: -11.7,
       },
@@ -147,7 +147,7 @@ export default function Tablero() {
       // ── QR (% del stage) ──────────────────────────────────────────
       qr: {
         left:    '68%',
-        top:     '31.2%',
+        top:     '35.2%',
         width:   '12.4%',
         rotate:  15.2,
         svgSize: 340,
@@ -156,7 +156,7 @@ export default function Tablero() {
       // ── Botón (% del stage) ───────────────────────────────────────
       boton: {
         left:   '44%',
-        bottom: '9%',
+        bottom: '8%',
         width:  '20%',
         rotate: -11.5,
       },
@@ -336,7 +336,7 @@ export default function Tablero() {
             <DbgTag color="rgba(200,30,30,0.90)" label="QR" />
             <div style={{
               position: 'relative', width: '100%',
-              padding: '13% 3% 10%',
+              padding: '21% 3% 21%',
               borderRadius: '7px', background: '#fdf9f0',
               boxShadow: `
                 0 6px 32px rgba(0,0,0,0.70), 0 0 0 1px rgba(185,148,60,0.22),
@@ -347,14 +347,14 @@ export default function Tablero() {
             }}>
               <div style={{ position: 'absolute', inset: 0, borderRadius: '7px', zIndex: 1, pointerEvents: 'none', background: 'linear-gradient(-138deg, rgba(255,238,190,0.10) 0%, transparent 42%, rgba(0,0,0,0.16) 78%, rgba(0,0,0,0.26) 100%)' }}/>
               <QRCodeSVG value={urlUnirse} size={C.qr.svgSize} level="M" bgColor="#fdf9f0" fgColor="#0a0200" style={{ width: '100%', height: 'auto', display: 'block' }}/>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3, pointerEvents: 'none', padding: '3% 6% 11%', borderRadius: '7px 7px 0 0', background: 'linear-gradient(to bottom, rgba(253,249,240,0.97) 48%, transparent 100%)', textAlign: 'center' }}>
-                <p style={{ fontFamily: 'var(--fuente-ui)', letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: '11px', color: 'rgba(10,2,0,0.52)', margin: 0, fontWeight: 700 }}>Únete escaneando</p>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 3, pointerEvents: 'none', padding: '7% 6% 11%', borderRadius: '7px 7px 0 0', background: 'linear-gradient(to bottom, rgba(253,249,240,0.97) 0%, transparent 0%)', textAlign: 'center' }}>
+                <p style={{ fontFamily: 'var(--fuente-ui)', letterSpacing: '0.15em', textTransform: 'uppercase', fontSize: '14px', color: 'rgba(10,2,0,0.52)', margin: 0, fontWeight: 700 }}>Únete escaneando</p>
               </div>
               <button
                 onClick={() => navigator.clipboard.writeText(urlUnirse).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 2500); })}
-                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 3, padding: '11% 6% 3%', borderRadius: '0 0 7px 7px', background: 'linear-gradient(to top, rgba(253,249,240,0.97) 48%, transparent 100%)', border: 'none', cursor: 'pointer', textAlign: 'center', fontFamily: 'var(--fuente-ui)', letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: '10px', color: copiado ? 'rgba(50,130,50,0.80)' : 'rgba(10,2,0,0.38)', fontWeight: 700, transition: 'color 0.3s ease' }}
+                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 3, padding: '11% 6% 7%', borderRadius: '0 0 7px 7px', background: 'linear-gradient(to top, rgba(253,249,240,0.97) 0%, transparent 0%)', border: 'none', cursor: 'pointer', textAlign: 'center', fontFamily: 'var(--fuente-ui)', letterSpacing: '0.12em', textTransform: 'uppercase', fontSize: '14px', color: copiado ? 'rgba(50,130,50,0.80)' : 'rgba(10,2,0,0.38)', fontWeight: 700, transition: 'color 0.3s ease' }}
               >
-                {copiado ? '✓ ¡Copiado!' : '🔗 Copiar link'}
+                {copiado ? '✓ ¡Copiado!' : 'Copiar link'}
               </button>
             </div>
           </div>{/* /qr */}
