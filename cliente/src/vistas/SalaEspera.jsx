@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAudio } from '../contextos/AudioContexto';
 
 /* ─── Endpoint de sala ────────────────────────────────────────────────── */
 const URL_BASE = 'https://boardgames-pro.onrender.com';
@@ -22,9 +23,10 @@ const URL_BASE = 'https://boardgames-pro.onrender.com';
    └────────────────────────────────────────────────────────────────┘
 
    Punto de anclaje de left / top:
-   • pergamino → CENTRO DEL BORDE SUPERIOR  (crece hacia abajo)
-   • qr        → BORDE SUPERIOR IZQUIERDO
-   • boton     → CENTRO HORIZONTAL          (bottom = desde abajo)
+   • pergamino  → CENTRO DEL BORDE SUPERIOR  (crece hacia abajo)
+   • qr         → BORDE SUPERIOR IZQUIERDO
+   • boton      → CENTRO HORIZONTAL          (bottom = desde abajo)
+   • botonSalir → CENTRO del asset           (translate -50% -50%)
 
    Cambia un número, guarda → el navegador se actualiza solo.
 ════════════════════════════════════════════════════════════════════════ */
@@ -57,6 +59,16 @@ const POS = {
     bottom:  108,  // px — distancia al borde inferior
     width:  384,  // px — ancho
     rotate: -9.5, // grados
+  },
+
+  // ── Botón "Salir" ─────────────────────────────────────────────────────
+  //    Ancla: CENTRO del asset (translate -50% -50%).
+  //    Por defecto: esquina superior derecha.
+  botonSalir: {
+    left:   1820,  // px — centro horizontal del asset
+    top:      60,  // px — centro vertical del asset
+    width:   130,  // px — ancho
+    rotate:    0,  // grados
   },
 };
 
@@ -96,6 +108,46 @@ export default function SalaEspera({
   const [scene, setScene] = useState({ x: 0, y: 0, s: 1 });
 
   const seenIds = useRef(new Set());
+
+  /* ── Audio ── */
+  const { playAmbiente, stopAmbiente, playSFX } = useAudio();
+
+  /* ─────────────────────────────────────────────────────────────────────
+     Audio de sala de espera.
+     Al montar: arranca ambientes y programa las gaviotas en secuencia.
+     Al desmontar: corta todo (fade out en ambientes, timers cancelados).
+  ───────────────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    // Ambientes siempre sonando
+    playAmbiente('sa-barco', '/sonidos/amb-barco.mp3', 0.22);
+    playAmbiente('sa-olas',  '/sonidos/amb-olas.mp3',  0.12);
+
+    // Gaviotas secuenciales: una cadena de setTimeout garantiza
+    // que nunca se superponen entre sí ni con ellas mismas.
+    let active = true;
+    let timer  = null;
+
+    const scheduleNext = () => {
+      if (!active) return;
+      const silencio = 12000 + Math.random() * 28000; // 12 – 40 s de pausa
+      timer = setTimeout(() => {
+        if (!active) return;
+        const n = Math.random() < 0.5 ? 1 : 2;
+        playSFX(`sa-gaviota-${n}`, `/sonidos/sfx-gaviotas${n}.mp3`, 0.38);
+        // Esperar ~6 s a que termine la gaviota antes del próximo ciclo
+        timer = setTimeout(scheduleNext, 6000);
+      }, silencio);
+    };
+
+    scheduleNext();
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      stopAmbiente('sa-barco', 1200);
+      stopAmbiente('sa-olas',  1200);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ─────────────────────────────────────────────────────────────────────
      Calcula:
@@ -218,40 +270,37 @@ export default function SalaEspera({
         }} />
 
         {/* ══════════════════════════════════════════════════════════════
-            HEADER — barra en el borde superior del lienzo.
-            No entra en POS: siempre top: 0, ancho 1920px.
+            .elem-boton-salir — botón "Salir"
+            ┌────────────────────────────────────────────────────────┐
+            │  POS.botonSalir.left   → centro horizontal del asset   │
+            │  POS.botonSalir.top    → centro vertical del asset     │
+            │  POS.botonSalir.width  → ancho en px                   │
+            │  POS.botonSalir.rotate → inclinación en grados         │
+            └────────────────────────────────────────────────────────┘
+            Ancla: CENTRO del asset (translate -50% -50%).
         ══════════════════════════════════════════════════════════════ */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '52px',
-          zIndex: 10,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 32px',
-          background: 'rgba(4,2,1,0.80)', backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(201,168,76,0.13)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <span style={{ fontSize: '22px', animation: 'flotar 5s ease-in-out infinite', filter: 'drop-shadow(0 0 10px rgba(255,140,30,0.55))' }}>🐙</span>
-            <div>
-              <h1 style={{ fontFamily: 'var(--fuente-titulo)', color: 'var(--oro-dorado)', fontSize: '17px', letterSpacing: '3px', textShadow: '0 0 22px rgba(201,168,76,0.38)' }}>
-                Feed The Kraken
-              </h1>
-              <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,220,170,0.36)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase' }}>
-                Sala de Espera
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '7px', height: '7px', borderRadius: '50%',
-              background:  conectado ? '#6abf6a' : '#cc4444',
-              boxShadow:   conectado ? '0 0 8px rgba(106,191,106,0.65)' : 'none',
-            }} />
-            <button
-              onClick={onSalir}
-              style={{ background: 'none', border: '1px solid rgba(201,168,76,0.20)', color: 'rgba(201,168,76,0.48)', padding: '5px 14px', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--fuente-subtitulo)', fontSize: '10px', letterSpacing: '1px', transition: 'all 0.3s ease' }}
-            >Salir</button>
-          </div>
-        </div>
+        <div
+          className="elem-boton-salir"
+          onClick={onSalir}
+          style={{
+            position:        'absolute',
+            left:            `${POS.botonSalir.left}px`,
+            top:             `${POS.botonSalir.top}px`,
+            width:           `${POS.botonSalir.width}px`,
+            transform:       `translate(-50%, -50%) rotate(${POS.botonSalir.rotate}deg)`,
+            transformOrigin: '50% 50%',
+            zIndex:          20,
+            cursor:          'pointer',
+            ...dbg('rgba(80,200,255,0.8)'),
+          }}
+        >
+          <img
+            src="/sala-espera/boton-salir.png"
+            alt="Salir"
+            draggable={false}
+            style={{ width: '100%', display: 'block', userSelect: 'none' }}
+          />
+        </div>{/* /elem-boton-salir */}
 
         {/* ══════════════════════════════════════════════════════════════
             .elem-pergamino — código de sala + lista de jugadores
