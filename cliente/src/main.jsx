@@ -8,8 +8,9 @@ import MenuPrincipal   from './vistas/MenuPrincipal';
 import LobbyCrear      from './vistas/LobbyCrear';
 import LobbyUnirse     from './vistas/LobbyUnirse';
 import SalaJugador     from './vistas/SalaJugador';
-import Tablero         from './vistas/Tablero';
-import EntradaTablero  from './vistas/EntradaTablero';
+import Tablero              from './vistas/Tablero';
+import EntradaTablero       from './vistas/EntradaTablero';
+import PreviewSalaEspera    from './vistas/PreviewSalaEspera';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -23,7 +24,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/unirse/:codigo" element={<LobbyUnirse />} />
           <Route path="/sala"           element={<SalaJugador />} />
           <Route path="/tablero"        element={<EntradaTablero />} />
-          <Route path="/tablero/:codigo" element={<Tablero />} />
+          <Route path="/tablero/:codigo"        element={<Tablero />} />
+          <Route path="/preview/sala-espera"   element={<PreviewSalaEspera />} />
         </Routes>
       </SalaProvider>
     </BrowserRouter>
