@@ -103,7 +103,7 @@ export default function Tablero() {
     //      gracias al stage transform. Activa debug:true para bordes.
     // ═══════════════════════════════════════════════════════════════════
     const C = {
-      debug: true,
+      debug: false,
 
       // ── Jugadores ficticios ────────────────────────────────────────
       mockJugadores: [
