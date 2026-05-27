@@ -280,7 +280,7 @@ export default function SalaEspera({
           {/* Código de sala */}
           <div style={{ textAlign: 'center', marginBottom: '18px' }}>
             <p style={{ fontFamily: 'var(--fuente-ui)', fontSize: '11px', fontWeight: 700, letterSpacing: '6px', textTransform: 'uppercase', color: 'rgba(245,218,162,0.44)', marginBottom: '5px' }}>
-              ⚓ &nbsp;Código de sala&nbsp; ⚓
+               &nbsp;Código de sala&nbsp; 
             </p>
             <div style={{ fontFamily: 'var(--fuente-titulo)', fontSize: '70px', letterSpacing: '0.22em', lineHeight: 1, color: '#faefd4', textShadow: '0 0 32px rgba(255,210,90,0.58), 0 0 70px rgba(255,175,40,0.22), 0 3px 0 rgba(55,24,4,0.95), 0 7px 22px rgba(0,0,0,0.98)' }}>
               {codigo}
@@ -290,8 +290,8 @@ export default function SalaEspera({
           {/* Separador náutico */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
             <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(201,168,76,0.38))' }} />
-            <span style={{ fontFamily: 'var(--fuente-pirata)', fontSize: '16px', color: 'rgba(245,218,162,0.62)', letterSpacing: '3px', textTransform: 'uppercase' }}>Tripulación</span>
-            <span style={{ fontFamily: 'var(--fuente-subtitulo)', fontSize: '12px', color: 'rgba(245,218,162,0.36)', fontWeight: 600 }}>
+            <span style={{ fontFamily: 'var(--fuente-pirata)', fontSize: '16px', color: 'rgba(245,218,162,0.62)', letterSpacing: '3.5px', textTransform: 'uppercase' }}>Tripulación</span>
+            <span style={{ fontFamily: 'var(--fuente-subtitulo)', fontSize: '15px', color: 'rgba(245, 217, 162, 0.52)', fontWeight: 600 }}>
               {jugadoresMostrados.length}/11
             </span>
             <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(201,168,76,0.38))' }} />
@@ -300,7 +300,7 @@ export default function SalaEspera({
           {/* Lista de jugadores */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {jugadoresMostrados.length === 0 ? (
-              <p style={{ fontFamily: 'var(--fuente-ui)', color: 'rgba(245,218,162,0.22)', fontSize: '14px', letterSpacing: '0.3px', padding: '22px 6px', fontStyle: 'italic' }}>
+              <p style={{ fontFamily: 'var(--fuente-ui)', color: 'rgba(245, 217, 162, 0.63)', fontSize: '14px', letterSpacing: '0.3px', padding: '22px 6px', fontStyle: 'italic' }}>
                 Esperando tripulantes…
               </p>
             ) : jugadoresMostrados.map((j, i) => {
