@@ -1,138 +1,93 @@
 // ============================================================
-// TABLERO — Feed The Kraken (Tablero Principal)
-// Cuadrícula hexagonal axial
+// TABLERO — Feed The Kraken
+// IDs de hex sincronizados con cliente/src/data/hexMapa.js
+//
+// Cuando el HexEditor exporte datos nuevos, actualiza también
+// HEX_FLECHAS aquí (y HEX_INICIO si cambia el hex de partida).
 // ============================================================
 
-const TIPOS_HEX = {
-  NORMAL: 'normal',
-  LUPA: 'lupa',
-  KRAKEN: 'kraken',
-  PUERTO_PIRATAS: 'puerto_piratas',
-  PUERTO_MARINEROS: 'puerto_marineros',
-  INICIO: 'inicio',
+// ── Movimiento por color de carta ────────────────────────────
+// Fuente de verdad: HEX_FLECHAS en cliente/src/data/hexMapa.js
+const HEX_FLECHAS = {
+  '9':      { amarillo: 'vc',   azul: 'vm-1', rojo: 'vp-1' },
+  'inicio': { amarillo: '3-2',  azul: '2-2',  rojo: '2-1'  },
+  '2-2':    { amarillo: '4-2',  azul: '3-3',  rojo: '3-2'  },
+  '2-1':    { amarillo: '4-1',  azul: '3-2',  rojo: '3-1'  },
+  '3-3':    { amarillo: '5-3',  azul: '5-3',  rojo: '4-2'  },
+  '3-2':    { amarillo: '4-1',  azul: '4-2',  rojo: '4-1'  },
+  '3-1':    { amarillo: '5-1',  azul: '4-1',  rojo: '5-1'  },
+  '4-2':    { amarillo: '6-3',  azul: '5-3',  rojo: '5-2'  },
+  '4-1':    { amarillo: '6-2',  azul: '5-2',  rojo: '5-1'  },
+  '5-1':    { amarillo: '7-1',  azul: '6-2',  rojo: '6-1'  },
+  '5-2':    { amarillo: '7-2',  azul: '6-3',  rojo: '6-2'  },
+  '5-3':    { amarillo: '7-3',  azul: '6-4',  rojo: '6-3'  },
+  '6-4':    { amarillo: '7-3',  azul: 'vm-3', rojo: '7-3'  },
+  '6-1':    { amarillo: '7-1',  azul: '7-1',  rojo: 'vp-3' },
+  '6-2':    { amarillo: '8-1',  azul: '7-2',  rojo: '7-1'  },
+  '6-3':    { amarillo: '8-2',  azul: '7-3',  rojo: '7-2'  },
+  '7-1':    { amarillo: '8-1',  azul: '8-1',  rojo: 'vp-2' },
+  '7-2':    { amarillo: '9',    azul: '8-2',  rojo: '8-1'  },
+  '7-3':    { amarillo: '8-2',  azul: 'vm-2', rojo: '8-2'  },
+  '8-1':    { amarillo: 'vp-1', azul: '9',    rojo: 'vp-2' },
+  '8-2':    { amarillo: 'vm-1', azul: 'vm-2', rojo: '9'    },
 };
 
-// Cada hex: { id, tipo, flechas: { rojo: [ids], azul: [ids], amarillo: [ids] } }
-// Basado en la imagen del tablero. El barco empieza en "inicio" (Isla Cangrejo)
-// Las flechas representan hacia dónde se mueve el barco según el color de la carta
-const HEXAGONOS = {
-  // Fila inferior (inicio)
-  'inicio': {
-    id: 'inicio', tipo: TIPOS_HEX.INICIO, nombre: 'Isla Cangrejo',
-    fila: 0, col: 0,
-    flechas: { rojo: ['mid_izq_bajo'], azul: ['mid_der_bajo'], amarillo: ['mid_centro_bajo'] },
-  },
-
-  // Fila media-baja
-  'mid_izq_bajo': {
-    id: 'mid_izq_bajo', tipo: TIPOS_HEX.NORMAL,
-    fila: 1, col: -1,
-    flechas: { rojo: ['izq_medio'], azul: ['mid_centro_bajo'], amarillo: ['mid_izq_medio'] },
-  },
-  'mid_centro_bajo': {
-    id: 'mid_centro_bajo', tipo: TIPOS_HEX.LUPA,
-    fila: 1, col: 0,
-    flechas: { rojo: ['mid_izq_bajo'], azul: ['mid_der_bajo'], amarillo: ['mid_centro_medio'] },
-  },
-  'mid_der_bajo': {
-    id: 'mid_der_bajo', tipo: TIPOS_HEX.NORMAL,
-    fila: 1, col: 1,
-    flechas: { rojo: ['mid_centro_bajo'], azul: ['der_medio'], amarillo: ['mid_der_medio'] },
-  },
-
-  // Fila media
-  'izq_medio': {
-    id: 'izq_medio', tipo: TIPOS_HEX.KRAKEN,
-    fila: 2, col: -2,
-    flechas: { rojo: ['puerto_piratas'], azul: ['mid_izq_medio'], amarillo: ['mid_izq_bajo'] },
-  },
-  'mid_izq_medio': {
-    id: 'mid_izq_medio', tipo: TIPOS_HEX.NORMAL,
-    fila: 2, col: -1,
-    flechas: { rojo: ['izq_medio'], azul: ['mid_centro_medio'], amarillo: ['mid_izq_alto'] },
-  },
-  'mid_centro_medio': {
-    id: 'mid_centro_medio', tipo: TIPOS_HEX.LUPA,
-    fila: 2, col: 0,
-    flechas: { rojo: ['mid_izq_medio'], azul: ['mid_der_medio'], amarillo: ['mid_centro_alto'] },
-  },
-  'mid_der_medio': {
-    id: 'mid_der_medio', tipo: TIPOS_HEX.NORMAL,
-    fila: 2, col: 1,
-    flechas: { rojo: ['mid_centro_medio'], azul: ['der_medio'], amarillo: ['mid_der_alto'] },
-  },
-  'der_medio': {
-    id: 'der_medio', tipo: TIPOS_HEX.KRAKEN,
-    fila: 2, col: 2,
-    flechas: { rojo: ['mid_der_medio'], azul: ['puerto_marineros'], amarillo: ['mid_der_bajo'] },
-  },
-
-  // Fila media-alta
-  'mid_izq_alto': {
-    id: 'mid_izq_alto', tipo: TIPOS_HEX.NORMAL,
-    fila: 3, col: -1,
-    flechas: { rojo: ['puerto_piratas'], azul: ['mid_centro_alto'], amarillo: ['izq_medio'] },
-  },
-  'mid_centro_alto': {
-    id: 'mid_centro_alto', tipo: TIPOS_HEX.LUPA,
-    fila: 3, col: 0,
-    flechas: { rojo: ['mid_izq_alto'], azul: ['mid_der_alto'], amarillo: ['kraken_centro'] },
-  },
-  'mid_der_alto': {
-    id: 'mid_der_alto', tipo: TIPOS_HEX.NORMAL,
-    fila: 3, col: 1,
-    flechas: { rojo: ['mid_centro_alto'], azul: ['puerto_marineros'], amarillo: ['der_medio'] },
-  },
-
-  // Fila superior (destinos)
-  'puerto_piratas': {
-    id: 'puerto_piratas', tipo: TIPOS_HEX.PUERTO_PIRATAS, nombre: 'Cala Carmesí',
-    fila: 4, col: -1,
-    flechas: {},
-  },
-  'kraken_centro': {
-    id: 'kraken_centro', tipo: TIPOS_HEX.KRAKEN, nombre: 'El Kraken',
-    fila: 4, col: 0,
-    flechas: {},
-  },
-  'puerto_marineros': {
-    id: 'puerto_marineros', tipo: TIPOS_HEX.PUERTO_MARINEROS, nombre: 'Bahía Agua Azul',
-    fila: 4, col: 1,
-    flechas: {},
-  },
-};
-
+// ── Hex de inicio ─────────────────────────────────────────────
 const HEX_INICIO = 'inicio';
 
+// ── Hexes de victoria ─────────────────────────────────────────
+// Al llegar a cualquiera de estos hexes, el juego termina.
+const VICTORIA_PIRATAS   = new Set(['vp-1', 'vp-2', 'vp-3']);
+const VICTORIA_MARINEROS = new Set(['vm-1', 'vm-2', 'vm-3']);
+const VICTORIA_CULTISTAS = new Set(['vc']);
+
+// ── Hexes especiales ──────────────────────────────────────────
+// kraken_menor: disparan votación de sacrificio (FASE_4).
+//   → Los cultistas ganan si el cultista (no adepto) es sacrificado.
+// lupa: disparan acción de investigación (FASE_4 tipo lupa).
+//   → TODO: asignar hexes de lupa cuando estén definidos en el nuevo mapa.
+const HEXES_KRAKEN_MENOR = new Set(['9']);   // casilla central del Kraken
+const HEXES_LUPA         = new Set([]);      // sin lupas en el mapa actual
+
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Devuelve el hexId destino para un movimiento dado.
+ * colorCarta: 'amarillo' | 'azul' | 'rojo'
+ */
 const moverBarco = (hexActual, colorCarta) => {
-  const hex = HEXAGONOS[hexActual];
-  if (!hex) return hexActual;
-  const destinos = hex.flechas[colorCarta] || [];
-  return destinos.length > 0 ? destinos[0] : hexActual;
+  const flechas = HEX_FLECHAS[hexActual];
+  if (!flechas) return hexActual;              // hex sin flechas (victoria / final)
+  return flechas[colorCarta] ?? hexActual;
 };
 
+/**
+ * Comprueba si el hex es un destino de victoria.
+ * @returns {string|null}  'piratas' | 'marineros' | 'cultistas' | null
+ */
 const verificarVictoria = (hexId) => {
-  const hex = HEXAGONOS[hexId];
-  if (!hex) return null;
-  if (hex.tipo === TIPOS_HEX.PUERTO_PIRATAS) return 'piratas';
-  if (hex.tipo === TIPOS_HEX.PUERTO_MARINEROS) return 'marineros';
-  if (hex.tipo === TIPOS_HEX.KRAKEN && hexId === 'kraken_centro') return 'cultistas';
+  if (VICTORIA_PIRATAS.has(hexId))   return 'piratas';
+  if (VICTORIA_MARINEROS.has(hexId)) return 'marineros';
+  if (VICTORIA_CULTISTAS.has(hexId)) return 'cultistas';
   return null;
 };
 
-const esCasillaEspecial = (hexId) => {
-  const hex = HEXAGONOS[hexId];
-  if (!hex) return false;
-  return hex.tipo === TIPOS_HEX.LUPA || hex.tipo === TIPOS_HEX.KRAKEN;
-};
+/** Devuelve true si la casilla dispara FASE_4 */
+const esCasillaEspecial = (hexId) =>
+  HEXES_KRAKEN_MENOR.has(hexId) || HEXES_LUPA.has(hexId);
 
-// Devuelve el tipo de acción especial que dispara la casilla
+/** Devuelve el tipo de FASE_4 para la casilla */
 const tipoCasillaEspecial = (hexId) => {
-  const hex = HEXAGONOS[hexId];
-  if (!hex) return null;
-  if (hex.tipo === TIPOS_HEX.LUPA) return 'lupa';
-  if (hex.tipo === TIPOS_HEX.KRAKEN && hexId !== 'kraken_centro') return 'kraken_menor';
+  if (HEXES_KRAKEN_MENOR.has(hexId)) return 'kraken_menor';
+  if (HEXES_LUPA.has(hexId))         return 'lupa';
   return null;
 };
 
-module.exports = { HEXAGONOS, TIPOS_HEX, HEX_INICIO, moverBarco, verificarVictoria, esCasillaEspecial, tipoCasillaEspecial };
+module.exports = {
+  HEX_FLECHAS,
+  HEX_INICIO,
+  moverBarco,
+  verificarVictoria,
+  esCasillaEspecial,
+  tipoCasillaEspecial,
+};

@@ -4,6 +4,8 @@ import { useSocket } from '../hooks/useSocket';
 import { useAudio } from '../contextos/AudioContexto';
 import SalaEspera from './SalaEspera';
 import Modelo3D from '../components/tablero/Modelo3D';
+import HexEditor from '../components/tablero/HexEditor';
+import { HEX_POS, HEX_ADJ, HEX_FLECHAS } from '../data/hexMapa';
 
 /* ═══════════════════════════════════════════════════════════════════════
    🎛️  POSICIONES — ESTE ES EL ÚNICO BLOQUE QUE NECESITAS EDITAR.
@@ -83,13 +85,20 @@ const POS = {
 
   // ── Modelos 3D ─────────────────────────────────────────────────────────
   //    Ancla: CENTRO del canvas (translate -50% -50%).
-  //    size    → lado del canvas cuadrado en px.
-  //    visible → true activa el slot; false lo oculta sin coste de render.
+  //    left/top  → coords fijas en el lienzo 1920×1080; el escalado de
+  //                pantalla lo gestiona el stage CSS — nunca cambian.
+  //    size      → lado del canvas cuadrado en px (dentro del lienzo).
+  //    escala    → multiplicador sobre el tamaño normalizado del modelo.
+  //    camPos    → [x, y, z] posición de la cámara. Para buscar el ángulo
+  //                ideal: controles: true → girar con ratón → leer coords
+  //                de consola → copiarlas aquí → controles: false.
+  //    controles → false = cámara fija + pointerEvents:none (producción).
+  //                true  = OrbitControls activos (exploración de ángulo).
+  //    visible   → true activa el slot; false lo oculta sin coste de render.
   //    Assets en /public/tablero/modelos/  (.glb)
-  //    ✅  Deps ya instaladas: three + @react-three/fiber@8 + @react-three/drei@9
-  //       Para activar un modelo: visible: false → true
+  //    ✅  Deps: three + @react-three/fiber@8 + @react-three/drei@9
   modelos3d: {
-    barco:      { left: 960,  top: 572, size: 180, escala: 1, camPos: [0, 2, 4], visible: true  },  // sigue barco.hexId
+    barco:      { left: 970,  top: 600, size: 1100, escala: 1, camPos: [-1.484, 4.302, 0.019], controles: false, visible: true  },  // sigue barco.hexId
     kraken:     { left: 960,  top: 572, size: 200, visible: false },  // casilla kraken_centro
     tentaculo1: { left: 840,  top: 480, size: 80,  visible: false },  // kraken_menor izq
     tentaculo2: { left: 1080, top: 480, size: 80,  visible: false },  // kraken_menor der
@@ -104,6 +113,12 @@ const POS = {
    false → versión limpia final
 ────────────────────────────────────────────────────────────────────── */
 const DEBUG = false;
+
+/* ─── Editor de hexes ────────────────────────────────────────────────
+   true  → abre el editor al cargar (se puede alternar con Shift+H)
+   false → desactivado en producción
+────────────────────────────────────────────────────────────────────── */
+const DEV_HEX_EDITOR = true;
 
 /* ─── Preview de desarrollo ──────────────────────────────────────────
    true  → tablero visible con datos de prueba (sin servidor)
@@ -130,7 +145,7 @@ const MOCK = {
     turno: 3,
     capitanIdx: 0,
     mazoDisponibleCount: 18,
-    barco: { hexId: 'mid_centro_alto' },
+    barco: { hexId: 'inicio', rotAngle: 0 },  // 0 rad = orientación base confirmada en 'inicio'
     ultimaCarta: {
       color: 'azul',
       nombre: 'Viento en Popa',
@@ -138,6 +153,61 @@ const MOCK = {
     },
   },
 };
+
+/* ─── Condiciones de victoria ────────────────────────────────────────
+   El barco llega a uno de estos hexes → el juego termina.
+   Sincronizado con servidor/juego/tablero.js (VICTORIA_*).
+────────────────────────────────────────────────────────────────────── */
+const _VICTORIA_HEX = {
+  'vp-1': 'piratas',   'vp-2': 'piratas',   'vp-3': 'piratas',
+  'vm-1': 'marineros', 'vm-2': 'marineros', 'vm-3': 'marineros',
+  'vc':   'cultistas',
+};
+
+/* ─── Movimiento del barco ────────────────────────────────────────────
+   Devuelve el hexId destino, o null si el movimiento no es posible.
+   La lógica de rotación vive en moverBarco() (dentro del componente).
+────────────────────────────────────────────────────────────────────── */
+const _COLOR_KEY = { adelante: 'amarillo', derecha: 'azul', izquierda: 'rojo' };
+
+function calcularMovimiento(hexId, tipo, prevHexId) {
+  const nuevoHex = HEX_FLECHAS[hexId]?.[_COLOR_KEY[tipo]];
+  if (!nuevoHex)              return null;   // sin flecha asignada
+  if (nuevoHex === prevHexId) return null;   // nunca marcha atrás
+  return nuevoHex;
+}
+
+/* ─── Ángulo visual geométrico (radianes) ────────────────────────────
+   Referencia ABSOLUTA: "recto hacia arriba en pantalla" = −π/2 = 0°.
+
+   El tablero está diseñado de modo que:
+     • Los movimientos de avance van ~recto hacia arriba (≈ −90°)
+     • Los movimientos a la derecha van arriba-derecha        (≈ −30°)
+     • Los movimientos a la izquierda van arriba-izquierda   (≈ −150°)
+
+   Por eso la inclinación correcta es función del ángulo ABSOLUTO del
+   movimiento en pantalla, no del ángulo relativo a la flecha amarilla.
+   Esto resuelve los hexes con doble flecha (p.ej. 6-1 azul=amarillo=7-1):
+   7-1 está arriba-derecha desde 6-1 → −45°, sea cual sea la carta.
+
+   rel = moveAngle − (−π/2) = moveAngle + π/2
+     ≈ 0        → destino recto arriba  → 0°
+     > 0 (CW)   → destino arriba-der.   → −45°
+     < 0 (CCW)  → destino arriba-izq.   → +45°
+────────────────────────────────────────────────────────────────────── */
+function computeTargetRot(hexId, nuevoHex) {
+  const cur = HEX_POS[hexId];
+  const dst = HEX_POS[nuevoHex];
+  if (!cur || !dst) return 0;
+
+  const moveAngle = Math.atan2(dst.top - cur.top, dst.left - cur.left);
+  let rel = moveAngle + Math.PI / 2;          // relativo a "recto arriba"
+  while (rel >  Math.PI) rel -= 2 * Math.PI;
+  while (rel < -Math.PI) rel += 2 * Math.PI;
+
+  if (Math.abs(rel) < 0.2) return 0;                        // recto → sin inclinación
+  return rel > 0 ? -(Math.PI / 4) : (Math.PI / 4);          // CW=derecha | CCW=izquierda
+}
 
 /* ─── Información visual por fase ──────────────────────────────────── */
 const FASE_INFO = {
@@ -160,12 +230,65 @@ export default function Tablero() {
   const navigate   = useNavigate();
   const { emitir, escuchar, conectado, socketId } = useSocket();
 
-  const [sala,    setSala]    = useState(DEV_PREVIEW ? MOCK.sala    : null);
-  const [tablero, setTablero] = useState(DEV_PREVIEW ? MOCK.tablero : null);
-  const [fase,    setFase]    = useState(DEV_PREVIEW ? MOCK.tablero.fase : 'lobby');
-  const [error,   setError]   = useState('');
-  const [motin,   setMotin]   = useState(null);
-  const [kraken,  setKraken]  = useState(null);
+  const [sala,      setSala]      = useState(DEV_PREVIEW ? MOCK.sala    : null);
+  const [tablero,   setTablero]   = useState(DEV_PREVIEW ? MOCK.tablero : null);
+  const [fase,      setFase]      = useState(DEV_PREVIEW ? MOCK.tablero.fase : 'lobby');
+  const [error,     setError]     = useState('');
+  const [motin,     setMotin]     = useState(null);
+  const [kraken,    setKraken]    = useState(null);
+  const [prevHexId,      setPrevHexId]      = useState(null);   // para bloquear marcha atrás
+  const [barcoAnimPhase, setBarcoAnimPhase] = useState('idle'); // 'idle'|'rotating'|'moving'
+
+  /* ── Movimiento secuenciado: 1º rota (si hace falta), 2º se mueve ── */
+  const ROTACION_MS   = 380;   // ms para que termine la rotación visual
+  const MOVIMIENTO_MS = 1400;  // ms del transition CSS de posición
+
+  function moverBarco(tipo) {
+    if (barcoAnimPhase !== 'idle') return;
+    if (!tablero?.barco) return;
+    if (fase === 'victoria')       return;   // juego terminado
+
+    const { hexId, rotAngle } = tablero.barco;
+    const nuevoHex  = calcularMovimiento(hexId, tipo, prevHexId);
+    if (!nuevoHex) return;
+
+    // Rotación basada en geometría real (ángulo absoluto en pantalla)
+    const targetRot = computeTargetRot(hexId, nuevoHex);
+    const debeRotar = Math.abs(rotAngle - targetRot) > 0.001;
+
+    // ── Callback final: resuelve animación y comprueba victoria ──
+    const finalizarMovimiento = () => {
+      const ganador = _VICTORIA_HEX[nuevoHex] ?? null;
+      if (ganador && DEV_PREVIEW) {
+        // En DEV_PREVIEW resolvemos la victoria localmente.
+        // En producción el servidor envía 'tablero-actualizado' con fase:'victoria'.
+        setFase('victoria');
+        setTablero(prev => ({ ...prev, victoria: ganador }));
+      }
+      setBarcoAnimPhase('idle');
+    };
+
+    if (debeRotar) {
+      // ── Paso 1: Rotar en la casilla actual ──────────────────────
+      setBarcoAnimPhase('rotating');
+      setTablero(prev => ({ ...prev, barco: { hexId, rotAngle: targetRot } }));
+
+      // ── Paso 2: Mover una vez terminada la rotación ─────────────
+      setTimeout(() => {
+        setBarcoAnimPhase('moving');
+        setPrevHexId(hexId);
+        setTablero(prev => ({ ...prev, barco: { hexId: nuevoHex, rotAngle: targetRot } }));
+        setTimeout(finalizarMovimiento, MOVIMIENTO_MS);
+      }, ROTACION_MS);
+
+    } else {
+      // ── Sin rotación: mover directamente ────────────────────────
+      setBarcoAnimPhase('moving');
+      setPrevHexId(hexId);
+      setTablero(prev => ({ ...prev, barco: { hexId: nuevoHex, rotAngle: targetRot } }));
+      setTimeout(finalizarMovimiento, MOVIMIENTO_MS);
+    }
+  }
 
   /* ── Audio ambiente del tablero ─────────────────────────────────── */
   const { playAmbiente, stopAmbiente, playSFX } = useAudio();
@@ -216,6 +339,17 @@ export default function Tablero() {
     calc();
     window.addEventListener('resize', calc);
     return () => window.removeEventListener('resize', calc);
+  }, []);
+
+  /* ── Editor de hexes ─────────────────────────────────────────────── */
+  const [hexEditorOpen, setHexEditorOpen] = useState(DEV_HEX_EDITOR);
+  useEffect(() => {
+    const down = (e) => {
+      if ((e.key === 'H' || e.key === 'h') && e.shiftKey)
+        setHexEditorOpen(v => !v);
+    };
+    window.addEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
   }, []);
 
   /* ── Socket ─────────────────────────────────────────────────────── */
@@ -656,26 +790,7 @@ export default function Tablero() {
             Ancla: CENTRO del canvas (translate -50% -50%)
         ══════════════════════════════════════════════════════════ */}
 
-        {/* ── Barco pirata ─────────────────────────────────────── */}
-        {POS.modelos3d.barco.visible && (
-          <div style={{
-            position: 'absolute',
-            left:      `${POS.modelos3d.barco.left}px`,
-            top:       `${POS.modelos3d.barco.top}px`,
-            transform: 'translate(-50%,-50%)',
-            zIndex:    7,
-            pointerEvents: 'none',
-            ...dbg('rgba(0,255,100,0.6)'),
-          }}>
-            <Modelo3D
-              src="/tablero/modelos/barco.glb"
-              size={POS.modelos3d.barco.size}
-              escala={POS.modelos3d.barco.escala}
-              camPos={POS.modelos3d.barco.camPos}
-              rotacion={[0, Math.PI / 6, 0]}
-            />
-          </div>
-        )}
+        {/* Barco: renderizado fuera del stage — ver slot debajo del /lienzo */}
 
         {/* ── Kraken central ───────────────────────────────────── */}
         {POS.modelos3d.kraken.visible && (
@@ -1039,6 +1154,125 @@ export default function Tablero() {
         })()}
 
       </div>{/* /lienzo 1920×1080 */}
+
+      {/* ══════════════════════════════════════════════════════════════
+          MODELOS 3D — fuera del lienzo CSS-transformado.
+          Los Canvas WebGL (R3F) no pueden vivir dentro de un
+          contenedor con transform:scale porque miden su tamaño
+          con getBoundingClientRect() y obtienen las dimensiones
+          ya escaladas → el contenido 3D se desplaza.
+          Solución: colocarlos en el viewport (sin transform) y
+          calcular left/top/size directamente en coordenadas de
+          pantalla usando el mismo `scene` que usa el stage.
+
+          ┌──────────────────────────────────────────────────────────┐
+          │  screenLeft = scene.x + pos.left * scene.s              │
+          │  screenTop  = scene.y + pos.top  * scene.s              │
+          │  screenSize = Math.round(pos.size * scene.s)            │
+          └──────────────────────────────────────────────────────────┘
+      ══════════════════════════════════════════════════════════════ */}
+
+      {/* ── Editor de hexes (Shift+H para abrir/cerrar) ──────────── */}
+      {hexEditorOpen && (
+        <HexEditor scene={scene} onClose={() => setHexEditorOpen(false)} />
+      )}
+
+      {/* ── Barco pirata ─────────────────────────────────────────── */}
+      {POS.modelos3d.barco.visible && (() => {
+        // Posición: HEX_POS[hexId] si existe, si no fallback a POS
+        const bHexId    = tablero?.barco?.hexId;
+        const bHexPos   = (bHexId && HEX_POS[bHexId]) ?? { left: POS.modelos3d.barco.left, top: POS.modelos3d.barco.top };
+        const bRotAngle = tablero?.barco?.rotAngle ?? 0;
+        const bLeft     = scene.x + bHexPos.left * scene.s;
+        const bTop      = scene.y + bHexPos.top  * scene.s;
+        const bSize     = Math.round(POS.modelos3d.barco.size * scene.s);
+
+        const victoriaActiva = fase === 'victoria';
+        return (
+          <div style={{
+            position:   'absolute',
+            left:       `${bLeft}px`,
+            top:        `${bTop}px`,
+            transform:  'translate(-50%,-50%)',
+            transition: [
+              'left 1.4s cubic-bezier(0.4,0,0.2,1)',
+              'top 1.4s cubic-bezier(0.4,0,0.2,1)',
+              'opacity 1.2s ease',
+              'filter 1.2s ease',
+            ].join(', '),
+            zIndex:     7,
+            // Al declararse victoria, el barco se desvanece igual que el resto del fondo
+            opacity:    victoriaActiva ? 0.06 : 1,
+            filter:     victoriaActiva ? 'brightness(0.15) saturate(0)' : 'none',
+            pointerEvents: 'none',
+            ...dbg('rgba(0,255,100,0.6)'),
+          }}>
+            <Modelo3D
+              src="/tablero/modelos/barco.glb"
+              size={bSize}
+              escala={POS.modelos3d.barco.escala}
+              camPos={POS.modelos3d.barco.camPos}
+              controles={POS.modelos3d.barco.controles}
+              rotacion={[0, bRotAngle, 0]}
+            />
+          </div>
+        );
+      })()}
+
+      {/* ── Controles de movimiento — solo en DEV_PREVIEW ─────────── */}
+      {DEV_PREVIEW && tablero?.barco && (
+        <div style={{
+          position:   'fixed',
+          bottom:     22,
+          left:       '50%',
+          transform:  'translateX(-50%)',
+          zIndex:     300,
+          display:    'flex',
+          gap:        10,
+          alignItems: 'center',
+          background: 'rgba(4,6,13,0.90)',
+          border:     '1px solid rgba(255,255,255,0.10)',
+          borderRadius: 10,
+          padding:    '9px 16px',
+          fontFamily: 'monospace',
+          userSelect: 'none',
+        }}>
+          {[
+            { tipo: 'izquierda', label: '🔴 Izquierda', color: '#ff7070' },
+            { tipo: 'adelante',  label: '🟡 Adelante',  color: '#ffd060' },
+            { tipo: 'derecha',   label: '🔵 Derecha',   color: '#60c8ff' },
+          ].map(({ tipo, label, color }) => (
+            <button key={tipo}
+              onClick={() => moverBarco(tipo)}
+              disabled={barcoAnimPhase !== 'idle' || fase === 'victoria'}
+              style={{
+                background:   'transparent',
+                border:       `1px solid ${color}`,
+                borderRadius: 6,
+                color,
+                padding:      '6px 14px',
+                cursor:       barcoAnimPhase !== 'idle' ? 'not-allowed' : 'pointer',
+                fontSize:     13,
+                opacity:      barcoAnimPhase !== 'idle' ? 0.45 : 1,
+                transition:   'opacity 0.15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+          <span style={{ color: 'rgba(245,230,200,0.40)', fontSize: 11, marginLeft: 6 }}>
+            {tablero.barco.hexId}
+            {' · '}{(tablero.barco.rotAngle * 180 / Math.PI).toFixed(0)}°
+            {prevHexId && ` · prev: ${prevHexId}`}
+            {barcoAnimPhase !== 'idle' && (
+              <span style={{ color: '#ffd060', marginLeft: 4 }}>
+                [{barcoAnimPhase}]
+              </span>
+            )}
+          </span>
+        </div>
+      )}
+
     </div>   /* /viewport */
   );
 }
