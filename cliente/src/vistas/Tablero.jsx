@@ -118,13 +118,13 @@ const DEBUG = false;
    true  → abre el editor al cargar (se puede alternar con Shift+H)
    false → desactivado en producción
 ────────────────────────────────────────────────────────────────────── */
-const DEV_HEX_EDITOR = true;
+const DEV_HEX_EDITOR = false;
 
 /* ─── Preview de desarrollo ──────────────────────────────────────────
    true  → tablero visible con datos de prueba (sin servidor)
    false → comportamiento normal en producción
 ────────────────────────────────────────────────────────────────────── */
-const DEV_PREVIEW = true;
+const DEV_PREVIEW = false;
 
 const MOCK = {
   sala: {
@@ -236,56 +236,90 @@ export default function Tablero() {
   const [error,     setError]     = useState('');
   const [motin,     setMotin]     = useState(null);
   const [kraken,    setKraken]    = useState(null);
-  const [prevHexId,      setPrevHexId]      = useState(null);   // para bloquear marcha atrás
+  const [prevHexId,      setPrevHexId]      = useState(null);   // bloquear marcha atrás (DEV)
   const [barcoAnimPhase, setBarcoAnimPhase] = useState('idle'); // 'idle'|'rotating'|'moving'
+  // Rotación gestionada siempre en el cliente (el servidor no envía rotAngle)
+  const [barcoRotAngle,  setBarcoRotAngle]  = useState(0);
 
-  /* ── Movimiento secuenciado: 1º rota (si hace falta), 2º se mueve ── */
-  const ROTACION_MS   = 380;   // ms para que termine la rotación visual
-  const MOVIMIENTO_MS = 1400;  // ms del transition CSS de posición
+  /* ── Refs para la animación del barco ──────────────────────────────── */
+  const ROTACION_MS   = 380;
+  const MOVIMIENTO_MS = 1400;
+  // hexId previo para computar rotación al recibir actualizaciones del servidor
+  const prevBarcoHexRef = useRef(null);
+  // Evita doble-disparo cuando los botones DEV mueven el barco
+  const devMoveRef      = useRef(false);
 
+  /* ── Animación del barco cuando el SERVIDOR mueve la posición ──────── */
+  useEffect(() => {
+    const nuevoHex = tablero?.barco?.hexId;
+    if (!nuevoHex) return;
+
+    const hexAnterior = prevBarcoHexRef.current;
+    prevBarcoHexRef.current = nuevoHex;
+
+    // Sin movimiento real o movimiento ya gestionado por botones DEV
+    if (!hexAnterior || hexAnterior === nuevoHex) return;
+    if (devMoveRef.current) { devMoveRef.current = false; return; }
+
+    const targetRot = computeTargetRot(hexAnterior, nuevoHex);
+    const debeRotar = Math.abs(barcoRotAngle - targetRot) > 0.001;
+
+    const finalizarProd = () => {
+      setBarcoAnimPhase('idle');
+    };
+
+    if (debeRotar) {
+      setBarcoAnimPhase('rotating');
+      setBarcoRotAngle(targetRot);
+      setTimeout(() => {
+        setBarcoAnimPhase('moving');
+        setTimeout(finalizarProd, MOVIMIENTO_MS);
+      }, ROTACION_MS);
+    } else {
+      setBarcoAnimPhase('moving');
+      setTimeout(finalizarProd, MOVIMIENTO_MS);
+    }
+  }, [tablero?.barco?.hexId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* ── Movimiento por botones DEV (solo en DEV_PREVIEW) ──────────────── */
   function moverBarco(tipo) {
     if (barcoAnimPhase !== 'idle') return;
     if (!tablero?.barco) return;
-    if (fase === 'victoria')       return;   // juego terminado
+    if (fase === 'victoria')       return;
 
-    const { hexId, rotAngle } = tablero.barco;
+    const { hexId } = tablero.barco;
     const nuevoHex  = calcularMovimiento(hexId, tipo, prevHexId);
     if (!nuevoHex) return;
 
-    // Rotación basada en geometría real (ángulo absoluto en pantalla)
     const targetRot = computeTargetRot(hexId, nuevoHex);
-    const debeRotar = Math.abs(rotAngle - targetRot) > 0.001;
+    const debeRotar = Math.abs(barcoRotAngle - targetRot) > 0.001;
 
-    // ── Callback final: resuelve animación y comprueba victoria ──
     const finalizarMovimiento = () => {
       const ganador = _VICTORIA_HEX[nuevoHex] ?? null;
-      if (ganador && DEV_PREVIEW) {
-        // En DEV_PREVIEW resolvemos la victoria localmente.
-        // En producción el servidor envía 'tablero-actualizado' con fase:'victoria'.
+      if (ganador) {
         setFase('victoria');
         setTablero(prev => ({ ...prev, victoria: ganador }));
       }
       setBarcoAnimPhase('idle');
     };
 
-    if (debeRotar) {
-      // ── Paso 1: Rotar en la casilla actual ──────────────────────
-      setBarcoAnimPhase('rotating');
-      setTablero(prev => ({ ...prev, barco: { hexId, rotAngle: targetRot } }));
+    // Marcar como movimiento DEV para que el useEffect no lo duplique
+    devMoveRef.current = true;
 
-      // ── Paso 2: Mover una vez terminada la rotación ─────────────
+    if (debeRotar) {
+      setBarcoAnimPhase('rotating');
+      setBarcoRotAngle(targetRot);
+      // Solo actualizamos hexId (sin rotAngle — está en barcoRotAngle)
       setTimeout(() => {
         setBarcoAnimPhase('moving');
         setPrevHexId(hexId);
-        setTablero(prev => ({ ...prev, barco: { hexId: nuevoHex, rotAngle: targetRot } }));
+        setTablero(prev => ({ ...prev, barco: { ...prev.barco, hexId: nuevoHex } }));
         setTimeout(finalizarMovimiento, MOVIMIENTO_MS);
       }, ROTACION_MS);
-
     } else {
-      // ── Sin rotación: mover directamente ────────────────────────
       setBarcoAnimPhase('moving');
       setPrevHexId(hexId);
-      setTablero(prev => ({ ...prev, barco: { hexId: nuevoHex, rotAngle: targetRot } }));
+      setTablero(prev => ({ ...prev, barco: { ...prev.barco, hexId: nuevoHex } }));
       setTimeout(finalizarMovimiento, MOVIMIENTO_MS);
     }
   }
@@ -1182,7 +1216,7 @@ export default function Tablero() {
         // Posición: HEX_POS[hexId] si existe, si no fallback a POS
         const bHexId    = tablero?.barco?.hexId;
         const bHexPos   = (bHexId && HEX_POS[bHexId]) ?? { left: POS.modelos3d.barco.left, top: POS.modelos3d.barco.top };
-        const bRotAngle = tablero?.barco?.rotAngle ?? 0;
+        const bRotAngle = barcoRotAngle;
         const bLeft     = scene.x + bHexPos.left * scene.s;
         const bTop      = scene.y + bHexPos.top  * scene.s;
         const bSize     = Math.round(POS.modelos3d.barco.size * scene.s);

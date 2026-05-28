@@ -101,10 +101,12 @@ const JUEGOS = [
 export default function MenuPrincipal() {
   const navigate = useNavigate();
   const { emitir, escuchar, conectado } = useSocket();
-  const [hover,   setHover]   = useState(null);
-  const [visible, setVisible] = useState(false);
-  const [creando, setCreando] = useState(false);
-  const [error,   setError]   = useState('');
+  const [hover,         setHover]         = useState(null);
+  const [visible,       setVisible]       = useState(false);
+  const [creando,       setCreando]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [modalUnirse,   setModalUnirse]   = useState(false);
+  const [codigoInput,   setCodigoInput]   = useState('');
 
   /* ── Escala y offset del lienzo 1920×1080 ── */
   const [scene, setScene] = useState({ x: 0, y: 0, s: 1 });
@@ -604,7 +606,11 @@ export default function MenuPrincipal() {
             {error && <p style={{ color: '#ff8a8a', fontSize: '12px', marginBottom: '8px' }}>{error}</p>}
             <button
               className="btn-secundario"
-              onClick={() => { playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.45); navigate('/unirse'); }}
+              onClick={() => {
+                playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.45);
+                setCodigoInput('');
+                setModalUnirse(true);
+              }}
               style={{ fontSize: '12px', padding: '10px 26px' }}
             >
               🚪 Unirme a una sala
@@ -623,6 +629,95 @@ export default function MenuPrincipal() {
         </div>{/* /contenido */}
 
       </div>{/* /lienzo 1920×1080 */}
+
+      {/* ── Modal: Unirme a sala ──────────────────────────────── */}
+      {modalUnirse && (
+        <div
+          onClick={() => setModalUnirse(false)}
+          style={{
+            position:   'fixed', inset: 0,
+            background: 'rgba(4,6,13,0.82)',
+            display:    'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex:     500,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background:   'rgba(12,14,22,0.98)',
+              border:       '1px solid rgba(180,140,80,0.45)',
+              borderRadius: 14,
+              padding:      '36px 40px',
+              minWidth:     320,
+              textAlign:    'center',
+              boxShadow:    '0 8px 40px rgba(0,0,0,0.7)',
+            }}
+          >
+            <p style={{
+              fontFamily:    'var(--fuente-titulo)',
+              color:         'rgba(245,220,160,0.95)',
+              fontSize:      '18px',
+              letterSpacing: '2px',
+              marginBottom:  '20px',
+            }}>CÓDIGO DE SALA</p>
+
+            <input
+              autoFocus
+              type="text"
+              placeholder="Ej: ABC123"
+              value={codigoInput}
+              onChange={e => setCodigoInput(e.target.value.toUpperCase())}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && codigoInput.trim()) {
+                  playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.45);
+                  setModalUnirse(false);
+                  navigate(`/unirse/${codigoInput.trim()}`);
+                }
+                if (e.key === 'Escape') setModalUnirse(false);
+              }}
+              style={{
+                width:        '100%',
+                padding:      '10px 14px',
+                fontSize:     '18px',
+                letterSpacing:'4px',
+                textAlign:    'center',
+                textTransform:'uppercase',
+                background:   'rgba(255,255,255,0.06)',
+                border:       '1px solid rgba(180,140,80,0.40)',
+                borderRadius: 8,
+                color:        'rgba(245,230,200,0.95)',
+                outline:      'none',
+                marginBottom: '18px',
+                fontFamily:   'var(--fuente-subtitulo)',
+                boxSizing:    'border-box',
+              }}
+            />
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                className="btn-secundario"
+                onClick={() => setModalUnirse(false)}
+                style={{ fontSize: '12px', padding: '9px 20px' }}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-primario"
+                disabled={!codigoInput.trim()}
+                onClick={() => {
+                  playSFX('sfx-click', '/sonidos/sfx-click.mp3', 0.45);
+                  setModalUnirse(false);
+                  navigate(`/unirse/${codigoInput.trim()}`);
+                }}
+                style={{ fontSize: '12px', padding: '9px 22px' }}
+              >
+                Entrar →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>   /* /viewport */
   );
 }
