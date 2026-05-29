@@ -34,16 +34,33 @@ app.get('*', (req, res) => {
 // Mapa de socketId → codigo de sala
 const socketSala = new Map();
 
+const RITUAL_DELAY_MS = 7000; // Tiempo para que todos cierren los ojos antes de que vibre el móvil del Cultista
+
 const emitirSalaActualizada = (sala) => {
   const vistaPublica = vistaSalaParaCliente(sala);
   // Emitir a todos en la sala
   io.to(sala.codigo).emit(EVENTOS.SALA_ACTUALIZADA, vistaPublica);
-  // Emitir estado personalizado a cada jugador
+
   if (sala.estado) {
-    sala.jugadores.forEach(j => {
-      const vista = vistaEstadoParaJugador(sala, j.id);
-      io.to(j.id).emit('estado-actualizado', vista);
-    });
+    const ae = sala.estado.accionEspecial;
+    // ¿Es la revelación inicial de un ritual? (etapa 'ver' = resultado del Registro, no necesita delay)
+    const esRitualNuevo = ae?.tipo === 'ritual' && ae?.etapa !== 'ver';
+
+    if (esRitualNuevo) {
+      // El TABLERO recibe la actualización inmediatamente (muestra la carta a todos)
+      // Los JUGADORES esperan 7 s para que den tiempo a cerrar los ojos antes de que el Cultista actúe
+      setTimeout(() => {
+        sala.jugadores.forEach(j => {
+          io.to(j.id).emit('estado-actualizado', vistaEstadoParaJugador(sala, j.id));
+        });
+      }, RITUAL_DELAY_MS);
+    } else {
+      // Comportamiento normal — sin delay
+      sala.jugadores.forEach(j => {
+        io.to(j.id).emit('estado-actualizado', vistaEstadoParaJugador(sala, j.id));
+      });
+    }
+
     // Emitir vista de tablero (sin info privada) a la pantalla grande
     io.to(`tablero-${sala.codigo}`).emit('tablero-actualizado', {
       fase: sala.estado.fase,
@@ -88,9 +105,38 @@ io.on('connection', (socket) => {
     socket.join(`tablero-${sala.codigo}`);
     socketSala.set(socket.id, sala.codigo); // registrar para que pueda emitir comandos
     socket.emit('tablero-conectado', { sala: vistaSalaParaCliente(sala) });
-    // Emitir estado actual si hay partida en curso
+    // Emitir estado actual si hay partida en curso —
+    // usamos tablero-actualizado (vista pública del tablero), NO estado-actualizado (vista privada de jugador)
     if (sala.estado) {
-      socket.emit('estado-actualizado', vistaEstadoParaJugador(sala, sala.hostId));
+      socket.emit('tablero-actualizado', {
+        fase:     sala.estado.fase,
+        barco:    sala.estado.barco,
+        turno:    sala.estado.turno,
+        jugadores: sala.estado.jugadores.map(j => ({
+          id: j.id, nombre: j.nombre,
+          curriculos: j.curriculos,
+          fueraDeServicio: j.fueraDeServicio,
+          esCapitan:  j.esCapitan,
+          esTeniente: j.esTeniente,
+          esNavegante: j.esNavegante,
+          rolConfirmado: j.rolConfirmado,
+          conectado: j.conectado,
+          rol: sala.estado.victoria ? j.rol : undefined,
+        })),
+        capitanIdx: sala.estado.capitanIdx,
+        victoria:   sala.estado.victoria,
+        motin: {
+          umbral:      sala.estado.motin.umbral,
+          confirmados: sala.estado.motin.confirmados.length,
+          total:       sala.jugadores.length,
+          exitoso:     sala.estado.motin.exitoso,
+        },
+        cofre:                    { etapa: sala.estado.cofre.etapa },
+        cartasRitualesReveladas:  sala.estado.cartasRitualesReveladas,
+        accionEspecial:           sala.estado.accionEspecial,
+        ultimaCarta:              sala.estado.ultimaCarta || null,
+        mazoDisponibleCount:      sala.estado.mazoDisponible.length,
+      });
     }
   });
 
