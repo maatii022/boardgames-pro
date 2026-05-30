@@ -1,6 +1,6 @@
 const { FASES, ROLES, TIPOS_CARTA_NAVEGACION, TIPOS_CARTA_RITUAL } = require('../../compartido/constantes');
 const { moverBarco, verificarVictoria, esCasillaEspecial, tipoCasillaEspecial } = require('./tablero');
-const { barajar } = require('./cartas');
+const { barajar, crearMazoNavegacion } = require('./cartas');
 
 // ============================================================
 // MÁQUINA DE ESTADOS — Fases del juego
@@ -307,27 +307,56 @@ const votarKraken = (estado, socketId, objetivoId) => {
     };
   }
 
-  // Contar votos y determinar sacrificado
+  // Contar votos
   const conteo = {};
   Object.values(nuevosVotos).forEach(id => { conteo[id] = (conteo[id] || 0) + 1; });
   const maxVotos = Math.max(...Object.values(conteo));
   const empatados = Object.keys(conteo).filter(id => conteo[id] === maxVotos);
-  const sacrificadoId = empatados[0]; // en empate, primer candidato
+  const krakenBase = { ...accionFase4.kraken, votos: nuevosVotos, confirmados };
+
+  if (empatados.length === 1) {
+    // Ganador claro → resolver
+    return resolverSacrificioKraken(estado, empatados[0], krakenBase);
+  }
+
+  // Empate → el CAPITÁN decide entre los empatados (no se resuelve aún)
+  return {
+    ...estado,
+    accionFase4: { ...accionFase4, kraken: { ...krakenBase, desempate: empatados } },
+  };
+};
+
+// Resuelve el sacrificio una vez se conoce al jugador (voto claro o desempate del capitán)
+const resolverSacrificioKraken = (estado, sacrificadoId, krakenBase) => {
   const sacrificado = estado.jugadores.find(j => j.id === sacrificadoId);
   if (!sacrificado) throw new Error('Sacrificado no encontrado');
 
-  const nuevoKraken = { ...accionFase4.kraken, votos: nuevosVotos, confirmados, objetivo: sacrificadoId };
+  const nuevoKraken = { ...krakenBase, objetivo: sacrificadoId, desempate: null };
 
-  // Victoria cultista si se sacrifica al Cultista
+  // Victoria cultista si se sacrifica al Cultista (no a un Adepto)
   if (sacrificado.rol === 'cultista') {
-    return { ...estado, fase: FASES.VICTORIA, victoria: 'cultistas', accionFase4: { ...accionFase4, kraken: nuevoKraken } };
+    return { ...estado, fase: FASES.VICTORIA, victoria: 'cultistas',
+             accionFase4: { ...estado.accionFase4, kraken: nuevoKraken } };
   }
 
   // Jugador eliminado, continuar
   const jugadoresActualizados = estado.jugadores.map(j =>
     j.id === sacrificadoId ? { ...j, sacrificado: true, fueraDeServicio: true } : j
   );
-  return ejecutarFase5({ ...estado, jugadores: jugadoresActualizados, accionFase4: { ...accionFase4, kraken: nuevoKraken } });
+  return ejecutarFase5({ ...estado, jugadores: jugadoresActualizados,
+                         accionFase4: { ...estado.accionFase4, kraken: nuevoKraken } });
+};
+
+// El capitán resuelve el empate eligiendo a uno de los candidatos empatados
+const resolverEmpateKraken = (estado, socketId, elegidoId) => {
+  const { accionFase4 } = estado;
+  if (!accionFase4?.kraken?.desempate) throw new Error('No hay desempate activo');
+  const capitan = estado.jugadores.find(j => j.esCapitan);
+  if (!capitan || capitan.id !== socketId) throw new Error('Solo el capitán decide el empate');
+  if (!accionFase4.kraken.desempate.includes(elegidoId)) {
+    throw new Error('Ese jugador no está entre los empatados');
+  }
+  return resolverSacrificioKraken(estado, elegidoId, accionFase4.kraken);
 };
 
 // Inicializa el cofre cuando se entra a fase_3 manualmente (sin pasar por votarMotin)
@@ -346,12 +375,14 @@ const inicializarCofre = (estado) => {
   };
 };
 
-// Rebaraja el mazo cuando quedan ≤ 4 cartas disponibles.
-// Añade mazoRefrescado:true al estado para que index.js pueda emitir el evento de animación.
+// Cuando quedan ≤ 3 cartas disponibles, se RELLENA el mazo con el set
+// completo de 21 cartas barajado de nuevo (no se mezcla el descarte: se
+// regenera el mazo entero). Así nunca se queda sin cartas y la composición
+// es siempre conocida. mazoRefrescado dispara la animación de restock.
 const refrescarMazoSiNecesario = (estado) => {
-  if (estado.mazoDisponible.length <= 4 && estado.mazoDescarte.length > 0) {
-    const anterior = estado.mazoDisponible.length + estado.mazoDescarte.length;
-    const todas = barajar([...estado.mazoDisponible, ...estado.mazoDescarte]);
+  if (estado.mazoDisponible.length <= 3) {
+    const anterior = estado.mazoDisponible.length;
+    const todas = crearMazoNavegacion(estado.tablero); // ya barajado, 21 cartas
     return { ...estado, mazoDisponible: todas, mazoDescarte: [], mazoRefrescado: { anterior, nuevo: todas.length } };
   }
   return estado;
@@ -381,8 +412,9 @@ const elegirJugadorAccionEspecial = (estado, jugadorId) => {
     // Últimas 3 cartas del descarte, barajadas para que no se sepa quién descartó cuál
     nuevoAccion.cartasSirena = barajar(mazoDescarte.slice(-3));
   } else if (accionEspecial.tipo === 'telescopio') {
-    if (mazoDisponible.length === 0) throw new Error('No quedan cartas disponibles');
-    const [cartaTelescopio, ...restoMazo] = mazoDisponible;
+    // Refrescar el mazo si está bajo → nunca se queda sin carta para el telescopio
+    nuevoEstado = refrescarMazoSiNecesario(nuevoEstado);
+    const [cartaTelescopio, ...restoMazo] = nuevoEstado.mazoDisponible;
     nuevoAccion.cartaTelescopio = cartaTelescopio;
     nuevoEstado = { ...nuevoEstado, mazoDisponible: restoMazo };
   }
@@ -453,6 +485,7 @@ const procesarAccionRitual = (estado, socketId, datos) => {
     case TIPOS_CARTA_RITUAL.REGISTRO_CAMAROTE: {
       if (datos.jugadorId) {
         // Paso 1: el Cultista elige a quién investigar → transición a 'ver'
+        if (datos.jugadorId === socketId) throw new Error('No puedes investigarte a ti mismo');
         const objetivo = nuevoEstado.jugadores.find(j => j.id === datos.jugadorId);
         if (!objetivo) throw new Error('Jugador no encontrado');
         // No limpiamos accionEspecial — actualizamos con el resultado
@@ -483,14 +516,22 @@ const procesarAccionRitual = (estado, socketId, datos) => {
       break;
     }
     case TIPOS_CARTA_RITUAL.ALIJO_ARMAS: {
-      const distribucion = datos.distribucion || {};
-      const totalDistribuido = Object.values(distribucion).reduce((a, b) => a + Number(b), 0);
+      const distribucionRaw = datos.distribucion || {};
+      // Normalizar: enteros ≥ 0 y solo para jugadores NO sacrificados
+      const distribucion = {};
+      for (const [jid, val] of Object.entries(distribucionRaw)) {
+        const obj = nuevoEstado.jugadores.find(j => j.id === jid);
+        if (!obj || obj.sacrificado) continue;          // ignorar eliminados / inexistentes
+        const n = Math.max(0, Math.floor(Number(val) || 0));
+        if (n > 0) distribucion[jid] = n;
+      }
+      const totalDistribuido = Object.values(distribucion).reduce((a, b) => a + b, 0);
       if (totalDistribuido > 3) throw new Error('Solo puedes distribuir 3 pistolas en total');
 
       nuevoEstado = {
         ...nuevoEstado,
         jugadores: nuevoEstado.jugadores.map(j => {
-          const extra = Number(distribucion[j.id] || 0);
+          const extra = distribucion[j.id] || 0;
           return extra > 0 ? { ...j, pistolas: j.pistolas + extra } : j;
         }),
       };
@@ -511,6 +552,7 @@ module.exports = {
   aplicarCartaNavegacion,
   ejecutarFase5,
   votarKraken,
+  resolverEmpateKraken,
   robarCartasMazo,
   inicializarCofre,
   refrescarMazoSiNecesario,

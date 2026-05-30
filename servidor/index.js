@@ -340,6 +340,7 @@ io.on('connection', (socket) => {
     EVENTOS.ABRIR_COFRE,
     EVENTOS.ACCION_RITUAL,
     'votar-kraken',
+    'resolver-empate-kraken',
     'accion-especial-elegir-jugador',
     'accion-especial-confirmar',
   ];
@@ -375,7 +376,8 @@ io.on('connection', (socket) => {
           io.to(sala.codigo).emit(EVENTOS.VICTORIA_DECLARADA, { ganador: sala.estado.victoria });
         }
         // Emitir resultado del sacrificio al Kraken cuando la votación se resuelva
-        if (accion === 'votar-kraken') {
+        // (tanto por voto directo como tras el desempate decidido por el capitán)
+        if (accion === 'votar-kraken' || accion === 'resolver-empate-kraken') {
           const objetivo = sala.estado.accionFase4?.kraken?.objetivo
             || (sala.estado.victoria === 'cultistas' ? sala.estado.jugadores.find(j => j.rol === 'cultista')?.id : null);
           if (objetivo) {

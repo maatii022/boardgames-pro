@@ -626,6 +626,7 @@ export default function SalaJugador() {
                 socketId={socketId}
                 emitir={emitir}
                 krakenVoto={krakenVoto}
+                soyCapitan={soyCapitan}
               />
             </>)}
 
@@ -888,7 +889,7 @@ function InvestigacionCapitan({ jugadores, socketId, emitir }) {
 }
 
 // ── Votación de Sacrificio al Kraken (FASE_4 KRAKEN menor) ──
-function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
+function VotacionKraken({ jugadores, socketId, emitir, krakenVoto, soyCapitan }) {
   const [seleccionado, setSeleccionado] = useState(null);
   const [votado, setVotado] = useState(krakenVoto?.haVotado || false);
   const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado);
@@ -899,6 +900,43 @@ function VotacionKraken({ jugadores, socketId, emitir, krakenVoto }) {
     emitir('votar-kraken', { objetivoId: seleccionado });
     setVotado(true);
   };
+
+  // ── EMPATE: el capitán decide entre los candidatos empatados ──
+  const desempate = krakenVoto?.desempate;
+  if (Array.isArray(desempate) && desempate.length > 0) {
+    if (soyCapitan) {
+      return (
+        <div>
+          <div style={{ textAlign:'center', marginBottom:'16px' }}>
+            <div style={{ fontSize:'34px', marginBottom:'8px' }}>⚖️</div>
+            <p style={{ fontFamily:'var(--fuente-subtitulo)', color:'#ffd060', fontSize:'13px', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'4px' }}>Empate</p>
+            <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.6)', fontSize:'14px' }}>
+              Como capitán, tú decides a quién se sacrifica:
+            </p>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+            {desempate.map(c => (
+              <button key={c.id} onClick={() => { vibrar('seleccionar'); emitir('resolver-empate-kraken', { elegidoId: c.id }); }} style={{
+                padding:'14px 16px', borderRadius:'8px', cursor:'pointer', textAlign:'left',
+                background:'rgba(76,175,80,0.12)', border:'1px solid #4caf50',
+                color:'var(--crema-pergamino)', fontFamily:'var(--fuente-cuerpo)', fontSize:'15px',
+                display:'flex', alignItems:'center', gap:'10px',
+              }}>
+                <span style={{ color:'#4caf50' }}>🌊</span>{c.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div style={{ padding:'24px', background:'rgba(255,208,96,0.07)', border:'1px solid rgba(255,208,96,0.25)', borderRadius:'12px', textAlign:'center' }}>
+        <div style={{ fontSize:'40px', marginBottom:'12px', animation:'flotar 2s ease-in-out infinite' }}>⚖️</div>
+        <p style={{ color:'#ffd060', fontFamily:'var(--fuente-subtitulo)', fontSize:'12px', letterSpacing:'2px', marginBottom:'8px' }}>Empate en la votación</p>
+        <p style={{ fontFamily:'var(--fuente-cuerpo)', color:'rgba(245,230,200,0.5)', fontSize:'14px' }}>El Capitán está decidiendo a quién sacrificar…</p>
+      </div>
+    );
+  }
 
   if (votado || krakenVoto?.haVotado) {
     return (
@@ -1315,7 +1353,6 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
           {candidatos.map(j => {
-            const soyYo = j.id === socketId;
             const activo = selRegistro === j.id;
             return (
               <button key={j.id} onClick={() => setSelRegistro(activo ? null : j.id)} style={{
@@ -1327,7 +1364,6 @@ function RitualCultista({ accionEspecial, jugadores, socketId, emitir }) {
               }}>
                 <span style={{ color:'rgba(76,175,80,0.6)' }}>{activo ? '✓' : '○'}</span>
                 <span>{j.nombre}</span>
-                {soyYo && <span style={{ color:'var(--turquesa-kraken)', fontSize:'12px' }}>(tú)</span>}
               </button>
             );
           })}

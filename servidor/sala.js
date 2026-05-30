@@ -8,6 +8,7 @@ const {
   aplicarCartaNavegacion,
   ejecutarFase5,
   votarKraken,
+  resolverEmpateKraken,
   inicializarCofre,
   iniciarAccionEspecialPendiente,
   elegirJugadorAccionEspecial,
@@ -104,6 +105,21 @@ const actualizarSocketIdEnEstado = (estado, oldId, newId) => {
     const kIdx = kraken.confirmados.indexOf(oldId);
     if (kIdx !== -1) kraken.confirmados[kIdx] = newId;
     if (kraken.objetivo === oldId) kraken.objetivo = newId;
+    // Votos del kraken pueden apuntar a oldId como OBJETIVO de voto
+    Object.keys(kraken.votos).forEach(votante => {
+      if (kraken.votos[votante] === oldId) kraken.votos[votante] = newId;
+    });
+    // Candidatos del desempate
+    if (Array.isArray(kraken.desempate)) {
+      kraken.desempate = kraken.desempate.map(id => id === oldId ? newId : id);
+    }
+  }
+  // Acción especial (Sirena / Telescopio / Registro de Camarote)
+  // jugadorElegido y objetivoId se guardan como socketId → hay que remapearlos
+  // o el jugador reconectado no podrá completar su acción (partida atascada).
+  if (estado.accionEspecial) {
+    if (estado.accionEspecial.jugadorElegido === oldId) estado.accionEspecial.jugadorElegido = newId;
+    if (estado.accionEspecial.objetivoId === oldId)     estado.accionEspecial.objetivoId = newId;
   }
 };
 
@@ -261,6 +277,10 @@ const procesarAccion = (codigo, socketId, accion, datos) => {
       sala.estado = votarKraken(sala.estado, socketId, datos.objetivoId);
       break;
     }
+    case 'resolver-empate-kraken': {
+      sala.estado = resolverEmpateKraken(sala.estado, socketId, datos.elegidoId);
+      break;
+    }
     default:
       throw new Error(`Acción desconocida: ${accion}`);
   }
@@ -401,6 +421,13 @@ const vistaEstadoParaJugador = (sala, socketId) => {
         total: sala.estado.jugadores.filter(j => !j.sacrificado).length,
         haVotado: sala.estado.accionFase4.kraken.confirmados.includes(socketId),
         objetivo: sala.estado.accionFase4.kraken.objetivo || null,
+        // Empate: lista de candidatos {id, nombre} para que el capitán decida
+        desempate: Array.isArray(sala.estado.accionFase4.kraken.desempate)
+          ? sala.estado.accionFase4.kraken.desempate.map(id => {
+              const j = sala.estado.jugadores.find(p => p.id === id);
+              return { id, nombre: j?.nombre || '???' };
+            })
+          : null,
       } : null,
     } : null,
     cartasRitualesReveladas: sala.estado.cartasRitualesReveladas,

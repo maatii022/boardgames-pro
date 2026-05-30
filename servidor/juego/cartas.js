@@ -31,8 +31,8 @@ const CARTAS_NAVEGACION = [
     descripcion: 'Se revela una carta del Ritual del Culto.',
     imagen: 'cartas/navegacion/levantamiento_culto.png',
   })),
-  // 6x Borracho Rojo
-  ...Array(6).fill(null).map((_, i) => ({
+  // 5x Borracho Rojo
+  ...Array(5).fill(null).map((_, i) => ({
     id: `borracho_rojo_${i}`,
     tipo: TIPOS_CARTA_NAVEGACION.BORRACHO_ROJO,
     nombre: 'Borracho',
