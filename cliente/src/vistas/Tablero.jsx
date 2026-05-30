@@ -321,8 +321,10 @@ const DEV_PREVIEW = false;
    CARTA_NAV_W   → ancho del asset en px (alto escala automáticamente)
    CARTA_NAV_POS → posición en el viewport: left/top como string CSS
                    ('50vw' / '50vh' = centro de pantalla)
+   BARCO_TRAS_CARTA_MS → tras volar la carta, espera esto antes de mover el barco
 ────────────────────────────────────────────────────────────────────── */
-const CARTA_NAV_MS  = 5000;
+const CARTA_NAV_MS  = 2200;
+const BARCO_TRAS_CARTA_MS = 400;
 const CARTA_NAV_W   = 280;
 const CARTA_NAV_POS = { left: '50vw', top: '50vh' };
 
@@ -393,6 +395,46 @@ const _VICTORIA_HEX = {
   'vm-1': 'marineros', 'vm-2': 'marineros', 'vm-3': 'marineros',
   'vc':   'cultistas',
 };
+
+/* ─── Casilla (hex) de cada modelo decorativo ────────────────────────
+   Cuando el barco está sobre esta casilla, el modelo se oculta (fade out)
+   para que solo se vea el barco. */
+const MODELO_HEX = {
+  kraken:     'vc',
+  tentaculo1: '8-1',
+  tentaculo2: '8-2',
+  lupa1:      '4-1',
+  lupa2:      '4-2',
+  lupa3:      '5-1',
+};
+
+/* ─── Imágenes a precargar en la pantalla de carga ───────────────────
+   Todo lo que aparece DESPUÉS del arranque (carteles de ceremonia, cartas
+   de navegación, cartas rituales, insignias) se precarga aquí para que la
+   primera vez que salgan no haya lag. */
+const IMAGENES_PRECARGA = [
+  // Carteles de la ceremonia
+  '/tablero/insignias/cartel-capitan.png',
+  '/tablero/insignias/cartel-teniente.png',
+  '/tablero/insignias/cartel-navegante.png',
+  // Insignias del panel
+  '/tablero/ui/insignia-capitan.png',
+  '/tablero/ui/insignia-teniente.png',
+  '/tablero/ui/insignia-navegante.png',
+  // Cartas de navegación
+  '/tablero/cartas-nav/carta-amarilla.png',
+  '/tablero/cartas-nav/carta-azul-borracho.png',
+  '/tablero/cartas-nav/carta-azul-desarmado.png',
+  '/tablero/cartas-nav/carta-roja-borracho.png',
+  '/tablero/cartas-nav/carta-roja-sirena.png',
+  '/tablero/cartas-nav/carta-roja-telescopio.png',
+  '/tablero/cartas-nav/carta-reverso.png',
+  // Cartas rituales
+  '/tablero/cartas-ritual/alijo-de-armas.png',
+  '/tablero/cartas-ritual/conversion-al-culto.png',
+  '/tablero/cartas-ritual/registro-de-camarote.png',
+  '/tablero/cartas-ritual/carta-reverso-ritual.png',
+];
 
 /* ─── Movimiento del barco ────────────────────────────────────────────
    Devuelve el hexId destino, o null si el movimiento no es posible.
@@ -615,38 +657,71 @@ export default function Tablero() {
   const prevBarcoHexRef = useRef(null);
   // Evita doble-disparo cuando los botones DEV mueven el barco
   const devMoveRef      = useRef(false);
+  // Movimiento del barco pendiente de ejecutar (se espera a que la carta termine)
+  const pendingBarcoRef = useRef(null);   // { hexAnterior, nuevoHex } | null
+  const barcoFallbackRef = useRef(null);
 
-  /* ── Animación del barco cuando el SERVIDOR mueve la posición ──────── */
-  useEffect(() => {
-    const nuevoHex = tablero?.barco?.hexId;
-    if (!nuevoHex) return;
-
-    const hexAnterior = prevBarcoHexRef.current;
-    prevBarcoHexRef.current = nuevoHex;
-
-    // Sin movimiento real o movimiento ya gestionado por botones DEV
-    if (!hexAnterior || hexAnterior === nuevoHex) return;
-    if (devMoveRef.current) { devMoveRef.current = false; return; }
-
+  /* ── Ejecuta la animación de rotación + movimiento del barco ──────── */
+  const animarBarcoServidor = (hexAnterior, nuevoHex) => {
     const targetRot = computeTargetRot(hexAnterior, nuevoHex);
     const debeRotar = Math.abs(barcoRotAngle - targetRot) > 0.001;
-
-    const finalizarProd = () => {
-      setBarcoAnimPhase('idle');
-    };
-
+    const finalizar = () => setBarcoAnimPhase('idle');
     if (debeRotar) {
       setBarcoAnimPhase('rotating');
       setBarcoRotAngle(targetRot);
       setTimeout(() => {
         setBarcoAnimPhase('moving');
-        setTimeout(finalizarProd, MOVIMIENTO_MS);
+        setTimeout(finalizar, MOVIMIENTO_MS);
       }, ROTACION_MS);
     } else {
       setBarcoAnimPhase('moving');
-      setTimeout(finalizarProd, MOVIMIENTO_MS);
+      setTimeout(finalizar, MOVIMIENTO_MS);
     }
-  }, [tablero?.barco?.hexId]); // eslint-disable-line react-hooks/exhaustive-deps
+  };
+
+  // Ejecuta el movimiento pendiente (si lo hay) — una sola vez
+  const ejecutarBarcoPendiente = () => {
+    const mv = pendingBarcoRef.current;
+    if (!mv) return;
+    pendingBarcoRef.current = null;
+    clearTimeout(barcoFallbackRef.current);
+    // Mover el hexId visual ahora (el barco se anima a la nueva casilla)
+    setTablero(prev => prev ? { ...prev, barco: { ...prev.barco, hexId: mv.nuevoHex } } : prev);
+    prevBarcoHexRef.current = mv.nuevoHex;
+    animarBarcoServidor(mv.hexAnterior, mv.nuevoHex);
+  };
+
+  /* ── El SERVIDOR mueve el barco → NO animamos al instante:
+        primero se ve la carta de navegación; cuando termina (la carta vuela
+        y el barco vuelve a estar iluminado) se ejecuta el movimiento, así se
+        ve claramente. Guardamos el destino y lo "congelamos" en el hexId
+        anterior hasta que toque mover.                                    ── */
+  const _barcoHexServidor = tablero?.barco?.hexId;
+  useEffect(() => {
+    const nuevoHex = _barcoHexServidor;
+    if (!nuevoHex) return;
+    const hexAnterior = prevBarcoHexRef.current;
+
+    if (!hexAnterior) { prevBarcoHexRef.current = nuevoHex; return; } // primera vez (sin animar)
+    if (hexAnterior === nuevoHex) return;                            // sin cambio real
+    if (devMoveRef.current) { devMoveRef.current = false; prevBarcoHexRef.current = nuevoHex; return; }
+
+    // Mantener el barco en el hex anterior visualmente hasta que toque moverlo
+    setTablero(prev => prev ? { ...prev, barco: { ...prev.barco, hexId: hexAnterior } } : prev);
+    pendingBarcoRef.current = { hexAnterior, nuevoHex };
+
+    // Fallback: si por lo que sea no hay animación de carta, mover igual tras 2.6s
+    clearTimeout(barcoFallbackRef.current);
+    barcoFallbackRef.current = setTimeout(() => ejecutarBarcoPendiente(), 2600);
+  }, [_barcoHexServidor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cuando la carta de navegación termina (cartaNavPhase → idle), mover el barco
+  useEffect(() => {
+    if (cartaNavPhase === 'idle' && pendingBarcoRef.current) {
+      const t = setTimeout(() => ejecutarBarcoPendiente(), BARCO_TRAS_CARTA_MS);
+      return () => clearTimeout(t);
+    }
+  }, [cartaNavPhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Movimiento por botones DEV (solo en DEV_PREVIEW) ──────────────── */
   function moverBarco(tipo) {
@@ -796,33 +871,72 @@ export default function Tablero() {
     return keys;
   }, [pos]);
 
-  const esperadosRef = useRef(modelosEsperados);
+  const esperadosRef  = useRef(modelosEsperados);
   esperadosRef.current = modelosEsperados;
-  const listosRef = useRef(new Set());
-  const settleRef = useRef(null);
+  const listosRef     = useRef(new Set());   // modelos 3D ya pintados
+  const settleRef     = useRef(null);
+  const modelosOkRef  = useRef(false);       // ¿todos los modelos listos?
+  const imagenesOkRef = useRef(false);       // ¿todas las imágenes precargadas?
+  const imgHechasRef  = useRef(0);           // imágenes precargadas (para progreso)
 
-  const marcarModeloListo = useCallback((key) => {
-    if (listosRef.current.has(key)) return;
-    listosRef.current.add(key);
-    const total = esperadosRef.current.length || 1;
-    const hechos = listosRef.current.size;
+  // Progreso combinado modelos + imágenes
+  const actualizarProgreso = useCallback(() => {
+    const totM = esperadosRef.current.length;
+    const totI = IMAGENES_PRECARGA.length;
+    const hechos = listosRef.current.size + imgHechasRef.current;
+    const total  = (totM + totI) || 1;
     setCargaProgreso(Math.min(1, hechos / total));
-    if (hechos >= esperadosRef.current.length) {
-      // Todos pintados → pequeño margen y cerrar
+  }, []);
+
+  // Cierra la pantalla SOLO cuando modelos 3D e imágenes están listos
+  const finalizarSiTodoListo = useCallback(() => {
+    if (modelosOkRef.current && imagenesOkRef.current) {
       clearTimeout(settleRef.current);
       settleRef.current = setTimeout(() => setAssetsListos(true), 350);
     }
   }, []);
 
-  // Caso sin modelos visibles (ninguno): cerrar tras un instante
+  const marcarModeloListo = useCallback((key) => {
+    if (listosRef.current.has(key)) return;
+    listosRef.current.add(key);
+    actualizarProgreso();
+    if (listosRef.current.size >= esperadosRef.current.length) {
+      modelosOkRef.current = true;
+      finalizarSiTodoListo();
+    }
+  }, [actualizarProgreso, finalizarSiTodoListo]);
+
+  // Si no hay modelos visibles, marcar modelos como listos de inmediato
   useEffect(() => {
     if (modelosEsperados.length === 0) {
-      const t = setTimeout(() => setAssetsListos(true), 400);
-      return () => clearTimeout(t);
+      modelosOkRef.current = true;
+      finalizarSiTodoListo();
     }
-  }, [modelosEsperados.length]);
+  }, [modelosEsperados.length, finalizarSiTodoListo]);
 
-  // Fallback: si en 45 s no terminan (modelos muy pesados o fallo), ocultar igual
+  // Precarga de imágenes (carteles, cartas, insignias…)
+  useEffect(() => {
+    let activo = true;
+    let pendientes = IMAGENES_PRECARGA.length;
+    if (pendientes === 0) { imagenesOkRef.current = true; finalizarSiTodoListo(); return; }
+    const alAcabarUna = () => {
+      if (!activo) return;
+      imgHechasRef.current += 1;
+      actualizarProgreso();
+      pendientes -= 1;
+      if (pendientes <= 0) { imagenesOkRef.current = true; finalizarSiTodoListo(); }
+    };
+    const imgs = IMAGENES_PRECARGA.map(src => {
+      const img = new Image();
+      img.onload = alAcabarUna;
+      img.onerror = alAcabarUna;   // un fallo no debe bloquear la carga
+      img.src = src;
+      return img;
+    });
+    return () => { activo = false; imgs.forEach(i => { i.onload = null; i.onerror = null; }); };
+  }, [actualizarProgreso, finalizarSiTodoListo]);
+
+  // Fallback: si en 45 s no terminan (assets muy pesados o fallo), ocultar igual
   useEffect(() => {
     const t = setTimeout(() => setAssetsListos(true), 45000);
     return () => clearTimeout(t);
@@ -872,12 +986,17 @@ export default function Tablero() {
             setMotin(null);
           }, 4000);
         } else {
+          // Secuencia: 1) pantalla "Motín fallado"  2) volver a ver los carteles
+          // de la ceremonia  3) animar el encogimiento hacia las insignias.
           setCerMotinFase('fallado');
           cerMotinTimerRef.current = setTimeout(() => {
-            setCerMotinFase('idle');
+            setCerMotinFase('idle');   // los carteles de la ceremonia vuelven a verse
             setMotin(null);
-            iniciarShrinkingRef.current?.();  // ref estable (evita TDZ del closure del socket)
-          }, 5000);
+            // breve pausa mostrando los carteles antes de encogerlos
+            cerMotinTimerRef.current = setTimeout(() => {
+              iniciarShrinkingRef.current?.();  // ref estable (evita TDZ del closure del socket)
+            }, 1300);
+          }, 3500);
         }
       } else {
         // Sin ceremonia activa → overlay global de motín
@@ -1006,6 +1125,32 @@ export default function Tablero() {
   const TIPO_EMOJI_RITUAL = { conversion_culto: '👥', registro_camarote: '📋', alijo_armas: '🔫' };
   const ROL_EQUIPO  = { piratas: ['pirata'], marineros: ['marinero'], cultistas: ['cultista', 'adepto'] };
   const ROL_LABEL   = { pirata: '💀 Pirata', marinero: '⚓ Marinero', cultista: '🐙 Cultista', adepto: '👁️ Adepto' };
+
+  /* ── Narración: qué está pasando en los móviles (banner del tablero) ──
+     Se muestra cuando hay una acción en curso y NO hay un overlay grande. */
+  const narracion = (() => {
+    const ae  = tablero?.accionEspecial;
+    const nombreDe = (id) => (jugadores.find(j => j.id === id) || {}).nombre || 'Jugador';
+    // Acciones especiales Sirena / Telescopio
+    if (ae && (ae.tipo === 'sirena' || ae.tipo === 'telescopio')) {
+      const etq = ae.tipo === 'sirena' ? '🧜 Sirena' : '🔭 Telescopio';
+      if (ae.etapa === 'capitan-elige') return `${etq} · El Capitán elige un jugador`;
+      if (ae.etapa === 'jugador-actua') return `${etq} · ${nombreDe(ae.jugadorElegido)} está mirando las cartas`;
+    }
+    // Cofre de navegación (fase 3)
+    if (fase === 'fase_3' && !ae) {
+      const et = tablero?.cofre?.etapa;
+      if (et === 'capitan')  return '📦 El Capitán elige una carta del cofre';
+      if (et === 'teniente') return '📦 El Teniente elige una carta del cofre';
+      if (et === 'navegante')return '📦 El Navegante elige la carta final';
+      if (et === 'revelar')  return '📦 El Capitán va a revelar la carta';
+    }
+    // Lupa (fase 4)
+    if (fase === 'fase_4' && tablero?.accionFase4?.tipo === 'lupa') {
+      return '🔍 El Capitán registra un camarote';
+    }
+    return null;
+  })();
 
   // Actualiza sceneRef en cada render para que iniciarShrinking tenga los valores actuales
   sceneRef.current = scene;
@@ -2390,6 +2535,11 @@ export default function Tablero() {
         const left = scene.x + cfg.left * scene.s;
         const top  = scene.y + cfg.top  * scene.s;
         const size = Math.round(cfg.size * scene.s);
+        // ¿El barco está sobre la casilla de este modelo? → ocultar (fade) para ver solo el barco
+        const barcoEncima = MODELO_HEX[key] && tablero?.barco?.hexId === MODELO_HEX[key];
+        const opacidadModelo = barcoEncima ? 0
+          : overlayActivo ? 0.06
+          : (cfg.opacidad ?? 1);
         return (
           <div key={key} style={{
             position: 'absolute',
@@ -2397,12 +2547,11 @@ export default function Tablero() {
             top:      `${top}px`,
             transform: `translate(-50%,-50%)${cfg.espejo ? ' scaleX(-1)' : ''}`,
             zIndex:    8,
-            // Cuando hay un overlay activo, los modelos decorativos se oscurecen
-            // y pasan a segundo plano (igual que el barco).
-            opacity:       overlayActivo ? 0.06 : (cfg.opacidad ?? 1),
-            filter:        overlayActivo ? 'brightness(0.12) saturate(0)' : buildFilter(cfg),
+            // barco encima → oculto; overlay activo → oscurecido; si no → normal
+            opacity:       opacidadModelo,
+            filter:        (overlayActivo && !barcoEncima) ? 'brightness(0.12) saturate(0)' : buildFilter(cfg),
             pointerEvents: 'none',
-            transition:    'opacity 0.4s ease, filter 0.4s ease',
+            transition:    'opacity 0.6s ease, filter 0.4s ease',
           }}>
             <Modelo3D
               src={cfg.src}
@@ -2916,6 +3065,29 @@ export default function Tablero() {
           onReset={handleResetPosPath}
           onResetAll={handleResetAllPos}
         />
+      )}
+
+      {/* ── Banner de narración: qué está pasando en los móviles ──────── */}
+      {narracion && !overlayActivo && fase !== 'lobby' && (
+        <div style={{
+          position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 30, pointerEvents: 'none',
+          background: 'rgba(4,6,13,0.86)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(201,168,76,0.35)', borderRadius: '999px',
+          padding: '10px 26px',
+          boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
+          animation: 'aparecer 0.4s ease',
+          display: 'flex', alignItems: 'center', gap: '12px',
+        }}>
+          <div style={{ display: 'flex', gap: '5px' }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--oro-dorado)', animation: `pulsar-oro 1.3s ease-in-out ${i*0.22}s infinite` }} />
+            ))}
+          </div>
+          <span style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'var(--crema-pergamino)', fontSize: '20px', letterSpacing: '1px' }}>
+            {narracion}
+          </span>
+        </div>
       )}
 
       {/* ══════════════════════════════════════════════════════════════

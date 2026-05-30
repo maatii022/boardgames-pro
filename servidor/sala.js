@@ -487,6 +487,7 @@ const investigarJugador = (codigo, socketId, objetivoId) => {
 
   const navegante = sala.estado.jugadores.find(j => j.esCapitan);
   if (!navegante || navegante.id !== socketId) throw new Error('Solo el capitán puede investigar');
+  if (objetivoId === socketId) throw new Error('No puedes investigarte a ti mismo');
 
   const objetivo = sala.estado.jugadores.find(j => j.id === objetivoId);
   if (!objetivo) throw new Error('Jugador no encontrado');

@@ -856,7 +856,8 @@ function CartaNavegacion({ carta }) {
 // ── Registro de Camarote — Capitán investiga un rol (FASE_4 LUPA) ──
 function InvestigacionCapitan({ jugadores, socketId, emitir }) {
   const [seleccionado, setSeleccionado] = useState(null);
-  const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado && !j.fueraDeServicio);
+  // Cualquier jugador menos tú mismo (incluye los fuera de servicio); solo se excluyen los sacrificados
+  const elegibles = jugadores.filter(j => j.id !== socketId && !j.sacrificado);
   const confirmar = () => { if (seleccionado) emitir('fase4-investigar', { jugadorId: seleccionado }); };
 
   return (
