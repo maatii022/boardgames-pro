@@ -312,7 +312,7 @@ const DEV_HEX_EDITOR = false;
    true  → tablero visible con datos de prueba (sin servidor)
    false → comportamiento normal en producción
 ────────────────────────────────────────────────────────────────────── */
-const DEV_PREVIEW = true;
+const DEV_PREVIEW = false;
 
 /* ─── Carta de navegación revelada ──────────────────────────────────
    Edita estos valores para ajustar la presentación de la carta.
