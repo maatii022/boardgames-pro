@@ -605,6 +605,7 @@ export default function Tablero() {
   const ultimaCartaRef     = useRef(null);  // ref al <img> del slot de última carta
   const cartaNavTimerRef   = useRef(null);  // guard para clearTimeout en desmonte
   const mostrarCartaNavRef = useRef(null);  // acceso estable a mostrarCartaNav desde hooks pre-early-return
+  const iniciarShrinkingRef = useRef(null); // acceso estable a iniciarShrinking desde el handler del socket
   const _prevCartaNavKey   = useRef(null);  // clave anterior de ultimaCarta (para detectar cambio)
 
   /* ── Refs para la animación del barco ──────────────────────────────── */
@@ -875,7 +876,7 @@ export default function Tablero() {
           cerMotinTimerRef.current = setTimeout(() => {
             setCerMotinFase('idle');
             setMotin(null);
-            iniciarShrinking();  // solo usa refs + stable setters → safe en closure
+            iniciarShrinkingRef.current?.();  // ref estable (evita TDZ del closure del socket)
           }, 5000);
         }
       } else {
@@ -927,22 +928,28 @@ export default function Tablero() {
   }, [ceremoniaStep]); // eslint-disable-line
 
   // Trigger de ceremonia (capitán / pirámide)
+  // IMPORTANTE: depende también de las identidades de teniente/navegante.
+  // 'sala-actualizada' cambia la fase a fase_2 ANTES de que llegue
+  // 'tablero-actualizado' con los flags de oficiales; sin estas deps el
+  // efecto correría con datos viejos y nunca mostraría la pirámide.
+  const _tenId = (tablero?.jugadores || []).find(j => j.esTeniente)?.id || null;
+  const _navId = (tablero?.jugadores || []).find(j => j.esNavegante)?.id || null;
   useEffect(() => {
     if (DEV_PREVIEW) return;
     const jug = tablero?.jugadores || sala?.jugadores || [];
     const cap = jug.find(j => j.esCapitan);
     const ten = jug.find(j => j.esTeniente);
     const nav = jug.find(j => j.esNavegante);
-    if (fase === 'fase_1' && cap) {
-      setCeremoniaDatos({ capitan: cap.nombre, teniente: '', navegante: '' });
-      setCeremoniaStep('capitan');
-    } else if (fase === 'fase_2' && cap && ten && nav) {
+    if (fase === 'fase_2' && cap && ten && nav) {
       setCeremoniaDatos({ capitan: cap.nombre, teniente: ten.nombre, navegante: nav.nombre });
       setCeremoniaStep('equipo');
+    } else if (fase === 'fase_1' && cap) {
+      setCeremoniaDatos({ capitan: cap.nombre, teniente: '', navegante: '' });
+      setCeremoniaStep('capitan');
     } else if (fase !== 'fase_1' && fase !== 'fase_2') {
       setCeremoniaStep('idle');
     }
-  }, [fase, tablero?.capitanIdx]); // eslint-disable-line
+  }, [fase, tablero?.capitanIdx, _tenId, _navId]); // eslint-disable-line
 
   // Auto-trigger animación carta nav cuando ultimaCarta cambia (producción)
   useEffect(() => {
@@ -1040,6 +1047,8 @@ export default function Tablero() {
       setTimeout(() => setCeremoniaStep('idle'), 1200);
     }));
   };
+  // Acceso estable desde el handler del socket (evita TDZ del closure)
+  iniciarShrinkingRef.current = iniciarShrinking;
 
   /* ── mostrarCartaNav: muestra la carta CARTA_NAV_MS centrada y luego la vuela al slot ── */
   const mostrarCartaNav = (carta) => {
@@ -2388,8 +2397,10 @@ export default function Tablero() {
             top:      `${top}px`,
             transform: `translate(-50%,-50%)${cfg.espejo ? ' scaleX(-1)' : ''}`,
             zIndex:    8,
-            opacity:       cfg.opacidad ?? 1,
-            filter:        buildFilter(cfg),
+            // Cuando hay un overlay activo, los modelos decorativos se oscurecen
+            // y pasan a segundo plano (igual que el barco).
+            opacity:       overlayActivo ? 0.06 : (cfg.opacidad ?? 1),
+            filter:        overlayActivo ? 'brightness(0.12) saturate(0)' : buildFilter(cfg),
             pointerEvents: 'none',
             transition:    'opacity 0.4s ease, filter 0.4s ease',
           }}>
