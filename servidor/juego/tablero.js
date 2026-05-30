@@ -46,8 +46,8 @@ const VICTORIA_CULTISTAS = new Set(['vc']);
 //   → Los cultistas ganan si el cultista (no adepto) es sacrificado.
 // lupa: disparan acción de investigación (FASE_4 tipo lupa).
 //   → TODO: asignar hexes de lupa cuando estén definidos en el nuevo mapa.
-const HEXES_KRAKEN_MENOR = new Set(['9']);   // casilla central del Kraken
-const HEXES_LUPA         = new Set([]);      // sin lupas en el mapa actual
+const HEXES_KRAKEN_MENOR = new Set(['8-1', '8-2']);        // casillas de Kraken Menor (sacrificio)
+const HEXES_LUPA         = new Set(['4-1', '4-2', '5-1']); // casillas de lupa (Registro de Camarote)
 
 // ─────────────────────────────────────────────────────────────
 

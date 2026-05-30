@@ -61,6 +61,12 @@ const emitirSalaActualizada = (sala) => {
       });
     }
 
+    // Si el mazo se rebarajó en esta acción, emitir el evento de animación
+    if (sala.estado.mazoRefrescado) {
+      io.to(sala.codigo).emit('mazo-refrescado', sala.estado.mazoRefrescado);
+      sala.estado.mazoRefrescado = null; // limpiar flag
+    }
+
     // Emitir vista de tablero (sin info privada) a la pantalla grande
     io.to(`tablero-${sala.codigo}`).emit('tablero-actualizado', {
       fase: sala.estado.fase,
@@ -464,6 +470,22 @@ io.on('connection', (socket) => {
 
     emitirSalaActualizada(sala);
     console.log(`🚫 ${jugadorId} expulsado de sala ${codigo}`);
+  });
+
+  // ── DEBUG: vaciar mazo a N cartas para testear el refresco ──────────
+  // Solo procesa la petición si viene desde la sala correcta.
+  socket.on('debug-vaciar-mazo', ({ cartas = 2 } = {}) => {
+    const codigo = socketSala.get(socket.id);
+    if (!codigo) return;
+    const sala = obtenerSala(codigo);
+    if (!sala?.estado) return;
+    const n = Math.max(0, Math.min(cartas, sala.estado.mazoDisponible.length));
+    // Mover el exceso al descarte
+    const sobrantes = sala.estado.mazoDisponible.slice(n);
+    sala.estado.mazoDisponible = sala.estado.mazoDisponible.slice(0, n);
+    sala.estado.mazoDescarte   = [...sala.estado.mazoDescarte, ...sobrantes];
+    emitirSalaActualizada(sala);
+    console.log(`🃏 [DEBUG] Mazo vaciado a ${n} cartas en sala ${codigo}`);
   });
 
   socket.on('disconnect', () => {

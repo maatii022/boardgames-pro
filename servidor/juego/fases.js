@@ -89,10 +89,11 @@ const votarMotin = (estado, jugadorId, pistolas) => {
       ...j,
       pistolas: nuevosVotos[j.id] !== undefined ? j.pistolas - nuevosVotos[j.id] : j.pistolas,
     }));
-    const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(estado.mazoDisponible, 2);
+    // Refrescar mazo si quedan ≤4 cartas antes de robar
+    const estadoRefrescado = refrescarMazoSiNecesario({ ...estado, jugadores: jugadoresActualizados });
+    const { cartas: cartasCapitan, nuevoMazo } = robarCartasMazo(estadoRefrescado.mazoDisponible, 2);
     return {
-      ...estado,
-      jugadores: jugadoresActualizados,
+      ...estadoRefrescado,
       mazoDisponible: nuevoMazo,
       fase: FASES.FASE_3,
       motin: { ...estado.motin, votos: nuevosVotos, confirmados, exitoso: false, totalPistolas },
@@ -129,12 +130,14 @@ const elegirCartaCofre = (estado, jugadorId, cartaElegidaId) => {
     const cartaElegida = cartas.find(c => c.id === cartaElegidaId);
     if (!cartaElegida) throw new Error('Carta no válida');
     const cartaDescartada = cartas.find(c => c.id !== cartaElegidaId);
-    // Pre-dibujar 2 cartas para el teniente
-    const { cartas: cartasTeniente, nuevoMazo } = robarCartasMazo(mazoDisponible, 2);
+    // Descartar la carta no elegida, luego refrescar si quedan ≤4 y robar 2 para el teniente
+    const descarteActualizado = cartaDescartada ? [...mazoDescarte, cartaDescartada] : mazoDescarte;
+    const estadoTras = refrescarMazoSiNecesario({ ...estado, mazoDisponible, mazoDescarte: descarteActualizado });
+    const { cartas: cartasTeniente, nuevoMazo } = robarCartasMazo(estadoTras.mazoDisponible, 2);
     return {
-      ...estado,
+      ...estadoTras,
       mazoDisponible: nuevoMazo,
-      mazoDescarte: cartaDescartada ? [...mazoDescarte, cartaDescartada] : mazoDescarte,
+      mazoDescarte: estadoTras.mazoDescarte,
       cofre: { ...cofre, cartaCapitan: cartaElegida, etapa: 'teniente', cartasDisponibles: cartasTeniente },
     };
   }
@@ -343,11 +346,13 @@ const inicializarCofre = (estado) => {
   };
 };
 
-// Rebaraja el mazo cuando quedan ≤ 3 cartas disponibles
+// Rebaraja el mazo cuando quedan ≤ 4 cartas disponibles.
+// Añade mazoRefrescado:true al estado para que index.js pueda emitir el evento de animación.
 const refrescarMazoSiNecesario = (estado) => {
-  if (estado.mazoDisponible.length <= 3 && estado.mazoDescarte.length > 0) {
+  if (estado.mazoDisponible.length <= 4 && estado.mazoDescarte.length > 0) {
+    const anterior = estado.mazoDisponible.length + estado.mazoDescarte.length;
     const todas = barajar([...estado.mazoDisponible, ...estado.mazoDescarte]);
-    return { ...estado, mazoDisponible: todas, mazoDescarte: [] };
+    return { ...estado, mazoDisponible: todas, mazoDescarte: [], mazoRefrescado: { anterior, nuevo: todas.length } };
   }
   return estado;
 };

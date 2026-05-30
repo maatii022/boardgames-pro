@@ -10,17 +10,16 @@ export function SalaProvider({ children }) {
   const [estado, setEstado] = useState(null);
   const [fase,   setFase]   = useState('lobby');
 
-  // Reconexión automática — pasa jugadorId para que el servidor
-  // identifique al jugador existente en lugar de crear un duplicado
+  // Reconexión automática — siempre usa 'reconectar-sala' cuando hay un código guardado.
+  // Esto funciona tanto para reconexiones de Socket.io (mismo socket, nuevo id)
+  // como para recargas completas de página (nuevo WebSocket).
+  // El servidor actualiza el socketId, devuelve el estado completo y emite
+  // 'sesion-expirada' si la sala ya no existe (servidor reiniciado).
   useEffect(() => {
     if (!conectado) return;
     const codigo = sessionStorage.getItem('sala_codigo');
-    const nombre = sessionStorage.getItem('sala_nombre');
-    if (codigo && !sala) {
-      // Reconectar: el servidor buscará por jugadorId y actualizará el socketId
-      emitir('unirse-sala', { codigo, nombre: nombre || '', jugadorId });
-    } else if (sala) {
-      emitir('pedir-estado');
+    if (codigo) {
+      emitir('reconectar-sala', { codigo, jugadorId });
     }
   }, [conectado]);
 
@@ -38,7 +37,14 @@ export function SalaProvider({ children }) {
       sessionStorage.removeItem('sala_codigo');
       sessionStorage.removeItem('sala_nombre');
     });
-    return () => { c1(); c2(); c3(); c4(); c5(); c6(); };
+    // Sesión expirada: el servidor se reinició y ya no existe la sala.
+    // Limpiamos el estado local para que el jugador pueda crear/unirse a una nueva.
+    const c7 = escuchar('sesion-expirada', () => {
+      setSala(null); setEstado(null); setFase('lobby');
+      sessionStorage.removeItem('sala_codigo');
+      sessionStorage.removeItem('sala_nombre');
+    });
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
   }, [escuchar]);
 
   const entrarEnSala = useCallback((s, nombre) => {

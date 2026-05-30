@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import { useAudio } from '../contextos/AudioContexto';
@@ -6,6 +6,7 @@ import SalaEspera from './SalaEspera';
 import Modelo3D from '../components/tablero/Modelo3D';
 import HexEditor from '../components/tablero/HexEditor';
 import { HEX_POS, HEX_ADJ, HEX_FLECHAS } from '../data/hexMapa';
+import DevAssetEditor, { deepMerge } from '../components/tablero/DevAssetEditor';
 
 /* ═══════════════════════════════════════════════════════════════════════
    🎛️  POSICIONES — ESTE ES EL ÚNICO BLOQUE QUE NECESITAS EDITAR.
@@ -30,108 +31,269 @@ import { HEX_POS, HEX_ADJ, HEX_FLECHAS } from '../data/hexMapa';
    Cambia un número, guarda → el navegador se actualiza solo.
 ════════════════════════════════════════════════════════════════════════ */
 const POS = {
-
-  // ── Vídeo del tablero (cuadrado 1:1, 2160×2160) ───────────────────────
-  //    Ancla: CENTRO. width=height = marcoTablero.size / 1.5
-  tablero: {
-    left:   960,
-    top:    572,
-    width:  980,
-    height: 980,
+  "tablero": {
+    "left": 960,
+    "top": 572,
+    "width": 980,
+    "height": 980
   },
-
-  // ── Marco ornamental (PNG 3:2 = 1536×1024) ───────────────────────────
-  //    Ancla: CENTRO. left/top deben coincidir con tablero.left/top.
-  //    Cambia solo `size`; la altura se calcula sola (size / 1.5).
-  marcoTablero: {
-    left: 960,
-    top:  615,
-    size: 1750,
+  "marcoTablero": {
+    "left": 960,
+    "top": 615,
+    "size": 1750
   },
-
-  // ── Panel izquierdo — capitán + lista de jugadores ────────────────────
-  //    Ancla: ESQUINA SUPERIOR IZQUIERDA del panel.
-  panelIzq: {
-    left:   22,
-    top:    14,
-    width:  300,
-    rowH:   70,       // ← alto de cada contenedor del panel (px) — todos usan el mismo valor
-    // Assets del panel — cada panel es independiente del otro.
-    // fondoImg → null = fondo semitransparente por defecto
-    //            ruta = PNG como fondo (sustituye el glass effect)
-    // marcoImg → null = sin overlay
-    //            ruta = PNG encima del contenido (marco decorativo, pointer-events:none)
-    fondoImg: null,   // p.ej. '/tablero/ui/panel-izq-fondo.png'
-    marcoImg: null,   // p.ej. '/tablero/ui/panel-izq-marco.png'
+  "panelIzq": {
+    "rowH": 70,
+    "header": {
+      "left": 22,
+      "top": -5,
+      "width": 400,
+      "height": 300,
+      "scale": 0.85,
+      "fondoImg": "/tablero/ui/marco_cartel_capitan.png",
+      "fondoSlice": 0,
+      "marcoImg": null,
+      "labelSize": 20,
+      "labelSpacing": 3,
+      "labelGap": 4,
+      "nameSize": 32,
+      "nameSpacing": 0.4,
+      "alignH": "center"
+    },
+    "lista": {
+      "left": -5,
+      "top": 206,
+      "width": 360,
+      "height": null,
+      "scale": 1.15,
+      "fondoImg": "/tablero/ui/marco-lista.png",
+      "fondoSlice": {
+        "top": 419,
+        "right": 292,
+        "bottom": 426,
+        "left": 297
+      },
+      "fondoSliceWidth": 50,
+      "fondoTile": "round",
+      "listaPadH": 11,
+      "listaPadV": 0,
+      "marcoImg": null,
+      "cellImg": "/tablero/ui/tablon-lista.png",
+      "cellSlice": {
+        "top": 133,
+        "right": 8,
+        "bottom": 162,
+        "left": 8
+      },
+      "cellSliceWidth": 0,
+      "cellTile": "stretch",
+      "cellWidthPx": null,
+      "cellWidthPct": 155,
+      "cellAlignX": "left",
+      "cellOffsetX": -68,
+      "rowH": 55,
+      "rowGap": 0,
+      "rowPadH": 58,
+      "cellPadV": 0,
+      "rowContentGap": 16,
+      "insGap": 4,
+      "dotSize": -10,
+      "nameSize": 22,
+      "nameSpacing": 0.2,
+      "sepSize": 18,
+      "sepSpacing": 3
+    }
   },
-
-  // ── Panel derecho — mazo + última carta ──────────────────────────────
-  panelDer: {
-    left:  1580,
-    top:    120,
-    width:  300,
-    mazoPilaW:    250,
-    ultimaCartaW: 250,
-    // Assets del panel — independientes del panel izquierdo.
-    fondoImg: '/tablero/ui/panel-der-fondo.png',   // p.ej. '/tablero/ui/panel-der-fondo.png'
-    marcoImg: null,   // p.ej. '/tablero/ui/panel-der-marco.png'
+  "panelDer": {
+    "left": 1565,
+    "top": 120,
+    "width": 350,
+    "height": 910,
+    "scale": 1,
+    "fondoImg": "/tablero/ui/panel-der-fondo.png",
+    "marcoImg": null
   },
-
-  // ── Insignias de rol en la lista de jugadores ─────────────────────────
-  //    Assets: /tablero/ui/insignia-capitan.png, insignia-teniente.png,
-  //            insignia-navegante.png
-  insignias: {
-    size: 90,  // px — ancho de cada imagen de insignia
+  "ultimaCarta": {
+    "left": 1633,
+    "top": 475,
+    "width": 215,
+    "scale": 1,
+    "visible": true
   },
-
-  // ── Botones de control del host (sin header) ─────────────────────────
-  //    Ancla: CENTRO del botón.
-  //    Assets: /tablero/ui/boton-retroceder.png, boton-avanzar.png,
-  //            boton-reiniciar.png, boton-salir.png
-  controles: {
-    botonRetroceder: { left: 1646, top: 38, size: 44 },
-    botonAvanzar:    { left: 1700, top: 38, size: 44 },
-    botonReiniciar:  { left: 1680, top: 40, size: 150 },
-    botonSalir:      { left: 1820, top: 38, size: 150 },
+  "mazoNav": {
+    "left": 1625,
+    "top": 227,
+    "width": 215,
+    "scale": 1,
+    "visible": true
   },
-
-  // ── Modelos 3D ─────────────────────────────────────────────────────────
-  //    Ancla: CENTRO del canvas (translate -50% -50%).
-  //    left/top  → coords fijas en el lienzo 1920×1080; el escalado de
-  //                pantalla lo gestiona el stage CSS — nunca cambian.
-  //    size      → lado del canvas cuadrado en px (dentro del lienzo).
-  //    escala    → multiplicador sobre el tamaño normalizado del modelo.
-  //    camPos    → [x, y, z] posición de la cámara. Para buscar el ángulo
-  //                ideal: controles: true → girar con ratón → leer coords
-  //                de consola → copiarlas aquí → controles: false.
-  //    controles → false = cámara fija + pointerEvents:none (producción).
-  //                true  = OrbitControls activos (exploración de ángulo).
-  //    visible   → true activa el slot; false lo oculta sin coste de render.
-  //    Assets en /public/tablero/modelos/  (.glb)
-  //    ✅  Deps: three + @react-three/fiber@8 + @react-three/drei@9
-  modelos3d: {
-    barco:      { left: 970,  top: 600, size: 1100, escala: 1, camPos: [-1.484, 4.302, 0.019], controles: false, visible: true  },  // sigue barco.hexId
-    kraken:     { left: 960,  top: 572, size: 200, visible: false },  // casilla kraken_centro
-    tentaculo1: { left: 840,  top: 480, size: 80,  visible: false },  // kraken_menor izq
-    tentaculo2: { left: 1080, top: 480, size: 80,  visible: false },  // kraken_menor der
-    lupa1:      { left: 760,  top: 572, size: 60,  visible: false },  // acción lupa 1
-    lupa2:      { left: 960,  top: 410, size: 60,  visible: false },  // acción lupa 2
-    lupa3:      { left: 1160, top: 572, size: 60,  visible: false },  // acción lupa 3
+  "mazoCultista": {
+    "left": 1625,
+    "top": 737,
+    "width": 215,
+    "scale": 1,
+    "visible": true
   },
-
-  // ── Carteles de la Ceremonia de Equipo ────────────────────────────────
-  //    Ancla: CENTRO de cada cartel (translate -50% -50%).
-  //    left/top → posición en el lienzo 1920×1080 (px). Cambia para reposicionar.
-  //    wImg     → ancho del asset PNG del cartel (px).
-  //
-  //    Distribución estándar:
-  //       [capitán]          ← arriba, centro
-  //    [teniente] [navegante] ← abajo, lados (pirámide)
-  ceremonia: {
-    capitan:   { left: 960,  top: 350, wImg: 700 },
-    teniente:  { left: 620,  top: 715, wImg: 590 },
-    navegante: { left: 1320, top: 715, wImg: 550 },
+  "insignias": {
+    "size": 90
   },
+  "controles": {
+    "botonRetroceder": {
+      "left": 1646,
+      "top": 38,
+      "size": 44
+    },
+    "botonAvanzar": {
+      "left": 1700,
+      "top": 38,
+      "size": 44
+    },
+    "botonReiniciar": {
+      "left": 1680,
+      "top": 40,
+      "size": 150
+    },
+    "botonSalir": {
+      "left": 1820,
+      "top": 38,
+      "size": 150
+    }
+  },
+  "modelos3d": {
+    "barco": {
+      "src": "/tablero/modelos/barco.glb",
+      "left": 970,
+      "top": 600,
+      "size": 1100,
+      "escala": 1,
+      "camPos": [
+        -1.484,
+        4.302,
+        0.019
+      ],
+      "controles": false,
+      "visible": true,
+      "rotX": 0,
+      "rotY": 0,
+      "rotZ": 0,
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "kraken": {
+      "src": "/tablero/modelos/kraken.stl",
+      "left": 952,
+      "top": 208,
+      "size": 325,
+      "escala": 1,
+      "rotX": 1.05,
+      "rotY": 3.15,
+      "rotZ": 1.05,
+      "visible": true,
+      "colorBase": "#2a581d",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "tentaculo1": {
+      "src": "/tablero/modelos/tentaculos.stl",
+      "left": 850,
+      "top": 424,
+      "size": 280,
+      "escala": 1,
+      "rotX": 1,
+      "rotY": 3.15,
+      "rotZ": 0,
+      "visible": true,
+      "colorBase": "#2a581d",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "tentaculo2": {
+      "src": "/tablero/modelos/tentaculos.stl",
+      "left": 1074,
+      "top": 424,
+      "size": 280,
+      "escala": 1,
+      "rotX": 1,
+      "rotY": 3.15,
+      "rotZ": 0,
+      "visible": true,
+      "colorBase": "#2a581d",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "lupa1": {
+      "src": "/tablero/modelos/lupa.stl",
+      "left": 854,
+      "top": 694,
+      "size": 195,
+      "escala": 1,
+      "rotX": -1.5,
+      "rotY": 0,
+      "rotZ": 0,
+      "visible": true,
+      "colorBase": "#c9a84c",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "lupa2": {
+      "src": "/tablero/modelos/lupa.stl",
+      "left": 1079,
+      "top": 699,
+      "size": 195,
+      "escala": 1,
+      "rotX": 5,
+      "rotY": 0,
+      "rotZ": 0,
+      "visible": true,
+      "colorBase": "#c9a84c",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    },
+    "lupa3": {
+      "src": "/tablero/modelos/lupa.stl",
+      "left": 743,
+      "top": 634,
+      "size": 195,
+      "escala": 1,
+      "rotX": 5,
+      "rotY": 0,
+      "rotZ": 0,
+      "visible": true,
+      "colorBase": "#c9a84c",
+      "tintColor": "",
+      "filterCss": "",
+      "opacidad": 1
+    }
+  },
+  "ceremonia": {
+    "capitan": {
+      "left": 960,
+      "top": 270,
+      "wImg": 700
+    },
+    "teniente": {
+      "left": 520,
+      "top": 455,
+      "wImg": 590
+    },
+    "navegante": {
+      "left": 1400,
+      "top": 455,
+      "wImg": 550
+    },
+    "motin": {
+      "left": 660,
+      "top": 740,
+      "width": 600,
+      "sombra": "drop-shadow(0 0 22px rgba(192,57,43,0.42))"
+    }
+  }
 };
 
 /* ─── Modo debug ──────────────────────────────────────────────────────
@@ -150,7 +312,7 @@ const DEV_HEX_EDITOR = false;
    true  → tablero visible con datos de prueba (sin servidor)
    false → comportamiento normal en producción
 ────────────────────────────────────────────────────────────────────── */
-const DEV_PREVIEW = false;
+const DEV_PREVIEW = true;
 
 /* ─── Carta de navegación revelada ──────────────────────────────────
    Edita estos valores para ajustar la presentación de la carta.
@@ -163,6 +325,12 @@ const DEV_PREVIEW = false;
 const CARTA_NAV_MS  = 5000;
 const CARTA_NAV_W   = 280;
 const CARTA_NAV_POS = { left: '50vw', top: '50vh' };
+
+/* ─── Motín en ceremonia ─────────────────────────────────────────────
+   MOTIN_PREGUNTA_MS → delay (ms) tras mostrar la pirámide antes de
+                       que aparezca "¿Quieren amotinarse?" + barra de votos
+────────────────────────────────────────────────────────────────────── */
+const MOTIN_PREGUNTA_MS = 5000;
 
 /* ─── Efecto de profundidad del tablero ──────────────────────────────
    Simula que el tablero está hundido dentro del marco.
@@ -254,6 +422,48 @@ function getCartaNavSrc(color, nombre = '') {
   return `${b}carta-reverso.png`;
 }
 
+/**
+ * Genera los estilos CSS para nine-slice usando border-image.
+ * Las 4 esquinas del asset permanecen sin escalar; bordes y centro se estiran.
+ *
+ *  img      → ruta del asset PNG
+ *  slicePx  → tamaño de cada esquina en px (0 o falsy = sin nine-slice)
+ *
+ * Uso:
+ *   <div style={{ ...nineSlice('/img.png', 12), padding: '8px' }}>…</div>
+ */
+// slicePx → zonas de corte en px de la imagen (border-image-slice)
+// widthPx → grosor visible del borde en px CSS (border-image-width)
+//           Si omitido usa los mismos valores que slicePx.
+//           Pasa un número para uniforme o { top, right, bottom, left } para per-lado.
+// tile    → cómo se repiten los bordes INTERMEDIOS (esquinas siempre preservadas)
+//           'stretch' → estira para llenar (default, deforma en aspecto extremo)
+//           'round'   → repite entero, escala levemente si no cabe exacto (mejor para marcos)
+//           'repeat'  → repite cortando si hace falta
+//           'space'   → repite con espacio entre piezas
+function nineSlice(img, slicePx, widthPx, tile = 'stretch') {
+  if (!img) return {};
+  const norm = (v) => typeof v === 'object' && v !== null
+    ? v : { top: v || 0, right: v || 0, bottom: v || 0, left: v || 0 };
+  const s = norm(slicePx);
+  if (!s.top && !s.right && !s.bottom && !s.left) {
+    return { background: `url('${img}') center/cover no-repeat` };
+  }
+  const w = widthPx != null ? norm(widthPx) : s;
+  return {
+    borderStyle: 'solid',
+    borderWidth: `${w.top}px ${w.right}px ${w.bottom}px ${w.left}px`,
+    borderImage: `url('${img}') ${s.top} ${s.right} ${s.bottom} ${s.left} fill / ${w.top}px ${w.right}px ${w.bottom}px ${w.left}px ${tile}`,
+    background:  'none',
+  };
+}
+// Devuelve el grosor mayor efectivo para calcular padding
+const sliceEdge = (slicePx, widthPx) => {
+  const v = widthPx != null ? widthPx : slicePx;
+  if (typeof v === 'object' && v !== null) return Math.max(v.top || 0, v.right || 0, v.bottom || 0, v.left || 0);
+  return v || 0;
+};
+
 function calcularMovimiento(hexId, tipo, prevHexId) {
   const nuevoHex = HEX_FLECHAS[hexId]?.[_COLOR_KEY[tipo]];
   if (!nuevoHex)              return null;   // sin flecha asignada
@@ -279,6 +489,37 @@ function calcularMovimiento(hexId, tipo, prevHexId) {
      > 0 (CW)   → destino arriba-der.   → −45°
      < 0 (CCW)  → destino arriba-izq.   → +45°
 ────────────────────────────────────────────────────────────────────── */
+// Convierte un color hex (#rrggbb) a un CSS filter de tinte.
+// Usa sepia + saturate + hue-rotate para simular el color elegido.
+function hexToTintFilter(hex) {
+  if (!hex || hex === '#ffffff' || hex === '#000000') return '';
+  const r = parseInt(hex.slice(1,3),16)/255;
+  const g = parseInt(hex.slice(3,5),16)/255;
+  const b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  const l = (max+min)/2;
+  const s = d === 0 ? 0 : (l > 0.5 ? d/(2-max-min) : d/(max+min));
+  let h = 0;
+  if (d > 0) {
+    if (max === r)      h = ((g-b)/d + (g<b?6:0)) / 6;
+    else if (max === g) h = ((b-r)/d + 2) / 6;
+    else                h = ((r-g)/d + 4) / 6;
+  }
+  const hDeg = Math.round(h * 360);
+  // La base sepia está en ~36°; rotamos hasta el tono deseado
+  const rotate = (hDeg - 36 + 360) % 360;
+  const sat    = Math.max(1, Math.round(s * 8));
+  const br     = 0.7 + l * 0.5;
+  return `sepia(1) saturate(${sat}) hue-rotate(${rotate}deg) brightness(${br.toFixed(2)})`;
+}
+
+// Combina tintColor + filterCss en un único valor CSS filter
+function buildFilter(cfg) {
+  const tint = cfg.tintColor ? hexToTintFilter(cfg.tintColor) : '';
+  const raw  = cfg.filterCss || '';
+  return [tint, raw].filter(Boolean).join(' ') || undefined;
+}
+
 function computeTargetRot(hexId, nuevoHex) {
   const cur = HEX_POS[hexId];
   const dst = HEX_POS[nuevoHex];
@@ -341,9 +582,18 @@ export default function Tablero() {
   const [cerShrinkOff, setCerShrinkOff] = useState({
     cap: { dx: 0, dy: 0 }, ten: { dx: 0, dy: 0 }, nav: { dx: 0, dy: 0 },
   });
-  const stageRef      = useRef(null);         // ref al lienzo 1920×1080 (para coords)
-  const insigniaRefs  = useRef({});           // { capitan, teniente, navegante } → <img>
-  const sceneRef      = useRef({ x: 0, y: 0, s: 1 }); // siempre actualizado en render
+  // Fase del motín integrado en la ceremonia
+  // 'idle' | 'pregunta' | 'exitoso' | 'fallado'
+  const [cerMotinFase, setCerMotinFase] = useState('idle');
+
+  const stageRef         = useRef(null);              // ref al lienzo 1920×1080 (para coords)
+  const insigniaRefs     = useRef({});                // { capitan, teniente, navegante } → <img>
+  const sceneRef         = useRef({ x: 0, y: 0, s: 1 }); // siempre actualizado en render
+  const cerMotinTimerRef = useRef(null);              // timer para la pregunta/resultado de motín
+  const ceremoniaStepRef = useRef('idle');            // valor actual de ceremoniaStep (para closures de socket)
+
+  // ── Reposición del mazo ─────────────────────────────────────────────
+  const [mazoRefrescado, setMazoRefrescado] = useState(null); // { anterior, nuevo } | null
 
   // ── Animación "carta de navegación revelada" ────────────────────────
   // cartaNav: la carta que está animándose (null = ninguna)
@@ -440,6 +690,40 @@ export default function Tablero() {
     }
   }
 
+  /* ── POS reactivo — el Dev Asset Editor escribe aquí sus overrides ── */
+  const [posOverride, setPosOverride] = useState({});
+  const pos = useMemo(() => deepMerge(POS, posOverride), [posOverride]);
+
+  const handleUpdatePosPath = (path, value) => {
+    setPosOverride(prev => {
+      const next = { ...prev };
+      let cur = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        cur[path[i]] = typeof cur[path[i]] === 'object' && cur[path[i]] !== null
+          ? { ...cur[path[i]] } : {};
+        cur = cur[path[i]];
+      }
+      cur[path[path.length - 1]] = value;
+      return next;
+    });
+  };
+
+  const handleResetPosPath = (path) => {
+    setPosOverride(prev => {
+      const next = { ...prev };
+      let cur = next;
+      for (let i = 0; i < path.length - 1; i++) {
+        if (!cur[path[i]]) return prev;
+        cur[path[i]] = { ...cur[path[i]] };
+        cur = cur[path[i]];
+      }
+      delete cur[path[path.length - 1]];
+      return next;
+    });
+  };
+
+  const handleResetAllPos = () => setPosOverride({});
+
   /* ── Audio ambiente del tablero ─────────────────────────────────── */
   const { playAmbiente, stopAmbiente, playSFX } = useAudio();
 
@@ -491,6 +775,65 @@ export default function Tablero() {
     return () => window.removeEventListener('resize', calc);
   }, []);
 
+  /* ── Pantalla de carga del tablero ────────────────────────────────
+     Cada Modelo3D llama a onListo() cuando ya se ha PINTADO en pantalla
+     (no solo descargado). El overlay se mantiene hasta que TODOS los
+     modelos visibles han reportado estar listos → así no se quita antes
+     de que los elementos estén realmente renderizados.  */
+  const [assetsListos, setAssetsListos] = useState(false);
+  const [cargaVisible, setCargaVisible] = useState(true);
+  const [cargaProgreso, setCargaProgreso] = useState(0);
+
+  // Lista de claves de modelos que se van a renderizar (barco + decorativos visibles)
+  const modelosEsperados = useMemo(() => {
+    const keys = [];
+    if (pos.modelos3d?.barco?.visible) keys.push('barco');
+    Object.entries(pos.modelos3d || {}).forEach(([k, cfg]) => {
+      if (k === 'barco') return;
+      if (cfg.visible && cfg.src) keys.push(k);  // coincide con el filtro del render
+    });
+    return keys;
+  }, [pos]);
+
+  const esperadosRef = useRef(modelosEsperados);
+  esperadosRef.current = modelosEsperados;
+  const listosRef = useRef(new Set());
+  const settleRef = useRef(null);
+
+  const marcarModeloListo = useCallback((key) => {
+    if (listosRef.current.has(key)) return;
+    listosRef.current.add(key);
+    const total = esperadosRef.current.length || 1;
+    const hechos = listosRef.current.size;
+    setCargaProgreso(Math.min(1, hechos / total));
+    if (hechos >= esperadosRef.current.length) {
+      // Todos pintados → pequeño margen y cerrar
+      clearTimeout(settleRef.current);
+      settleRef.current = setTimeout(() => setAssetsListos(true), 350);
+    }
+  }, []);
+
+  // Caso sin modelos visibles (ninguno): cerrar tras un instante
+  useEffect(() => {
+    if (modelosEsperados.length === 0) {
+      const t = setTimeout(() => setAssetsListos(true), 400);
+      return () => clearTimeout(t);
+    }
+  }, [modelosEsperados.length]);
+
+  // Fallback: si en 45 s no terminan (modelos muy pesados o fallo), ocultar igual
+  useEffect(() => {
+    const t = setTimeout(() => setAssetsListos(true), 45000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Desmontar el overlay tras la animación de fade-out (0.8 s)
+  useEffect(() => {
+    if (!assetsListos) return;
+    const t = setTimeout(() => setCargaVisible(false), 850);
+    return () => clearTimeout(t);
+  }, [assetsListos]);
+
   /* ── Editor de hexes ─────────────────────────────────────────────── */
   const [hexEditorOpen, setHexEditorOpen] = useState(DEV_HEX_EDITOR);
   useEffect(() => {
@@ -513,14 +856,43 @@ export default function Tablero() {
     const c4 = escuchar('fase-cambiada',       ({ fase: f }) => setFase(f));
     const c5 = escuchar('error',               ({ mensaje }) => setError(mensaje));
     const c6 = escuchar('motin-resultado', (data) => {
-      setMotin(data);
-      setTimeout(() => setMotin(null), 6000);
+      if (ceremoniaStepRef.current !== 'idle') {
+        // Motín durante la ceremonia → integrar en el overlay de ceremonia
+        clearTimeout(cerMotinTimerRef.current);
+        setMotin(data);
+        if (data.exitoso) {
+          setCerMotinFase('exitoso');
+          cerMotinTimerRef.current = setTimeout(() => {
+            if (data.nuevoCapitan) {
+              setCeremoniaDatos({ capitan: data.nuevoCapitan.nombre, teniente: '', navegante: '' });
+              setCeremoniaStep('capitan');
+            }
+            setCerMotinFase('idle');
+            setMotin(null);
+          }, 4000);
+        } else {
+          setCerMotinFase('fallado');
+          cerMotinTimerRef.current = setTimeout(() => {
+            setCerMotinFase('idle');
+            setMotin(null);
+            iniciarShrinking();  // solo usa refs + stable setters → safe en closure
+          }, 5000);
+        }
+      } else {
+        // Sin ceremonia activa → overlay global de motín
+        setMotin(data);
+        setTimeout(() => setMotin(null), 6000);
+      }
     });
     const c7 = escuchar('kraken-sacrificio', (data) => {
       setKraken(data);
       if (!data.victoriaCultistas) setTimeout(() => setKraken(null), 7000);
     });
-    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); };
+    const c8 = escuchar('mazo-refrescado', (data) => {
+      setMazoRefrescado(data);
+      setTimeout(() => setMazoRefrescado(null), 3000);
+    });
+    return () => { c1(); c2(); c3(); c4(); c5(); c6(); c7(); c8(); };
   }, [codigo, emitir, escuchar]);
 
   /* ── Acciones del host ──────────────────────────────────────────── */
@@ -538,6 +910,21 @@ export default function Tablero() {
      Moverlos aquí evita el crash "Rendered more hooks than during
      previous render" que ocurre cuando sala===null hace el early return
      antes de que estos hooks se registren.                           ── */
+
+  // Mantener ceremoniaStepRef sincronizado (para closures estables en socket handler)
+  useEffect(() => { ceremoniaStepRef.current = ceremoniaStep; }, [ceremoniaStep]);
+
+  // Countdown de 5s para "¿Quieren amotinarse?" + limpieza al salir de equipo
+  useEffect(() => {
+    if (ceremoniaStep === 'equipo') {
+      clearTimeout(cerMotinTimerRef.current);
+      cerMotinTimerRef.current = setTimeout(() => setCerMotinFase('pregunta'), MOTIN_PREGUNTA_MS);
+    } else {
+      clearTimeout(cerMotinTimerRef.current);
+      if (ceremoniaStep === 'idle') setCerMotinFase('idle');
+    }
+    return () => clearTimeout(cerMotinTimerRef.current);
+  }, [ceremoniaStep]); // eslint-disable-line
 
   // Trigger de ceremonia (capitán / pirámide)
   useEffect(() => {
@@ -634,8 +1021,8 @@ export default function Tablero() {
       const targetLeft = (ir.left + ir.width  / 2 - sr.left) / s;
       const targetTop  = (ir.top  + ir.height / 2 - sr.top)  / s;
       return {
-        dx: targetLeft - POS.ceremonia[cerPosKey].left,
-        dy: targetTop  - POS.ceremonia[cerPosKey].top,
+        dx: targetLeft - pos.ceremonia[cerPosKey].left,
+        dy: targetTop  - pos.ceremonia[cerPosKey].top,
       };
     };
 
@@ -792,18 +1179,19 @@ export default function Tablero() {
 
         {/* ══════════════════════════════════════════════════════════
             BOTONES DE CONTROL DEL HOST
-            Posición en POS.controles. Assets en /tablero/ui/.
+            Posición en pos.controles. Assets en /tablero/ui/.
             Mientras no tengas los assets se muestran como áreas
             semitransparentes (invisible en producción sin asset).
         ══════════════════════════════════════════════════════════ */}
         {[
-          { cfg: POS.controles.botonRetroceder, src: '/tablero/ui/boton-retroceder.png', onClick: retrocederFase,       title: 'Retroceder fase' },
-          { cfg: POS.controles.botonAvanzar,    src: '/tablero/ui/boton-avanzar.png',    onClick: avanzarFase,           title: 'Avanzar fase'    },
-          { cfg: POS.controles.botonReiniciar,  src: '/tablero/ui/boton-reiniciar.png',  onClick: reiniciar,             title: 'Reiniciar'       },
-          { cfg: POS.controles.botonSalir,      src: '/tablero/ui/boton-salir.png',      onClick: () => navigate('/'),  title: 'Salir'           },
-        ].map(({ cfg, src, onClick, title }) => (
+          { cfg: pos.controles.botonRetroceder, src: '/tablero/ui/boton-retroceder.png', onClick: retrocederFase,       title: 'Retroceder fase', posKey: 'ctrl.retroceder' },
+          { cfg: pos.controles.botonAvanzar,    src: '/tablero/ui/boton-avanzar.png',    onClick: avanzarFase,           title: 'Avanzar fase',    posKey: 'ctrl.avanzar'    },
+          { cfg: pos.controles.botonReiniciar,  src: '/tablero/ui/boton-reiniciar.png',  onClick: reiniciar,             title: 'Reiniciar',       posKey: 'ctrl.reiniciar'  },
+          { cfg: pos.controles.botonSalir,      src: '/tablero/ui/boton-salir.png',      onClick: () => navigate('/'),  title: 'Salir',           posKey: 'ctrl.salir'      },
+        ].map(({ cfg, src, onClick, title, posKey }) => (
           <div
             key={title}
+            data-pos-key={posKey}
             onClick={onClick}
             title={title}
             style={{
@@ -841,245 +1229,228 @@ export default function Tablero() {
         {/* ══════════════════════════════════════════════════════════
             PANEL IZQUIERDO — capitán + lista de jugadores
             ┌──────────────────────────────────────────────────────┐
-            │  POS.panelIzq.left  → borde izquierdo del panel     │
-            │  POS.panelIzq.top   → borde superior del panel      │
-            │  POS.panelIzq.width → ancho en px                   │
+            │  pos.panelIzq.left  → borde izquierdo del panel     │
+            │  pos.panelIzq.top   → borde superior del panel      │
+            │  pos.panelIzq.width → ancho en px                   │
             └──────────────────────────────────────────────────────┘
         ══════════════════════════════════════════════════════════ */}
-        {/* Wrapper: solo posicionamiento — permite que marcoImg cubra el contenido */}
-        <div style={{
-          position: 'absolute',
-          left:     `${POS.panelIzq.left}px`,
-          top:      `${POS.panelIzq.top}px`,
-          width:    `${POS.panelIzq.width}px`,
-          maxHeight: `${1080 - POS.panelIzq.top - 18}px`,
-          zIndex:   10,
-          ...dbg('rgba(255,165,0,0.7)'),
-        }}>
-        {/* Panel interior: fondo + contenido scrollable */}
-        <div
-          style={{
-            position: 'relative',
-            width:    '100%',
-            display:  'flex',
-            flexDirection: 'column',
-            gap:      '8px',
-            padding:  '12px 11px',
-            background: POS.panelIzq.fondoImg
-              ? `url('${POS.panelIzq.fondoImg}') center/cover no-repeat`
-              : 'rgba(4,6,13,0.80)',
-            border:         POS.panelIzq.fondoImg ? 'none' : '1px solid rgba(201,168,76,0.13)',
-            borderRadius:   '10px',
-            backdropFilter: POS.panelIzq.fondoImg ? 'none' : 'blur(14px)',
-            boxShadow:      POS.panelIzq.fondoImg ? 'none' : '0 8px 48px rgba(0,0,0,0.60), inset 0 1px 0 rgba(201,168,76,0.07)',
-            overflowY: 'auto',
-            maxHeight: `${1080 - POS.panelIzq.top - 18}px`,
-          }}
-        >
-          {/* ── Capitán ──────────────────────────────────────────── */}
-          {capitan ? (
-            <div style={{
-              height: `${POS.panelIzq.rowH}px`,
-              padding: '0 13px',
-              boxSizing: 'border-box',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              background: 'linear-gradient(135deg, rgba(201,168,76,0.09) 0%, rgba(201,168,76,0.04) 100%)',
-              border: '1px solid rgba(201,168,76,0.22)',
-              borderRadius: '7px',
-              boxShadow: '0 0 22px rgba(201,168,76,0.07), inset 0 1px 0 rgba(201,168,76,0.09)',
+        {/* ══════════════════════════════════════════════════════════
+            PANEL IZQ — HEADER (capitán)
+            Posición independiente: pos.panelIzq.header.left/top/width
+        ══════════════════════════════════════════════════════════ */}
+        {(() => {
+          const h = pos.panelIzq.header;
+          const hasImg = !!h.fondoImg;
+          return (
+            <div data-pos-key="panelIzq.header" style={{
+              position: 'absolute',
+              left:  `${h.left}px`, top: `${h.top}px`, width: `${h.width}px`,
+              ...(h.height ? { height: `${h.height}px` } : {}),
+              transform: `scale(${h.scale ?? 1})`, transformOrigin: 'top left',
+              zIndex: 10,
+              // Nine-slice si fondoSlice > 0, cover si solo fondoImg, glass si nada
+              ...(hasImg
+                ? { ...nineSlice(h.fondoImg, h.fondoSlice, h.fondoSliceWidth), padding: h.fondoSlice ? `${sliceEdge(h.fondoSlice, h.fondoSliceWidth)}px` : '10px 12px' }
+                : {
+                    background: 'rgba(4,6,13,0.80)',
+                    border: '1px solid rgba(201,168,76,0.22)',
+                    borderRadius: '7px',
+                    backdropFilter: 'blur(14px)',
+                    boxShadow: '0 0 22px rgba(201,168,76,0.07)',
+                    padding: '10px 12px',
+                  }),
+              ...dbg('rgba(255,165,0,0.7)'),
             }}>
-              <p style={{
-                fontFamily: 'var(--fuente-subtitulo)',
-                color: 'rgba(204, 166, 63, 0.68)',
-                fontSize: '20px', letterSpacing: '3px', textTransform: 'uppercase', textAlign: 'center', fontWeight: 700,
-                marginBottom: '4px', lineHeight: 1,
-              }}>
-                &nbsp;Capitán
-              </p>
-              <p style={{
-                fontFamily: 'var(--fuente-subtitulo)',
-                color: 'var(--crema-pergamino)',
-                fontSize: '32px', letterSpacing: '0.4px', textAlign: 'center', fontWeight: 700,
-                lineHeight: 1,
-              }}>
-                {capitan.nombre}
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              height: `${POS.panelIzq.rowH}px`,
-              padding: '0 13px',
-              boxSizing: 'border-box',
-              display: 'flex', alignItems: 'center',
-              background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '7px',
-            }}>
-              <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.22)', fontSize: '9px', letterSpacing: '2.5px', textTransform: 'uppercase' }}>
-                Sin capitán
-              </p>
-            </div>
-          )}
-
-          {/* ── Separador "Tripulación" ──────────────────────────── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 1px' }}>
-            <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(201,168,76,0.18))' }} />
-            <p style={{
-              fontFamily: 'var(--fuente-subtitulo)',
-              color: 'rgba(245, 230, 200, 0.48)',
-              fontSize: '18px', letterSpacing: '3px', textTransform: 'uppercase', flexShrink: 0,
-            }}>
-              Tripulación · {numJugadores}
-            </p>
-            <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(201,168,76,0.18))' }} />
-          </div>
-
-          {/* ── Lista de jugadores ───────────────────────────────── */}
-          {/* Todos los contenedores son width:100% del panel → mismo ancho */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-            {jugadores.map((j, i) => (
-              <div key={j.id || i} style={{
-                width: '100%',
-                opacity:    j.fueraDeServicio ? 0.32 : j.conectado === false ? 0.42 : 1,
-                transition: 'opacity 0.3s ease',
-              }}>
-
-                {/* ── Tarjeta del jugador (mismo ancho y alto que el resto) ── */}
+              {capitan ? (
                 <div style={{
-                  width: '100%',
-                  height: `${POS.panelIzq.rowH}px`,
-                  padding: '0 10px',
-                  borderRadius: '6px',
-                  boxSizing: 'border-box',
-                  display: 'flex', alignItems: 'center',
-                  background: j.esCapitan
-                    ? 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)'
-                    : 'rgba(255,255,255,0.025)',
-                  border: `1px solid ${j.esCapitan ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.05)'}`,
+                  height: h.height ? '130%' : `${pos.panelIzq.rowH}px`,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: h.alignH === 'left' ? 'flex-start' : h.alignH === 'right' ? 'flex-end' : 'center',
+                  justifyContent: 'center',
+                  textAlign: h.alignH ?? 'center',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', width: '100%' }}>
-                    {/* Indicador de conexión */}
+                  <p style={{
+                    fontFamily: 'var(--fuente-subtitulo)',
+                    color: 'rgba(78, 58, 3, 0.87)',
+                    fontSize:      `${h.labelSize ?? 20}px`,
+                    letterSpacing: `${h.labelSpacing ?? 3}px`,
+                    textTransform: 'uppercase', fontWeight: 700, lineHeight: 1,
+                    marginBottom:  `${h.labelGap ?? 4}px`,
+                  }}>
+                    &nbsp;Capitán
+                  </p>
+                  <p style={{
+                    fontFamily: 'var(--fuente-subtitulo)',
+                    color: 'var(--crema-pergamino)',
+                    fontSize:      `${h.nameSize ?? 32}px`,
+                    letterSpacing: `${h.nameSpacing ?? 0.4}px`,
+                    fontWeight: 700, lineHeight: 1,
+                  }}>
+                    {capitan.nombre}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ height: h.height ? '100%' : `${pos.panelIzq.rowH}px`, display: 'flex', alignItems: 'center' }}>
+                  <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.22)', fontSize: '9px', letterSpacing: '2.5px', textTransform: 'uppercase' }}>
+                    Sin capitán
+                  </p>
+                </div>
+              )}
+              {h.marcoImg && (
+                <img src={h.marcoImg} alt="" draggable={false}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', zIndex: 2 }}
+                />
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════
+            PANEL IZQ — LISTA (jugadores)
+            Posición independiente: pos.panelIzq.lista.left/top/width
+            fondoImg con nine-slice (fondoSlice) | cellImg con nine-slice (cellSlice)
+        ══════════════════════════════════════════════════════════ */}
+        {(() => {
+          const l = pos.panelIzq.lista;
+          const hasFondo = !!l.fondoImg;
+          const maxH = `${1080 - l.top - 18}px`;
+          return (
+            <div data-pos-key="panelIzq.lista" style={{
+              position: 'absolute',
+              left:  `${l.left}px`, top: `${l.top}px`, width: `${l.width}px`,
+              ...(l.height ? { height: `${l.height}px` } : {}),
+              transform: `scale(${l.scale ?? 1})`, transformOrigin: 'top left',
+              overflow: 'visible',   // las celdas pueden sobresalir del contenedor
+              zIndex: 10,
+              ...(hasFondo
+                ? { ...nineSlice(l.fondoImg, l.fondoSlice, l.fondoSliceWidth, l.fondoTile ?? 'round'),
+                    padding: `${l.listaPadV ?? 0}px ${l.listaPadH ?? 0}px` }
+                : { padding: `${l.listaPadV ?? 0}px ${l.listaPadH ?? 0}px` }),
+              ...dbg('rgba(255,165,0,0.5)'),
+            }}>
+
+              {/* Separador "Tripulación" */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 1px 6px' }}>
+                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(201,168,76,0.18))' }} />
+                <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.48)', fontSize: `${l.sepSize ?? 18}px`, letterSpacing: `${l.sepSpacing ?? 3}px`, textTransform: 'uppercase', flexShrink: 0 }}>
+                  Tripulación · {numJugadores}
+                </p>
+                <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(201,168,76,0.18))' }} />
+              </div>
+
+              {/* Lista de jugadores */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: `${l.rowGap ?? 4}px` }}>
+                {jugadores.map((j, i) => {
+                  // ── Ancho de la celda ──────────────────────────────────────────────
+                  // cellWidthPx → ancho fijo en px (puede ser mayor que el contenedor)
+                  // cellWidthPct → % del contenedor SIN límite (110% sobresale, 80% deja margen)
+                  const cellW = l.cellWidthPx != null
+                    ? `${l.cellWidthPx}px`
+                    : `${l.cellWidthPct ?? 100}%`;
+                  const cellAl = l.cellAlignX ?? 'left';
+                  return (
+                  <div key={j.id || i} style={{
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: cellAl === 'center' ? 'center' : cellAl === 'right' ? 'flex-end' : 'flex-start',
+                    opacity:    j.fueraDeServicio ? 0.32 : j.conectado === false ? 0.42 : 1,
+                    transition: 'opacity 0.3s ease',
+                  }}>
+                    {/* ── Celda nine-slice ──
+                        - cellSlice / cellSliceWidth → definen borde visual (no afectan al contenido)
+                        - rowPadH / cellPadV         → padding del CONTENIDO (independiente del borde)
+                        - rowH                       → altura total de la fila
+                        - cellWidthPct               → ancho como % del contenedor
+                        - cellTile                   → modo de repetición del borde  */}
                     <div style={{
-                      width: '5px', height: '5px', borderRadius: '50%', flexShrink: 0,
-                      background: j.conectado === false ? '#ff8a8a' : '#98e4a5',
-                      boxShadow:  j.conectado !== false ? '0 0 6px rgba(152,228,165,0.55)' : 'none',
-                    }} />
-
-                    {/* Nombre */}
-                    <span style={{
-                      padding: '3px 6px',
-                      fontFamily: 'var(--fuente-cuerpo)',
-                      color: j.esCapitan ? 'rgba(245,220,160,0.92)' : 'var(--crema-pergamino)',
-                      fontSize: '25px', flex: 1,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      letterSpacing: '0.2px',
+                      width: cellW,
+                      flexShrink: 0,
+                      marginLeft: `${l.cellOffsetX ?? 0}px`,   // desplazamiento horizontal de la celda
+                      height: `${l.rowH ?? pos.panelIzq.rowH ?? 60}px`,
+                      boxSizing: 'border-box',
+                      display: 'flex', alignItems: 'center',
+                      ...(l.cellImg
+                        ? { ...nineSlice(l.cellImg, l.cellSlice, l.cellSliceWidth, l.cellTile ?? 'stretch'),
+                            padding: `${l.cellPadV ?? 0}px ${l.rowPadH ?? 10}px` }
+                        : {
+                            padding: `${l.cellPadV ?? 0}px ${l.rowPadH ?? 10}px`,
+                            borderRadius: '6px',
+                            background: j.esCapitan
+                              ? 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)'
+                              : 'rgba(255,255,255,0.025)',
+                            border: `1px solid ${j.esCapitan ? 'rgba(201,168,76,0.16)' : 'rgba(255,255,255,0.05)'}`,
+                          }),
                     }}>
-                      {j.nombre}
-                    </span>
-
-                    {/* Insignias + currículos — todo dentro de la tarjeta */}
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
-
-                      {/* Insignia capitán: div siempre visible (emoji fallback) + img encima */}
-                      {j.esCapitan && (
-                        <div ref={el => { insigniaRefs.current.capitan = el; }}
-                          style={{ width: `${POS.insignias.size}px`, height: `${POS.insignias.size}px`,
-                                   position: 'relative', display: 'flex', alignItems: 'center',
-                                   justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: `${POS.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
-                          <img src="/tablero/ui/insignia-capitan.png" draggable={false}
-                            onError={e => { e.currentTarget.style.display = 'none'; }}
-                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                                     objectFit: 'contain', zIndex: 1 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: `${l.rowContentGap ?? 7}px`, width: '100%', minWidth: 0 }}>
+                        {/* Dot conexión */}
+                        <div style={{ width: `${l.dotSize ?? 5}px`, height: `${l.dotSize ?? 5}px`, borderRadius: '50%', flexShrink: 0, background: j.conectado === false ? '#ff8a8a' : '#98e4a5', boxShadow: j.conectado !== false ? '0 0 6px rgba(152,228,165,0.55)' : 'none' }} />
+                        {/* Nombre */}
+                        <span style={{ fontFamily: 'var(--fuente-cuerpo)', color: j.esCapitan ? 'rgba(245,220,160,0.92)' : 'var(--crema-pergamino)', fontSize: `${l.nameSize ?? 25}px`, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: `${l.nameSpacing ?? 0.2}px` }}>
+                          {j.nombre}
+                        </span>
+                        {/* Insignias */}
+                        <div style={{ display: 'flex', gap: `${l.insGap ?? 4}px`, flexShrink: 0, alignItems: 'center' }}>
+                          {j.esCapitan && (
+                            <div ref={el => { insigniaRefs.current.capitan = el; }} style={{ width: `${pos.insignias.size}px`, height: `${pos.insignias.size}px`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <span style={{ fontSize: `${pos.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
+                              <img src="/tablero/ui/insignia-capitan.png" draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }} />
+                            </div>
+                          )}
+                          {j.esTeniente && (
+                            <div ref={el => { insigniaRefs.current.teniente = el; }} style={{ width: `${pos.insignias.size}px`, height: `${pos.insignias.size}px`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <span style={{ fontSize: `${pos.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
+                              <img src="/tablero/ui/insignia-teniente.png" draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }} />
+                            </div>
+                          )}
+                          {j.esNavegante && (
+                            <div ref={el => { insigniaRefs.current.navegante = el; }} style={{ width: `${pos.insignias.size}px`, height: `${pos.insignias.size}px`, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <span style={{ fontSize: `${pos.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
+                              <img src="/tablero/ui/insignia-navegante.png" draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', zIndex: 1 }} />
+                            </div>
+                          )}
+                          {j.fueraDeServicio && <span style={{ fontSize: '16px', opacity: 0.6 }}></span>}
+                          {j.curriculos > 0 && (
+                            <div style={{ background: 'rgba(201,168,76,0.13)', border: '0px solid rgba(201,168,76,0.30)', borderRadius: '0px', padding: '0px 0px', fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,220,160,0.78)', fontSize: '0px', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
+                            
+                            </div>
+                          )}
                         </div>
-                      )}
-
-                      {/* Insignia teniente */}
-                      {j.esTeniente && (
-                        <div ref={el => { insigniaRefs.current.teniente = el; }}
-                          style={{ width: `${POS.insignias.size}px`, height: `${POS.insignias.size}px`,
-                                   position: 'relative', display: 'flex', alignItems: 'center',
-                                   justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: `${POS.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
-                          <img src="/tablero/ui/insignia-teniente.png" draggable={false}
-                            onError={e => { e.currentTarget.style.display = 'none'; }}
-                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                                     objectFit: 'contain', zIndex: 1 }} />
-                        </div>
-                      )}
-
-                      {/* Insignia navegante */}
-                      {j.esNavegante && (
-                        <div ref={el => { insigniaRefs.current.navegante = el; }}
-                          style={{ width: `${POS.insignias.size}px`, height: `${POS.insignias.size}px`,
-                                   position: 'relative', display: 'flex', alignItems: 'center',
-                                   justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: `${POS.insignias.size * 0.75}px`, lineHeight: 1, position: 'relative', zIndex: 0 }}></span>
-                          <img src="/tablero/ui/insignia-navegante.png" draggable={false}
-                            onError={e => { e.currentTarget.style.display = 'none'; }}
-                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
-                                     objectFit: 'contain', zIndex: 1 }} />
-                        </div>
-                      )}
-
-                      {j.fueraDeServicio && <span style={{ fontSize: '16px', opacity: 0.6 }}>😴</span>}
-
-                      {/* Badge de currículos — ahora dentro de la tarjeta */}
-                      {j.curriculos > 0 && (
-                        <div style={{
-                          background: 'rgba(201,168,76,0.13)',
-                          border: '1px solid rgba(201,168,76,0.30)',
-                          borderRadius: '5px',
-                          padding: '2px 6px',
-                          fontFamily: 'var(--fuente-subtitulo)',
-                          color: 'rgba(245,220,160,0.78)',
-                          fontSize: '11px',
-                          letterSpacing: '0.3px',
-                          whiteSpace: 'nowrap',
-                        }}>
-                          📜 {j.curriculos}
-                        </div>
-                      )}
-
+                      </div>
                     </div>
                   </div>
-                </div>
-
+                  ); // end return
+                })}
               </div>
-            ))}
-          </div>
-        </div>{/* /panel-izq interior */}
-        {/* Marco decorativo encima del contenido — pointer-events:none */}
-        {POS.panelIzq.marcoImg && (
-          <img src={POS.panelIzq.marcoImg} alt="" draggable={false}
-            onError={e => { e.currentTarget.style.display = 'none'; }}
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'fill',
-              pointerEvents: 'none',
-              borderRadius: '10px',
-              zIndex: 2,
-            }}
-          />
-        )}
-        </div>{/* /panel-izq wrapper */}
+
+              {/* Marco de la lista */}
+              {l.marcoImg && (
+                <img src={l.marcoImg} alt="" draggable={false}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none', zIndex: 2 }}
+                />
+              )}
+            </div>
+          );
+        })()}
 
         {/* ══════════════════════════════════════════════════════════
             TABLERO — vídeo en bucle
             ┌──────────────────────────────────────────────────────┐
             │  Asset: /tablero/tablero.mp4                         │
-            │  POS.tablero.left/top  → centro del vídeo            │
-            │  POS.tablero.width/height → dimensiones en px        │
+            │  pos.tablero.left/top  → centro del vídeo            │
+            │  pos.tablero.width/height → dimensiones en px        │
             └──────────────────────────────────────────────────────┘
             Ancla: CENTRO (translate -50% -50%)
         ══════════════════════════════════════════════════════════ */}
         <div
+          data-pos-key="tablero"
           style={{
             position:  'absolute',
-            left:      `${POS.tablero.left}px`,
-            top:       `${POS.tablero.top}px`,
-            width:     `${POS.tablero.width}px`,
-            height:    `${POS.tablero.height}px`,
+            left:      `${pos.tablero.left}px`,
+            top:       `${pos.tablero.top}px`,
+            width:     `${pos.tablero.width}px`,
+            height:    `${pos.tablero.height}px`,
             transform: 'translate(-50%, -50%)',
             zIndex:    5,
             ...dbg('rgba(0,200,255,0.7)'),
@@ -1108,10 +1479,10 @@ export default function Tablero() {
         ─────────────────────────────────────────────────────────── */}
         <div style={{
           position:      'absolute',
-          left:          `${POS.tablero.left}px`,
-          top:           `${POS.tablero.top}px`,
-          width:         `${POS.tablero.width}px`,
-          height:        `${POS.tablero.height}px`,
+          left:          `${pos.tablero.left}px`,
+          top:           `${pos.tablero.top}px`,
+          width:         `${pos.tablero.width}px`,
+          height:        `${pos.tablero.height}px`,
           transform:     'translate(-50%, -50%)',
           zIndex:        5,          // mismo z que el vídeo → DOM order lo pone encima
           // sin borderRadius → forma cuadrada, encaja con el marco
@@ -1126,10 +1497,10 @@ export default function Tablero() {
         ─────────────────────────────────────────────────────────── */}
         <div style={{
           position:      'absolute',
-          left:          `${POS.marcoTablero.left}px`,
-          top:           `${POS.marcoTablero.top}px`,
-          width:         `${POS.marcoTablero.size * 1.10}px`,
-          height:        `${POS.marcoTablero.size * 1.10}px`,
+          left:          `${pos.marcoTablero.left}px`,
+          top:           `${pos.marcoTablero.top}px`,
+          width:         `${pos.marcoTablero.size * 1.10}px`,
+          height:        `${pos.marcoTablero.size * 1.10}px`,
           transform:     'translate(-50%, -50%)',
           background:    'radial-gradient(ellipse 60% 55% at 50% 50%, rgba(180,130,40,0.18) 0%, rgba(120,80,20,0.08) 50%, transparent 75%)',
           filter:        'blur(28px)',
@@ -1139,17 +1510,18 @@ export default function Tablero() {
 
         {/* ── Marco ornamental del tablero ──────────────────────────
             Asset: /tablero/marco-tablero.png
-            Ajusta POS.marcoTablero.size y left/top si no encaja.
+            Ajusta pos.marcoTablero.size y left/top si no encaja.
         ─────────────────────────────────────────────────────────── */}
         <img
+          data-pos-key="marcoTablero"
           src="/tablero/marco-tablero.png"
           alt=""
           draggable={false}
           style={{
             position:      'absolute',
-            left:          `${POS.marcoTablero.left}px`,
-            top:           `${POS.marcoTablero.top}px`,
-            width:         `${POS.marcoTablero.size}px`,
+            left:          `${pos.marcoTablero.left}px`,
+            top:           `${pos.marcoTablero.top}px`,
+            width:         `${pos.marcoTablero.size}px`,
             transform:     'translate(-50%, -50%)',
             zIndex:        6,
             pointerEvents: 'none',
@@ -1160,7 +1532,7 @@ export default function Tablero() {
         {/* ══════════════════════════════════════════════════════════
             MODELOS 3D — barco / kraken / tentáculos / lupa
             ┌──────────────────────────────────────────────────────┐
-            │  Activa cada modelo con POS.modelos3d.<nombre>.      │
+            │  Activa cada modelo con pos.modelos3d.<nombre>.      │
             │  visible: true  → renderiza el canvas 3D             │
             │  visible: false → no monta nada (sin coste)          │
             │                                                      │
@@ -1170,83 +1542,33 @@ export default function Tablero() {
             │    tentaculo.glb  — tentáculo (reutilizado ×2)       │
             │    lupa.glb       — lupa (reutilizada ×3)            │
             │                                                      │
-            │  Para activar: POS.modelos3d.<nombre>.visible: true  │
+            │  Para activar: pos.modelos3d.<nombre>.visible: true  │
             │  Pon el .glb en /public/tablero/modelos/ y listo.    │
             └──────────────────────────────────────────────────────┘
             Ancla: CENTRO del canvas (translate -50% -50%)
         ══════════════════════════════════════════════════════════ */}
 
-        {/* Barco: renderizado fuera del stage — ver slot debajo del /lienzo */}
-
-        {/* ── Kraken central ───────────────────────────────────── */}
-        {POS.modelos3d.kraken.visible && (
-          <div style={{
-            position: 'absolute',
-            left:      `${POS.modelos3d.kraken.left}px`,
-            top:       `${POS.modelos3d.kraken.top}px`,
-            transform: 'translate(-50%,-50%)',
-            zIndex:    9,
-            pointerEvents: 'none',
-            ...dbg('rgba(180,0,255,0.6)'),
-          }}>
-            <Modelo3D
-              src="/tablero/modelos/kraken.glb"
-              size={POS.modelos3d.kraken.size}
-              escala={1}
-              rotacion={[0, 0, 0]}
-            />
-          </div>
-        )}
-
-        {/* ── Tentáculos (kraken_menor ×2) ─────────────────────── */}
-        {POS.modelos3d.tentaculo1.visible && (
-          <div style={{
-            position: 'absolute',
-            left: `${POS.modelos3d.tentaculo1.left}px`,
-            top:  `${POS.modelos3d.tentaculo1.top}px`,
-            transform: 'translate(-50%,-50%)', zIndex: 9, pointerEvents: 'none',
-          }}>
-            <Modelo3D src="/tablero/modelos/tentaculo.glb" size={POS.modelos3d.tentaculo1.size} rotacion={[0, Math.PI, 0]} />
-          </div>
-        )}
-        {POS.modelos3d.tentaculo2.visible && (
-          <div style={{
-            position: 'absolute',
-            left: `${POS.modelos3d.tentaculo2.left}px`,
-            top:  `${POS.modelos3d.tentaculo2.top}px`,
-            transform: 'translate(-50%,-50%)', zIndex: 9, pointerEvents: 'none',
-          }}>
-            <Modelo3D src="/tablero/modelos/tentaculo.glb" size={POS.modelos3d.tentaculo2.size} />
-          </div>
-        )}
-
-        {/* ── Lupas (acción lupa ×3) ───────────────────────────── */}
-        {[POS.modelos3d.lupa1, POS.modelos3d.lupa2, POS.modelos3d.lupa3].map((cfg, idx) =>
-          cfg.visible && (
-            <div key={`lupa-${idx}`} style={{
-              position: 'absolute', left: `${cfg.left}px`, top: `${cfg.top}px`,
-              transform: 'translate(-50%,-50%)', zIndex: 7, pointerEvents: 'none',
-            }}>
-              <Modelo3D src="/tablero/modelos/lupa.glb" size={cfg.size} />
-            </div>
-          )
-        )}
+        {/* Kraken, tentáculos y lupas: renderizados fuera del stage (igual que el barco)
+            para que WebGL funcione correctamente sin verse afectado por transform:scale */}
 
         {/* ══════════════════════════════════════════════════════════
             PANEL DERECHO — mazo, última carta, motín
             ┌──────────────────────────────────────────────────────┐
-            │  POS.panelDer.left  → borde izquierdo del panel     │
-            │  POS.panelDer.top   → borde superior del panel      │
-            │  POS.panelDer.width → ancho en px                   │
+            │  pos.panelDer.left  → borde izquierdo del panel     │
+            │  pos.panelDer.top   → borde superior del panel      │
+            │  pos.panelDer.width → ancho en px                   │
             └──────────────────────────────────────────────────────┘
         ══════════════════════════════════════════════════════════ */}
         {/* Wrapper: solo posicionamiento */}
-        <div style={{
+        <div data-pos-key="panelDer" style={{
           position: 'absolute',
-          left:     `${POS.panelDer.left}px`,
-          top:      `${POS.panelDer.top}px`,
-          width:    `${POS.panelDer.width}px`,
-          maxHeight: `${1080 - POS.panelDer.top - 18}px`,
+          left:     `${pos.panelDer.left}px`,
+          top:      `${pos.panelDer.top}px`,
+          width:    `${pos.panelDer.width}px`,
+          transform: `scale(${pos.panelDer.scale ?? 1})`, transformOrigin: 'top left',
+          ...(pos.panelDer.height
+            ? { height: `${pos.panelDer.height}px` }
+            : { maxHeight: `${1080 - pos.panelDer.top - 18}px` }),
           zIndex:   10,
           ...dbg('rgba(160,80,240,0.7)'),
         }}>
@@ -1259,109 +1581,19 @@ export default function Tablero() {
             flexDirection: 'column',
             gap:      '8px',
             padding:  '12px 11px',
-            background: POS.panelDer.fondoImg
-              ? `url('${POS.panelDer.fondoImg}') center/cover no-repeat`
+            background: pos.panelDer.fondoImg
+              ? `url('${pos.panelDer.fondoImg}') center/cover no-repeat`
               : 'rgba(4,6,13,0.80)',
-            border:         POS.panelDer.fondoImg ? 'none' : '1px solid rgba(201,168,76,0.13)',
+            border:         pos.panelDer.fondoImg ? 'none' : '1px solid rgba(201,168,76,0.13)',
             borderRadius:   '10px',
-            backdropFilter: POS.panelDer.fondoImg ? 'none' : 'blur(14px)',
-            boxShadow:      POS.panelDer.fondoImg ? 'none' : '0 8px 48px rgba(0,0,0,0.60), inset 0 1px 0 rgba(201,168,76,0.07)',
+            backdropFilter: pos.panelDer.fondoImg ? 'none' : 'blur(14px)',
+            boxShadow:      pos.panelDer.fondoImg ? 'none' : '0 8px 48px rgba(0,0,0,0.60), inset 0 1px 0 rgba(201,168,76,0.07)',
             overflowY: 'auto',
-            maxHeight: `${1080 - POS.panelDer.top - 18}px`,
+            ...(pos.panelDer.height
+              ? { height: `${pos.panelDer.height}px` }
+              : { maxHeight: `${1080 - pos.panelDer.top - 18}px` }),
           }}
         >
-          {/* ── MAZO — reverso apilado + contador ───────────────── */}
-          {tablero && (
-            <div style={{ padding: '12px 10px 16px', textAlign: 'center' }}>
-              
-
-              {/* Cartas apiladas */}
-              <div style={{ position: 'relative', width: `${POS.panelDer.mazoPilaW}px`, margin: '0 auto' }}>
-                {/* Sombras de cartas debajo */}
-                {[3, 2, 1].map(i => (
-                  <img key={i} src="/tablero/cartas-nav/carta-reverso.png"
-                    draggable={false}
-                    onError={e => { e.currentTarget.style.display = 'none'; }}
-                    style={{
-                      position: 'absolute',
-                      top:    `${-i * 4}px`,
-                      left:   `${i * 3}px`,
-                      width:  '100%',
-                      filter: `brightness(${0.35 + i * 0.10})`,
-                      borderRadius: '6px',
-                      pointerEvents: 'none',
-                    }}
-                  />
-                ))}
-                {/* Carta superior */}
-                <img src="/tablero/cartas-nav/carta-reverso.png"
-                  draggable={false}
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                  style={{
-                    position: 'relative', zIndex: 4,
-                    width: '100%', display: 'block',
-                    borderRadius: '6px',
-                    boxShadow: '0 6px 22px rgba(0,0,0,0.60)',
-                    pointerEvents: 'none',
-                  }}
-                />
-                {/* Badge con el número */}
-                <div style={{
-                  position: 'absolute', bottom: '-12px', right: '-12px', zIndex: 5,
-                  width: '52px', height: '52px',
-                  background: 'rgba(4,6,13,0.92)',
-                  border: `1px solid ${tablero.mazoDisponibleCount === 0 ? 'rgba(255,100,100,0.50)' : 'rgba(201,168,76,0.42)'}`,
-                  borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--fuente-ui)',
-                  fontSize: '23px',
-                  color: tablero.mazoDisponibleCount === 0 ? '#ff8a8a' : 'var(--crema-pergamino)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.55)',
-                }}>
-                  {tablero.mazoDisponibleCount}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Separador ────────────────────────────────────────── */}
-          {tablero?.ultimaCarta && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 1px' }}>
-              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, rgba(201,168,76,0.15))' }} />
-            
-              <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, transparent, rgba(201,168,76,0.15))' }} />
-            </div>
-          )}
-
-          {/* ── ÚLTIMA CARTA — asset por color ──────────────────── */}
-          {tablero?.ultimaCarta && (() => {
-            const c = tablero.ultimaCarta;
-            const COL_GLOW = {
-              azul:     'rgba(48,138,240,0.72)',   // halo azul eléctrico
-              rojo:     'rgba(215,48,38,0.72)',    // halo rojo vivo
-              amarillo: 'rgba(201,168,76,0.50)',   // halo dorado (ya estaba bien)
-            };
-            return (
-              <div style={{ padding: '8px 10px 14px', textAlign: 'center' }}>
-                <img
-                  ref={ultimaCartaRef}
-                  src={getCartaNavSrc(c.color, c.nombre)}
-                  alt={c.nombre}
-                  draggable={false}
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                  style={{
-                    width: `${POS.panelDer.ultimaCartaW}px`,
-                    display: 'inline-block',
-                    borderRadius: '7px',
-                    boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 26px ${COL_GLOW[c.color] || 'rgba(201,168,76,0.30)'}, 0 0 8px ${COL_GLOW[c.color] || 'rgba(201,168,76,0.20)'}`,
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                  }}
-                />
-              </div>
-            );
-          })()}
-
           {/* ── Estado del motín (fase_2) ────────────────────────── */}
           {fase === 'fase_2' && tablero?.motin && (
             <div style={{
@@ -1398,8 +1630,8 @@ export default function Tablero() {
             </div>
           )}
         </div>{/* /panel-der interior */}
-        {POS.panelDer.marcoImg && (
-          <img src={POS.panelDer.marcoImg} alt="" draggable={false}
+        {pos.panelDer.marcoImg && (
+          <img src={pos.panelDer.marcoImg} alt="" draggable={false}
             onError={e => { e.currentTarget.style.display = 'none'; }}
             style={{
               position: 'absolute', inset: 0,
@@ -1412,6 +1644,174 @@ export default function Tablero() {
           />
         )}
         </div>{/* /panel-der wrapper */}
+
+        {/* ══════════════════════════════════════════════════════════
+            MAZOS AUTÓNOMOS — Navegación y Cultista
+            Ambos siguen el mismo esquema:
+              left/top → esquina superior izquierda en el lienzo 1920×1080
+              width    → ancho de la carta (px)
+              visible  → true/false
+        ══════════════════════════════════════════════════════════ */}
+
+        {/* ── Mazo de Navegación ── */}
+        {pos.mazoNav.visible && (() => {
+          const cfg = pos.mazoNav;
+          return (
+            <div data-pos-key="mazoNav" style={{
+              position: 'absolute',
+              left:  `${cfg.left}px`,
+              top:   `${cfg.top}px`,
+              width: `${cfg.width}px`,
+              transform: `scale(${cfg.scale ?? 1})`, transformOrigin: 'top left',
+              zIndex: 10,
+              // Animación cuando el mazo se rebaraja
+              animation: mazoRefrescado ? 'mazo-reposicion 0.6s ease' : 'none',
+              filter: mazoRefrescado ? 'drop-shadow(0 0 18px rgba(201,168,76,0.9))' : 'none',
+              transition: 'filter 0.4s ease',
+              ...dbg('rgba(201,168,76,0.6)'),
+            }}>
+              {[3, 2, 1].map(i => (
+                <img key={i} src="/tablero/cartas-nav/carta-reverso.png"
+                  draggable={false}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                  style={{
+                    position: 'absolute',
+                    top:  `${-i * 4}px`, left: `${i * 3}px`,
+                    width: '100%',
+                    filter: `brightness(${0.35 + i * 0.10})`,
+                    borderRadius: '6px', pointerEvents: 'none',
+                  }}
+                />
+              ))}
+              <img src="/tablero/cartas-nav/carta-reverso.png"
+                draggable={false}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                style={{
+                  position: 'relative', zIndex: 4,
+                  width: '100%', display: 'block',
+                  borderRadius: '6px',
+                  boxShadow: '0 6px 22px rgba(0,0,0,0.60)',
+                  pointerEvents: 'none',
+                }}
+              />
+              {/* Badge contador */}
+              {tablero && (
+                <div style={{
+                  position: 'absolute', bottom: '-12px', right: '-12px', zIndex: 5,
+                  width: '52px', height: '52px',
+                  background: 'rgba(4,6,13,0.92)',
+                  border: `1px solid ${tablero.mazoDisponibleCount === 0 ? 'rgba(255,100,100,0.50)' : mazoRefrescado ? 'rgba(201,168,76,0.9)' : 'rgba(201,168,76,0.42)'}`,
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--fuente-ui)', fontSize: '23px',
+                  color: tablero.mazoDisponibleCount === 0 ? '#ff8a8a' : 'var(--crema-pergamino)',
+                  boxShadow: mazoRefrescado ? '0 0 18px rgba(201,168,76,0.6)' : '0 2px 8px rgba(0,0,0,0.55)',
+                  transition: 'all 0.4s ease',
+                  animation: mazoRefrescado ? 'mazo-reposicion 0.6s ease' : 'none',
+                }}>
+                  {tablero.mazoDisponibleCount}
+                </div>
+              )}
+              {/* Etiqueta "¡Repuesto!" flotante */}
+              {mazoRefrescado && (
+                <div style={{
+                  position: 'absolute', top: '-38px', left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(4,6,13,0.92)',
+                  border: '1px solid rgba(201,168,76,0.6)',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontFamily: 'var(--fuente-subtitulo)',
+                  fontSize: '11px', letterSpacing: '1.5px',
+                  color: 'var(--oro-dorado)',
+                  whiteSpace: 'nowrap',
+                  animation: 'aparecer 0.3s ease',
+                  zIndex: 20,
+                }}>
+                  🃏 Baraja repuesta ({mazoRefrescado.nuevo} cartas)
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Última carta jugada ── */}
+        {pos.ultimaCarta.visible && tablero?.ultimaCarta && (() => {
+          const c = tablero.ultimaCarta;
+          const COL_GLOW = {
+            azul:     'rgba(48,138,240,0.72)',
+            rojo:     'rgba(215,48,38,0.72)',
+            amarillo: 'rgba(201,168,76,0.50)',
+          };
+          return (
+            <div data-pos-key="ultimaCarta" style={{
+              position: 'absolute',
+              left:  `${pos.ultimaCarta.left}px`,
+              top:   `${pos.ultimaCarta.top}px`,
+              width: `${pos.ultimaCarta.width}px`,
+              transform: `scale(${pos.ultimaCarta.scale ?? 1})`, transformOrigin: 'top left',
+              zIndex: 10,
+              ...dbg('rgba(201,168,76,0.5)'),
+            }}>
+              <img
+                ref={ultimaCartaRef}
+                src={getCartaNavSrc(c.color, c.nombre)}
+                alt={c.nombre}
+                draggable={false}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                style={{
+                  width: '100%',
+                  display: 'block',
+                  borderRadius: '7px',
+                  boxShadow: `0 6px 24px rgba(0,0,0,0.55), 0 0 26px ${COL_GLOW[c.color] || 'rgba(201,168,76,0.30)'}, 0 0 8px ${COL_GLOW[c.color] || 'rgba(201,168,76,0.20)'}`,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
+            </div>
+          );
+        })()}
+
+        {/* ── Mazo del Cultista ── */}
+        {pos.mazoCultista.visible && (() => {
+          const cfg = pos.mazoCultista;
+          return (
+            <div data-pos-key="mazoCultista" style={{
+              position: 'absolute',
+              left:  `${cfg.left}px`,
+              top:   `${cfg.top}px`,
+              width: `${cfg.width}px`,
+              transform: `scale(${cfg.scale ?? 1})`, transformOrigin: 'top left',
+              zIndex: 10,
+              ...dbg('rgba(76,175,80,0.6)'),
+            }}>
+              {[3, 2, 1].map(i => (
+                <img key={i} src="/tablero/cartas-ritual/carta-reverso-ritual.png"
+                  draggable={false}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                  style={{
+                    position: 'absolute',
+                    top:  `${-i * 4}px`, left: `${i * 3}px`,
+                    width: '100%',
+                    filter: `brightness(${0.35 + i * 0.10})`,
+                    borderRadius: '6px', pointerEvents: 'none',
+                  }}
+                />
+              ))}
+              <img src="/tablero/cartas-ritual/carta-reverso-ritual.png"
+                draggable={false}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                style={{
+                  position: 'relative', zIndex: 4,
+                  width: '100%', display: 'block',
+                  borderRadius: '6px',
+                  boxShadow: '0 6px 22px rgba(0,0,0,0.60), 0 0 18px rgba(76,175,80,0.25)',
+                  pointerEvents: 'none',
+                }}
+              />
+            </div>
+          );
+        })()}
 
         {/* ── Niebla ambiental ────────────────────────────────────── */}
         <NieblaTablero fase={fase} />
@@ -1453,13 +1853,13 @@ export default function Tablero() {
               nav: { delay: '0.06s', rot:  '14deg' },
             };
 
-            const pos = POS.ceremonia[posKey];
+            const cerPos = pos.ceremonia[posKey];
             const off = isShrinking ? cerShrinkOff[shrinkKey] : { dx: 0, dy: 0 };
             const sp  = SHRINK_PARAMS[shrinkKey];
             return {
               position:        'absolute',
-              left:            `${pos.left}px`,
-              top:             `${pos.top}px`,
+              left:            `${cerPos.left}px`,
+              top:             `${cerPos.top}px`,
               // Transición siempre definida para que el cambio de transform anime suavemente
               transition:      `transform 1.0s cubic-bezier(0.35,0,0.15,1) ${sp.delay},
                                 opacity   0.75s ease ${sp.delay}`,
@@ -1499,7 +1899,7 @@ export default function Tablero() {
                 <img
                   src="/tablero/insignias/cartel-capitan.png" alt="Capitán"
                   draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }}
-                  style={{ width: `${POS.ceremonia.capitan.wImg}px`, display: 'block', margin: '0 auto 4px' }}
+                  style={{ width: `${pos.ceremonia.capitan.wImg}px`, display: 'block', margin: '0 auto 4px' }}
                 />
                 <p style={{
                   fontFamily: 'var(--fuente-titulo)', color: 'var(--oro-dorado)', 
@@ -1519,7 +1919,7 @@ export default function Tablero() {
                   <img
                     src="/tablero/insignias/cartel-teniente.png" alt="Teniente"
                     draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }}
-                    style={{ width: `${POS.ceremonia.teniente.wImg}px`, display: 'block', margin: '0 auto 4px' }}
+                    style={{ width: `${pos.ceremonia.teniente.wImg}px`, display: 'block', margin: '0 auto 4px' }}
                   />
                   <p style={{
                     fontFamily: 'var(--fuente-titulo)', color: 'var(--crema-pergamino)',
@@ -1539,7 +1939,7 @@ export default function Tablero() {
                   <img
                     src="/tablero/insignias/cartel-navegante.png" alt="Navegante"
                     draggable={false} onError={e => { e.currentTarget.style.display = 'none'; }}
-                    style={{ width: `${POS.ceremonia.navegante.wImg}px`, display: 'block', margin: '0 auto 4px' }}
+                    style={{ width: `${pos.ceremonia.navegante.wImg}px`, display: 'block', margin: '0 auto 4px' }}
                   />
                   <p style={{
                     fontFamily: 'var(--fuente-titulo)', color: 'var(--crema-pergamino)',
@@ -1547,6 +1947,134 @@ export default function Tablero() {
                   }}>
                     {ceremoniaDatos.navegante}
                   </p>
+                </div>
+              )}
+
+              {/* ── "¿Quieren amotinarse?" + barra de votos ─────────────────
+                  Aparece MOTIN_PREGUNTA_MS después de mostrar la pirámide.
+                  Solo visible cuando la pirámide está estática (no shrinking).  ── */}
+              {isEquipo && !isShrinking && cerMotinFase === 'pregunta' && (() => {
+                // Calcular valores ANTES del fade-in para que todo aparezca junto
+                const { confirmados = 0, total = 0, umbral = 3 } = tablero?.motin || {};
+                const pct = total > 0 ? Math.min(100, (confirmados / total) * 100) : 0;
+                return (
+                  <div style={{
+                    position: 'absolute',
+                    left:      `${pos.ceremonia.motin.left}px`,
+                    top:       `${pos.ceremonia.motin.top}px`,
+                    transform: 'translate(-50%, -50%)',
+                    width:     `${pos.ceremonia.motin.width}px`,
+                    textAlign: 'center',
+                    // Una sola animación sobre el bloque completo → todo entra a la vez
+                    animation: 'aparecer 0.9s ease both',
+                    // Halo rojo configurable sobre texto + barra en conjunto
+                    filter:    pos.ceremonia.motin.sombra,
+                    zIndex: 53,
+                    pointerEvents: 'none',
+                  }}>
+                    <p style={{
+                      fontFamily: 'var(--fuente-subtitulo)',
+                      color: 'var(--crema-pergamino)',
+                      fontSize: '40px', letterSpacing: '4px',
+                      marginBottom: '18px',
+                    }}>
+                      ¿Quieren amotinarse?
+                    </p>
+
+                    {/* Barra de progreso — siempre renderizada con el bloque */}
+                    <div style={{ padding: '0 40px' }}>
+                      <div style={{
+                        background: 'rgba(255,255,255,0.07)',
+                        borderRadius: '6px', height: '10px',
+                        overflow: 'hidden', marginBottom: '12px',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.4)',
+                      }}>
+                        <div style={{
+                          height: '100%', borderRadius: '6px',
+                          width: `${pct}%`,
+                          background: 'linear-gradient(to right, rgba(192,57,43,0.75), rgba(255,100,80,0.95))',
+                          transition: 'width 0.5s ease',
+                          boxShadow: '0 0 8px rgba(192,57,43,0.5)',
+                        }} />
+                      </div>
+                      <p style={{
+                        fontFamily: 'var(--fuente-subtitulo)',
+                        color: 'rgba(245,230,200,0.50)',
+                        fontSize: '18px', letterSpacing: '2px',
+                      }}>
+                        {confirmados}&nbsp;/&nbsp;{total} han revelado sus armas
+                        &nbsp;·&nbsp; {umbral}&nbsp;pistolas necesarias
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── Pantalla MOTÍN EXITOSO (dentro de la ceremonia) ─────────── */}
+              {cerMotinFase === 'exitoso' && motin && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 55,
+                  background: 'rgba(4,6,13,0.95)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'aparecer 0.45s ease',
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '90px', marginBottom: '20px', animation: 'flotar 2s ease-in-out infinite' }}>💀</div>
+                    <h2 style={{
+                      fontFamily: 'var(--fuente-titulo)', color: '#ff8a8a',
+                      fontSize: '74px', letterSpacing: '7px',
+                      textShadow: '0 0 60px rgba(192,57,43,0.7)',
+                      marginBottom: '16px', lineHeight: 1,
+                    }}>
+                      ¡MOTÍN!
+                    </h2>
+                    <p style={{
+                      fontFamily: 'var(--fuente-subtitulo)',
+                      color: 'rgba(245,230,200,0.50)',
+                      fontSize: '24px', letterSpacing: '2px', marginBottom: '22px',
+                    }}>
+                      {motin.totalPistolas} pistola{motin.totalPistolas !== 1 ? 's' : ''}&nbsp;/&nbsp;{motin.umbral} necesarias
+                    </p>
+                    {motin.nuevoCapitan && (
+                      <p style={{
+                        fontFamily: 'var(--fuente-titulo)',
+                        color: 'var(--oro-dorado)',
+                        fontSize: '38px', letterSpacing: '3px',
+                        textShadow: '0 0 35px rgba(201,168,76,0.55)',
+                      }}>
+                        Nuevo capitán:&nbsp;&nbsp;{motin.nuevoCapitan.nombre}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Pantalla MOTÍN FALLADO (dentro de la ceremonia) ─────────── */}
+              {cerMotinFase === 'fallado' && motin && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 55,
+                  background: 'rgba(4,6,13,0.95)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'aparecer 0.45s ease',
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '90px', marginBottom: '20px', animation: 'flotar 2s ease-in-out infinite' }}>⚓</div>
+                    <h2 style={{
+                      fontFamily: 'var(--fuente-titulo)', color: 'var(--oro-dorado)',
+                      fontSize: '74px', letterSpacing: '7px',
+                      textShadow: '0 0 60px rgba(201,168,76,0.55)',
+                      marginBottom: '16px', lineHeight: 1,
+                    }}>
+                      MOTÍN FALLADO
+                    </h2>
+                    <p style={{
+                      fontFamily: 'var(--fuente-subtitulo)',
+                      color: 'rgba(245,230,200,0.50)',
+                      fontSize: '24px', letterSpacing: '2px',
+                    }}>
+                      {motin.totalPistolas} pistola{motin.totalPistolas !== 1 ? 's' : ''}&nbsp;/&nbsp;{motin.umbral} necesarias
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -1639,8 +2167,8 @@ export default function Tablero() {
           </div>
         )}
 
-        {/* Overlay: Resultado de motín */}
-        {motin && (
+        {/* Overlay: Resultado de motín — solo cuando la ceremonia NO lo está mostrando */}
+        {motin && cerMotinFase === 'idle' && (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,7,15,0.82)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', zIndex: 50, animation: 'aparecer 0.3s ease' }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '96px', marginBottom: '18px', animation: 'flotar 2s ease-in-out infinite' }}>
@@ -1793,14 +2321,14 @@ export default function Tablero() {
       )}
 
       {/* ── Barco pirata ─────────────────────────────────────────── */}
-      {POS.modelos3d.barco.visible && (() => {
+      {pos.modelos3d.barco.visible && (() => {
         // Posición: HEX_POS[hexId] si existe, si no fallback a POS
         const bHexId    = tablero?.barco?.hexId;
-        const bHexPos   = (bHexId && HEX_POS[bHexId]) ?? { left: POS.modelos3d.barco.left, top: POS.modelos3d.barco.top };
+        const bHexPos   = (bHexId && HEX_POS[bHexId]) ?? { left: pos.modelos3d.barco.left, top: pos.modelos3d.barco.top };
         const bRotAngle = barcoRotAngle;
         const bLeft     = scene.x + bHexPos.left * scene.s;
         const bTop      = scene.y + bHexPos.top  * scene.s;
-        const bSize     = Math.round(POS.modelos3d.barco.size * scene.s);
+        const bSize     = Math.round(pos.modelos3d.barco.size * scene.s);
 
         // El barco se oscurece cuando hay un overlay activo (evento, victoria…)
         // No hay capa externa que lo cubra — se gestiona aquí directamente.
@@ -1826,14 +2354,59 @@ export default function Tablero() {
             <Modelo3D
               src="/tablero/modelos/barco.glb"
               size={bSize}
-              escala={POS.modelos3d.barco.escala}
-              camPos={POS.modelos3d.barco.camPos}
-              controles={POS.modelos3d.barco.controles}
+              escala={pos.modelos3d.barco.escala}
+              camPos={pos.modelos3d.barco.camPos}
+              controles={pos.modelos3d.barco.controles}
               rotacion={[0, bRotAngle, 0]}
+              onListo={() => marcarModeloListo('barco')}
             />
           </div>
         );
       })()}
+
+      {/* ══════════════════════════════════════════════════════════════
+          MODELOS 3D DECORATIVOS — data-driven, fuera del stage.
+          Renderiza TODOS los modelos de pos.modelos3d excepto 'barco'
+          (que tiene su propio render arriba porque sigue el hexId).
+          Para añadir un modelo nuevo basta con declararlo en pos.modelos3d
+          con su 'src' — aquí se renderiza automáticamente.
+            screenX = scene.x + cfg.left * scene.s
+            screenY = scene.y + cfg.top  * scene.s
+          espejo   → scaleX(-1) en el wrapper
+          filterCss/tintColor → color del modelo
+          opacidad → 0-1
+      ══════════════════════════════════════════════════════════════ */}
+      {Object.entries(pos.modelos3d).map(([key, cfg]) => {
+        if (key === 'barco' || !cfg.visible || !cfg.src) return null;
+        const left = scene.x + cfg.left * scene.s;
+        const top  = scene.y + cfg.top  * scene.s;
+        const size = Math.round(cfg.size * scene.s);
+        return (
+          <div key={key} style={{
+            position: 'absolute',
+            left:     `${left}px`,
+            top:      `${top}px`,
+            transform: `translate(-50%,-50%)${cfg.espejo ? ' scaleX(-1)' : ''}`,
+            zIndex:    8,
+            opacity:       cfg.opacidad ?? 1,
+            filter:        buildFilter(cfg),
+            pointerEvents: 'none',
+            transition:    'opacity 0.4s ease, filter 0.4s ease',
+          }}>
+            <Modelo3D
+              src={cfg.src}
+              size={size}
+              escala={cfg.escala ?? 1}
+              camPos={[0, 2.4, 0]}
+              controles={false}
+              loopMode={cfg.loopMode ?? 'repeat'}
+              colorBase={cfg.colorBase ?? '#cccccc'}
+              rotacion={[cfg.rotX ?? 0, cfg.rotY ?? 0, cfg.rotZ ?? 0]}
+              onListo={() => marcarModeloListo(key)}
+            />
+          </div>
+        );
+      })}
 
       {/* ══════════════════════════════════════════════════════════════
           PANEL DEV — solo visible con DEV_PREVIEW = true
@@ -1986,13 +2559,13 @@ export default function Tablero() {
                 {/* ─── Añadir / quitar jugadores ─── */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ color: 'rgba(245,230,200,0.40)', fontSize: 10, letterSpacing: 1 }}>
-                    {(sala?.jugadores||[]).length} / 10 jugadores
+                    {(sala?.jugadores||[]).length} / 11 jugadores
                   </span>
                   <button
                     onClick={() => {
                       const jug = sala?.jugadores || [];
-                      if (jug.length >= 10) return;
-                      const NOMBRES = ['Ana','Bea','Carlos','Diego','Eva','Fran','Gema','Hugo','Isa','Juan'];
+                      if (jug.length >= 11) return;
+                      const NOMBRES = ['Ana','Bea','Carlos','Diego','Eva','Fran','Gema','Hugo','Isa','Juan','Karla'];
                       const nombre  = NOMBRES[jug.length] ?? `Jugador ${jug.length + 1}`;
                       const id      = `j_${Date.now()}`;
                       setSala(prev => ({
@@ -2038,6 +2611,22 @@ export default function Tablero() {
                     <span style={{ minWidth: 20, textAlign: 'center' }}>{tablero.mazoDisponibleCount ?? 0}</span>
                     <button onClick={() => setTablero(prev => ({ ...prev, mazoDisponibleCount: (prev.mazoDisponibleCount||0) + 1 }))} style={_btnMini}>+</button>
                   </div>
+                  {/* Test: simula la animación de reposición del mazo */}
+                  <button
+                    onClick={() => {
+                      const anterior = tablero?.mazoDisponibleCount ?? 3;
+                      const nuevo    = anterior + 15;
+                      // Actualizar el contador visual
+                      setTablero(prev => ({ ...prev, mazoDisponibleCount: nuevo }));
+                      // Disparar la animación
+                      setMazoRefrescado({ anterior, nuevo });
+                      setTimeout(() => setMazoRefrescado(null), 3000);
+                      // En partida real también vacía el servidor
+                      if (!DEV_PREVIEW) emitir('debug-vaciar-mazo', { cartas: 2 });
+                    }}
+                    title="Simula la reposición del mazo (animación + contador)"
+                    style={{ ..._btnMini, color: '#ffd060', borderColor: 'rgba(255,208,96,0.35)', padding: '3px 7px' }}
+                  >🃏 Test mazo</button>
                 </div>
                 {/* Última carta */}
                 <div style={{ marginTop: 7, display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -2106,17 +2695,22 @@ export default function Tablero() {
                     const jug = sala?.jugadores || [];
                     const nuevoIdx = ((tablero.capitanIdx || 0) + 1) % jug.length;
                     const nuevoCapitan = jug[nuevoIdx];
-                    setMotin({ exitoso: true, totalPistolas: 4, umbral: 3, nuevoCapitan });
-                    // Ceremony-aware: si hay pirámide → 3s motin → nueva ceremonia de capitán
-                    if (ceremoniaStep === 'equipo') {
-                      setTimeout(() => {
-                        setMotin(null);
-                        setTablero(prev => ({ ...prev, capitanIdx: nuevoIdx }));
-                        setSala(prev => ({ ...prev, jugadores: prev.jugadores.map((j, i) => ({ ...j, esCapitan: i === nuevoIdx })) }));
+                    const data = { exitoso: true, totalPistolas: 4, umbral: 3, nuevoCapitan };
+                    clearTimeout(cerMotinTimerRef.current);
+                    if (ceremoniaStep !== 'idle') {
+                      // Integrado en la ceremonia
+                      setMotin(data);
+                      setCerMotinFase('exitoso');
+                      setTablero(prev => ({ ...prev, capitanIdx: nuevoIdx }));
+                      setSala(prev => ({ ...prev, jugadores: prev.jugadores.map((j, i) => ({ ...j, esCapitan: i === nuevoIdx })) }));
+                      cerMotinTimerRef.current = setTimeout(() => {
                         setCeremoniaDatos({ capitan: nuevoCapitan.nombre, teniente: '', navegante: '' });
                         setCeremoniaStep('capitan');
-                      }, 3000);
+                        setCerMotinFase('idle');
+                        setMotin(null);
+                      }, 4000);
                     } else {
+                      setMotin(data);
                       setTablero(prev => ({ ...prev, capitanIdx: nuevoIdx }));
                       setSala(prev => ({ ...prev, jugadores: prev.jugadores.map((j, i) => ({ ...j, esCapitan: i === nuevoIdx })) }));
                       setTimeout(() => setMotin(null), 6000);
@@ -2124,15 +2718,19 @@ export default function Tablero() {
                   }} style={{ ..._btnEvento, borderColor: '#ff8a8a', color: '#ff8a8a' }}>💀 Exitoso</button>
 
                   <button onClick={() => {
-                    setMotin({ exitoso: false, totalPistolas: 1, umbral: 3, nuevoCapitan: null });
-                    // Ceremony-aware: si hay pirámide → 3s motin → pirámide 2.5s → encoger
-                    if (ceremoniaStep === 'equipo') {
-                      setTimeout(() => {
+                    const data = { exitoso: false, totalPistolas: 1, umbral: 3, nuevoCapitan: null };
+                    clearTimeout(cerMotinTimerRef.current);
+                    if (ceremoniaStep !== 'idle') {
+                      // Integrado en la ceremonia → fallado 5s → encogimiento
+                      setMotin(data);
+                      setCerMotinFase('fallado');
+                      cerMotinTimerRef.current = setTimeout(() => {
+                        setCerMotinFase('idle');
                         setMotin(null);
-                        setCeremoniaStep('equipo');
-                        setTimeout(() => iniciarShrinking(), 2500);
-                      }, 3000);
+                        iniciarShrinking();
+                      }, 5000);
                     } else {
+                      setMotin(data);
                       setTimeout(() => setMotin(null), 6000);
                     }
                   }} style={{ ..._btnEvento, borderColor: '#ffd060', color: '#ffd060' }}>⚓ Fallado</button>
@@ -2140,6 +2738,55 @@ export default function Tablero() {
                   <button onClick={() => setMotin(null)}
                     style={{ ..._btnEvento, borderColor: 'rgba(255,255,255,0.18)', color: 'rgba(245,230,200,0.35)' }}>✕ Cerrar</button>
                 </div>
+
+                {/* ─── Simulador de votos — visible cuando la pregunta está activa ─── */}
+                {cerMotinFase === 'pregunta' && (
+                  <div style={{ marginBottom: 8, padding: '6px 8px', background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.20)', borderRadius: 5 }}>
+                    <div style={{ color: 'rgba(255,138,138,0.60)', fontSize: 10, letterSpacing: 1, marginBottom: 5 }}>VOTOS EN TIEMPO REAL</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      {/* − voto */}
+                      <button onClick={() => setTablero(prev => {
+                        const jug = sala?.jugadores || [];
+                        const m = prev?.motin || { umbral: 3, confirmados: 0, total: jug.length, exitoso: false };
+                        return { ...prev, motin: { ...m, confirmados: Math.max(0, m.confirmados - 1) } };
+                      })} style={_btnMini}>−</button>
+
+                      {/* Contador */}
+                      <span style={{ minWidth: 60, textAlign: 'center', fontSize: 12, color: '#ff8a8a' }}>
+                        {tablero?.motin?.confirmados ?? 0}&nbsp;/&nbsp;{tablero?.motin?.total ?? (sala?.jugadores||[]).length}
+                      </span>
+
+                      {/* + voto */}
+                      <button onClick={() => setTablero(prev => {
+                        const jug = sala?.jugadores || [];
+                        const total = jug.length;
+                        const m = prev?.motin || { umbral: 3, confirmados: 0, total, exitoso: false };
+                        return { ...prev, motin: { ...m, confirmados: Math.min(m.total ?? total, m.confirmados + 1) } };
+                      })} style={_btnMini}>+</button>
+
+                      {/* Reset */}
+                      <button onClick={() => setTablero(prev => ({
+                        ...prev,
+                        motin: { umbral: prev?.motin?.umbral ?? 3, confirmados: 0, total: (sala?.jugadores||[]).length, exitoso: false },
+                      }))} style={{ ..._btnMini, fontSize: 10, padding: '2px 6px' }}>↺ Reset</button>
+
+                      {/* Umbral */}
+                      <span style={{ color: 'rgba(245,230,200,0.30)', fontSize: 10, marginLeft: 2 }}>
+                        umbral {tablero?.motin?.umbral ?? 3}p
+                      </span>
+                    </div>
+
+                    {/* Inicializar motin si aún no existe */}
+                    {!tablero?.motin && (
+                      <button onClick={() => setTablero(prev => ({
+                        ...prev,
+                        motin: { umbral: 3, confirmados: 0, total: (sala?.jugadores||[]).length, exitoso: false },
+                      }))} style={{ ..._btnMini, marginTop: 5, width: '100%', textAlign: 'center', fontSize: 10 }}>
+                        ⚡ Inicializar motin.confirmados
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Kraken */}
                 <div style={{ color: 'rgba(245,230,200,0.38)', fontSize: 10, marginBottom: 4, letterSpacing: 1 }}>KRAKEN MENOR</div>
@@ -2246,6 +2893,85 @@ export default function Tablero() {
 
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Dev Asset Editor (solo en modo DEV_PREVIEW) ─────────── */}
+      {DEV_PREVIEW && (
+        <DevAssetEditor
+          pos={pos}
+          posDefaults={POS}
+          onUpdatePath={handleUpdatePosPath}
+          onReset={handleResetPosPath}
+          onResetAll={handleResetAllPos}
+        />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          PANTALLA DE CARGA — visible hasta que cargan todos los modelos 3D.
+          Desaparece con un fade cuando assetsListos pasa a true.
+      ══════════════════════════════════════════════════════════════ */}
+      {cargaVisible && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'radial-gradient(ellipse at 50% 45%, #0a1424 0%, #05070f 70%, #03050a 100%)',
+          opacity:        assetsListos ? 0 : 1,
+          transition:     'opacity 0.8s ease',
+          pointerEvents:  assetsListos ? 'none' : 'auto',
+        }}>
+          {/* Icono animado */}
+          <div style={{
+            fontSize: '96px', marginBottom: '32px',
+            animation: 'flotar 3s ease-in-out infinite',
+            filter: 'drop-shadow(0 0 28px rgba(10,120,160,0.55))',
+          }}>🐙</div>
+
+          {/* Texto */}
+          <h2 style={{
+            fontFamily: 'var(--fuente-titulo)',
+            color: 'var(--oro-dorado)',
+            fontSize: '34px', letterSpacing: '5px',
+            textShadow: '0 0 38px rgba(201,168,76,0.5)',
+            marginBottom: '10px', textAlign: 'center',
+          }}>
+            Creando el tablero…
+          </h2>
+          <p style={{
+            fontFamily: 'var(--fuente-subtitulo)',
+            color: 'rgba(245,230,200,0.4)',
+            fontSize: '13px', letterSpacing: '3px',
+            textTransform: 'uppercase', marginBottom: '34px',
+          }}>
+            Invocando las aguas profundas
+          </p>
+
+          {/* Barra de progreso */}
+          <div style={{
+            width: '280px', height: '6px', borderRadius: '3px',
+            background: 'rgba(255,255,255,0.07)', overflow: 'hidden',
+            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+          }}>
+            <div style={{
+              height: '100%', borderRadius: '3px',
+              width: `${Math.round((assetsListos ? 1 : cargaProgreso) * 100)}%`,
+              background: 'linear-gradient(to right, rgba(10,147,150,0.8), rgba(201,168,76,0.9))',
+              transition: 'width 0.4s ease',
+              boxShadow: '0 0 10px rgba(10,147,150,0.6)',
+            }} />
+          </div>
+
+          {/* Puntos pulsantes */}
+          <div style={{ display: 'flex', gap: '10px', marginTop: '26px' }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{
+                width: '9px', height: '9px', borderRadius: '50%',
+                background: 'var(--turquesa-kraken)',
+                animation: `pulsar-kraken 1.4s ease-in-out ${i*0.25}s infinite`,
+              }} />
+            ))}
+          </div>
         </div>
       )}
 
