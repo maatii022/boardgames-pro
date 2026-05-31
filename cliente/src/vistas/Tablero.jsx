@@ -324,7 +324,7 @@ const DEV_PREVIEW = false;
    BARCO_TRAS_CARTA_MS → tras volar la carta, espera esto antes de mover el barco
 ────────────────────────────────────────────────────────────────────── */
 const CARTA_NAV_MS  = 2200;
-const BARCO_TRAS_CARTA_MS = 400;
+const BARCO_TRAS_CARTA_MS = 1500;  // retraso tras desaparecer la carta antes de mover el barco
 const CARTA_NAV_W   = 280;
 const CARTA_NAV_POS = { left: '50vw', top: '50vh' };
 
@@ -649,6 +649,7 @@ export default function Tablero() {
   const mostrarCartaNavRef = useRef(null);  // acceso estable a mostrarCartaNav desde hooks pre-early-return
   const iniciarShrinkingRef = useRef(null); // acceso estable a iniciarShrinking desde el handler del socket
   const _prevCartaNavKey   = useRef(null);  // clave anterior de ultimaCarta (para detectar cambio)
+  const _cartaVistaNull    = useRef(false); // ¿hubo un estado SIN carta? (para disparar la 1ª carta pero no en reconexión)
 
   /* ── Refs para la animación del barco ──────────────────────────────── */
   const ROTACION_MS   = 380;
@@ -660,6 +661,7 @@ export default function Tablero() {
   // Movimiento del barco pendiente de ejecutar (se espera a que la carta termine)
   const pendingBarcoRef = useRef(null);   // { hexAnterior, nuevoHex } | null
   const barcoFallbackRef = useRef(null);
+  const _prevAccTipo = useRef(null);      // tipo de accionEspecial anterior (detectar fin de acción)
 
   /* ── Ejecuta la animación de rotación + movimiento del barco ──────── */
   const animarBarcoServidor = (hexAnterior, nuevoHex) => {
@@ -710,9 +712,10 @@ export default function Tablero() {
     setTablero(prev => prev ? { ...prev, barco: { ...prev.barco, hexId: hexAnterior } } : prev);
     pendingBarcoRef.current = { hexAnterior, nuevoHex };
 
-    // Fallback: si por lo que sea no hay animación de carta, mover igual tras 2.6s
+    // Fallback de SEGURIDAD largo (solo si nunca hubo animación de carta):
+    // debe ser mayor que la duración del reveal (~3.2s) para no cortarlo.
     clearTimeout(barcoFallbackRef.current);
-    barcoFallbackRef.current = setTimeout(() => ejecutarBarcoPendiente(), 2600);
+    barcoFallbackRef.current = setTimeout(() => ejecutarBarcoPendiente(), 9000);
   }, [_barcoHexServidor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cuando la carta de navegación termina (cartaNavPhase → idle), mover el barco
@@ -722,6 +725,29 @@ export default function Tablero() {
       return () => clearTimeout(t);
     }
   }, [cartaNavPhase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sirena / Telescopio: la carta se muestra DURANTE la acción ──────
+  // Al aparecer la acción, primamos la clave de la carta para que NO se
+  // dispare después el "fly-reveal" (ya se está enseñando en el overlay).
+  // Al TERMINAR la acción (accionEspecial → null), movemos el barco con retraso.
+  const _accTipoActual = tablero?.accionEspecial?.tipo || null;
+  useEffect(() => {
+    const ae = tablero?.accionEspecial;
+    const esSpecial = _accTipoActual === 'sirena' || _accTipoActual === 'telescopio';
+    if (esSpecial && ae?.carta) {
+      _prevCartaNavKey.current = `${ae.carta.color}|${ae.carta.nombre}`;
+      _cartaVistaNull.current = false;     // evita el fly-reveal posterior de esta carta
+    }
+    const antes = _prevAccTipo.current;
+    if ((antes === 'sirena' || antes === 'telescopio') && !_accTipoActual) {
+      // La acción especial acaba de terminar → mover el barco tras el retraso
+      if (pendingBarcoRef.current) {
+        clearTimeout(barcoFallbackRef.current);
+        setTimeout(() => ejecutarBarcoPendiente(), BARCO_TRAS_CARTA_MS);
+      }
+    }
+    _prevAccTipo.current = _accTipoActual;
+  }, [_accTipoActual]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Movimiento por botones DEV (solo en DEV_PREVIEW) ──────────────── */
   function moverBarco(tipo) {
@@ -892,7 +918,8 @@ export default function Tablero() {
   const finalizarSiTodoListo = useCallback(() => {
     if (modelosOkRef.current && imagenesOkRef.current) {
       clearTimeout(settleRef.current);
-      settleRef.current = setTimeout(() => setAssetsListos(true), 350);
+      // Margen amplio para que TODO esté pintado antes de quitar la pantalla
+      settleRef.current = setTimeout(() => setAssetsListos(true), 900);
     }
   }, []);
 
@@ -1070,17 +1097,31 @@ export default function Tablero() {
     }
   }, [fase, tablero?.capitanIdx, _tenId, _navId]); // eslint-disable-line
 
-  // Auto-trigger animación carta nav cuando ultimaCarta cambia (producción)
+  // Auto-trigger animación carta nav cuando ultimaCarta cambia (producción).
+  // Dispara también en la PRIMERA carta de la partida, pero NO en una reconexión
+  // (cuando el tablero arranca con una ultimaCarta ya jugada).
   useEffect(() => {
     if (DEV_PREVIEW) return;
     const c = tablero?.ultimaCarta;
-    if (!c) { _prevCartaNavKey.current = null; return; }
-    const key = `${c.color}|${c.nombre}`;
-    if (_prevCartaNavKey.current !== null && key !== _prevCartaNavKey.current) {
+    if (!c) { _prevCartaNavKey.current = null; _cartaVistaNull.current = true; return; }
+    const key  = `${c.color}|${c.nombre}`;
+    const prev = _prevCartaNavKey.current;
+    _prevCartaNavKey.current = key;
+    if (key !== prev && (prev !== null || _cartaVistaNull.current)) {
       mostrarCartaNavRef.current?.(c);  // mostrarCartaNav se asigna al ref más abajo
     }
-    _prevCartaNavKey.current = key;
   }, [tablero?.ultimaCarta?.nombre, tablero?.ultimaCarta?.color]); // eslint-disable-line
+
+  // Salvaguarda: el resultado del motín NUNCA debe seguir visible durante el
+  // cofre. Al entrar en fase_3, se muestra un instante y se limpia sí o sí,
+  // para que no se superponga con la carta de Sirena/Telescopio ni el cofre.
+  useEffect(() => {
+    if (DEV_PREVIEW) return;
+    if (fase === 'fase_3' && (motin || cerMotinFase !== 'idle')) {
+      const t = setTimeout(() => { setMotin(null); setCerMotinFase('idle'); }, 3200);
+      return () => clearTimeout(t);
+    }
+  }, [fase, motin, cerMotinFase]); // eslint-disable-line
 
   // Cleanup timer al desmontar — aquí (antes de early returns) para respetar la regla de hooks
   useEffect(() => () => clearTimeout(cartaNavTimerRef.current), []);
@@ -1228,9 +1269,12 @@ export default function Tablero() {
   // overlayActivo: TRUE cuando cualquier overlay de pantalla completa está activo.
   // - Oscurece el barco (directamente via opacity/filter, fuera del stage)
   // - Activa la capa z=40 dentro del stage que oscurece el fondo/paneles
+  const _aeTipo = tablero?.accionEspecial?.tipo;
   const overlayActivo = !!(
     ceremoniaStep !== 'idle'                   ||
-    tablero?.accionEspecial?.tipo === 'ritual' ||
+    _aeTipo === 'ritual'                       ||
+    _aeTipo === 'sirena'                       ||
+    _aeTipo === 'telescopio'                   ||
     kraken                                     ||
     motin                                      ||
     fase === 'victoria'                        ||
@@ -2232,6 +2276,47 @@ export default function Tablero() {
                 </div>
               )}
 
+            </div>
+          );
+        })()}
+
+        {/* Overlay: Sirena / Telescopio — carta + explicación durante la acción */}
+        {(tablero?.accionEspecial?.tipo === 'sirena' || tablero?.accionEspecial?.tipo === 'telescopio') && (() => {
+          const ae    = tablero.accionEspecial;
+          const carta = ae.carta || {};
+          const esSirena = ae.tipo === 'sirena';
+          const cartaSrc = getCartaNavSrc(carta.color, carta.nombre);
+          const nombreDe = (id) => (jugadores.find(j => j.id === id) || {}).nombre || 'Jugador';
+          const subtitulo = ae.etapa === 'capitan-elige'
+            ? 'El Capitán elige un jugador…'
+            : `${nombreDe(ae.jugadorElegido)} está mirando las cartas…`;
+          const COL = esSirena ? '#308af0' : '#d73026';
+          return (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,7,15,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)', zIndex: 50, animation: 'aparecer 0.4s ease' }}>
+              <div style={{ textAlign: 'center', maxWidth: '520px', padding: '0 24px' }}>
+                <p style={{ fontFamily: 'var(--fuente-subtitulo)', color: `${COL}cc`, fontSize: '11px', letterSpacing: '5px', textTransform: 'uppercase', marginBottom: '12px' }}>
+                  Carta de navegación
+                </p>
+                <h2 style={{ fontFamily: 'var(--fuente-titulo)', color: COL, fontSize: '40px', letterSpacing: '4px', textShadow: `0 0 30px ${COL}80`, marginBottom: '20px' }}>
+                  {esSirena ? '🧜 Sirena' : '🔭 Telescopio'}
+                </h2>
+                <div style={{ width: '230px', margin: '0 auto 18px', animation: 'flotar 3.5s ease-in-out infinite' }}>
+                  <img src={cartaSrc} alt={carta.nombre || ''} draggable={false}
+                    onError={e => { e.currentTarget.style.display = 'none'; }}
+                    style={{ width: '100%', borderRadius: '14px', display: 'block', boxShadow: `0 12px 60px rgba(0,0,0,0.7), 0 0 50px ${COL}55` }} />
+                </div>
+                {carta.descripcion && (
+                  <p style={{ fontFamily: 'var(--fuente-cuerpo)', color: 'rgba(245,230,200,0.6)', fontSize: '17px', lineHeight: 1.6, marginBottom: '22px' }}>
+                    {carta.descripcion}
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center' }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: COL, animation: `pulsar-kraken 1.4s ease-in-out ${i*0.3}s infinite` }} />)}
+                  <span style={{ fontFamily: 'var(--fuente-subtitulo)', color: 'rgba(245,230,200,0.45)', fontSize: '14px', letterSpacing: '1px', marginLeft: '8px' }}>
+                    {subtitulo}
+                  </span>
+                </div>
+              </div>
             </div>
           );
         })()}

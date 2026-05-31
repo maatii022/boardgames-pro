@@ -396,7 +396,9 @@ const iniciarAccionEspecialPendiente = (estado) => {
   if (!carta) throw new Error('No hay carta de navegación');
   return {
     ...estado,
-    accionEspecial: { tipo: carta.tipo, etapa: 'capitan-elige', jugadorElegido: null },
+    // Incluimos la carta para que el tablero pueda mostrarla (con su descripción)
+    // ANTES de la acción de Sirena/Telescopio.
+    accionEspecial: { tipo: carta.tipo, carta, etapa: 'capitan-elige', jugadorElegido: null },
   };
 };
 

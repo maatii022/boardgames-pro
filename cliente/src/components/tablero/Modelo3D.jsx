@@ -64,7 +64,9 @@ function calcularBbox(scene) {
 function avisarTrasFrames(contadorRef, onListo) {
   if (!onListo || contadorRef.avisado) return;
   contadorRef.frames = (contadorRef.frames || 0) + 1;
-  if (contadorRef.frames >= 2) {
+  // Esperar varios frames asegura que la geometría (incluido el kraken pesado)
+  // ya está subida a la GPU y realmente visible antes de quitar la carga.
+  if (contadorRef.frames >= 8) {
     contadorRef.avisado = true;
     onListo();
   }
